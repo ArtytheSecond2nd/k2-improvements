@@ -49,5 +49,6 @@ save-config-stock-then-firmware-v1|save-config-restart|is_save_config_restart|SA
 save-config-stock-restart-v1|save-config-restart|is_save_config_restart|SAVE_CONFIG restored to its stock host restart with no wrapper or firmware reset
 save-config-fault-recovery-v1|save-config-restart|is_save_config_restart|SAVE_CONFIG firmware restart now also recovers failed K2 motor initialization
 installer-startup-fault-recovery-v1|save-config-restart|is_save_config_restart|Installer final restart now recovers failed K2 motor initialization with one firmware reset
+test-stock-case-fan-release-v1|macros|is_macros|Stock-probe pre-print now releases Creality's one-time 100% case-fan override
 EOF
 }
