@@ -93,7 +93,9 @@ is_abort_homing_firmware_restart() {
 is_save_config_restart() {
     local root_configfile="${HOME:-/mnt/UDISK/root}/klipper/klippy/configfile.py"
     local system_configfile="${KLIPPER_DIR:-/usr/share/klipper}/klippy/configfile.py"
-    grep -q "gcode.request_restart('firmware_restart')" \
+    grep -q "k2_save_config_restart.sh" \
+        "$root_configfile" "$system_configfile" 2>/dev/null &&
+    grep -q "gcode.request_restart('restart')" \
         "$root_configfile" "$system_configfile" 2>/dev/null
 }
 is_better_init()   { [ -f /etc/profile.d/better-init.sh ]; }

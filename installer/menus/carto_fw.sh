@@ -107,7 +107,8 @@ If the probe does not reappear, unplug/replug the Cartographer USB or
 power-cycle the printer.
 
 K2 Plus restart note:
-Protected SAVE_CONFIG uses a firmware restart plus the K2 initialization wait.
+Protected SAVE_CONFIG completes its stock restart, waits for K2 motor readiness,
+then requests one guarded firmware restart.
 Installers that replace Klippy Python code add a guarded host-process reload
 before that reset. Power-cycle before G28 if the protected sequence fails.
 
@@ -203,7 +204,8 @@ carto_fw_launch() {
         printf '  lsusb | grep -i cartographer\n\n'
         printf 'If the probe does not reappear, unplug/replug the Cartographer USB or power-cycle the printer.\n\n'
         printf 'K2 Plus restart note:\n'
-        printf 'Protected SAVE_CONFIG uses a firmware restart plus the K2 initialization wait.\n'
+        printf 'Protected SAVE_CONFIG completes its stock restart, waits for K2 motor readiness,\n'
+        printf 'then requests one guarded firmware restart.\n'
         printf 'Python-code installers add a guarded host reload first. Power-cycle before\n'
         printf 'G28 if the protected sequence fails.\n\n'
     else
