@@ -157,7 +157,10 @@ class MigrationCatalogTests(unittest.TestCase):
         menu = MAIN_MENU.read_text(encoding="utf-8")
         self.assertIn("migration_pending_component_count", menu)
         self.assertIn("ACTION(S) PENDING", menu)
-        self.assertIn("NO ACTIONS PENDING", menu)
+        self.assertIn("INSTALLER UPDATE AVAILABLE", menu)
+        self.assertIn("UP TO DATE", menu)
+        self.assertIn("REMOTE CHECK UNAVAILABLE", menu)
+        self.assertIn("ls-remote --heads origin", menu)
         self.assertIn("Update installer / apply updates", menu)
 
     def test_update_plan_keeps_terminal_input_available_to_installers(self):
