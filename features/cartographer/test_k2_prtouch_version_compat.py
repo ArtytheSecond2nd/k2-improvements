@@ -39,12 +39,19 @@ class FakePrinter:
             configfile.status_raw_config["prtouch_v3"] = {"speed": "5"}
             configfile.status_settings["prtouch_v3"] = {"speed": 5.0}
         self.objects = {"gcode": FakeGCode(), "configfile": configfile}
+        if native_section:
+            self.objects["prtouch_v3"] = object()
         if include_cartographer:
             self.objects["cartographer"] = object()
         self.handlers = {}
 
     def lookup_object(self, name, default=None):
         return self.objects.get(name, default)
+
+    def add_object(self, name, value):
+        if name in self.objects:
+            raise ValueError("object already registered: %s" % (name,))
+        self.objects[name] = value
 
     def register_event_handler(self, event, callback):
         self.handlers[event] = callback
@@ -67,12 +74,14 @@ class CompatibilityTests(unittest.TestCase):
         config_status = printer.objects["configfile"].get_status(0)
         self.assertEqual(config_status["config"]["prtouch_v3"], {})
         self.assertEqual(config_status["settings"]["prtouch_v3"], {})
-        self.assertNotIn("prtouch_v3", printer.objects)
+        self.assertIs(printer.objects["prtouch_v3"], compat)
         self.assertEqual(
             compat.get_status(0),
             {
                 "installed": True,
                 "reported": True,
+                "config_reported": True,
+                "object_registered": True,
                 "native_section": False,
                 "driver_loaded": False,
             },
@@ -91,7 +100,9 @@ class CompatibilityTests(unittest.TestCase):
         status = compat.get_status(0)
         self.assertFalse(status["installed"])
         self.assertTrue(status["reported"])
+        self.assertFalse(status["object_registered"])
         self.assertTrue(status["native_section"])
+        self.assertTrue(status["driver_loaded"])
         self.assertEqual(
             printer.objects["configfile"].status_raw_config["prtouch_v3"],
             {"speed": "5"},

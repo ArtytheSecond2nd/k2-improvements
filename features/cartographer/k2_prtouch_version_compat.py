@@ -1,9 +1,9 @@
 """Report PR Touch v3 compatibility to Creality's master-server.
 
 Creality's K2 Plus master-server selects its complete pre-file preparation
-path from the ``prtouch_v3`` section in Klipper's reported config status.
-Cartographer removes the physical PR Touch driver, so this compatibility
-layer reports an empty synthetic section while Klipper is connecting.
+path when Klipper advertises a ``prtouch_v3`` object. Cartographer removes the
+physical PR Touch driver, so this compatibility layer reports a hardware-free
+status object and an empty synthetic config section while Klipper connects.
 
 It does not add a real PR Touch configuration section, import the driver,
 register a probe, claim a pin, or issue G-code.
@@ -23,6 +23,7 @@ class K2PRTouchVersionCompat:
         self.configfile = None
         self.installed = False
         self.native_section = False
+        self.object_registered = False
         self.gcode.register_command(
             "K2_PRTOUCH_VERSION_COMPAT_STATUS",
             self.cmd_status,
@@ -49,12 +50,13 @@ class K2PRTouchVersionCompat:
             )
             return
 
+        native_object = self.printer.lookup_object(SYNTHETIC_SECTION, None)
         self.native_section = (
             SYNTHETIC_SECTION in raw_config or SYNTHETIC_SECTION in settings
         )
-        if self.native_section:
+        if self.native_section or native_object is not None:
             logging.warning(
-                "%s inactive; a real %s configuration section is already reported",
+                "%s inactive; a real %s section or object is already reported",
                 LOG_PREFIX,
                 SYNTHETIC_SECTION,
             )
@@ -65,40 +67,47 @@ class K2PRTouchVersionCompat:
         # advertising any options belonging to the physical PR Touch driver.
         raw_config[SYNTHETIC_SECTION] = {}
         settings[SYNTHETIC_SECTION] = {}
+        self.printer.add_object(SYNTHETIC_SECTION, self)
+        self.object_registered = True
         self.installed = True
         logging.info(
-            "%s reporting synthetic %s configfile section; no PR Touch driver loaded",
+            "%s reporting synthetic %s status object; no PR Touch driver loaded",
             LOG_PREFIX,
             SYNTHETIC_SECTION,
         )
 
     def get_status(self, eventtime):
         del eventtime
-        reported = False
+        config_reported = False
         if self.configfile is not None:
             raw_config = getattr(self.configfile, "status_raw_config", {})
             settings = getattr(self.configfile, "status_settings", {})
-            reported = (
+            config_reported = (
                 SYNTHETIC_SECTION in raw_config
                 and SYNTHETIC_SECTION in settings
             )
+        reported_object = self.printer.lookup_object(SYNTHETIC_SECTION, None)
         return {
             "installed": self.installed,
-            "reported": reported,
+            # Object presence is the signal consumed by Creality's service.
+            "reported": reported_object is not None,
+            "config_reported": config_reported,
+            "object_registered": reported_object is self,
             "native_section": self.native_section,
-            "driver_loaded": self.printer.lookup_object(
-                SYNTHETIC_SECTION, None
-            ) is not None,
+            "driver_loaded": reported_object is not None and reported_object is not self,
         }
 
     def cmd_status(self, gcmd):
         status = self.get_status(0.0)
         gcmd.respond_info(
-            "%s installed=%s reported=%s native_section=%s driver_loaded=%s"
+            "%s installed=%s reported=%s config_reported=%s object_registered=%s "
+            "native_section=%s driver_loaded=%s"
             % (
                 LOG_PREFIX,
                 status["installed"],
                 status["reported"],
+                status["config_reported"],
+                status["object_registered"],
                 status["native_section"],
                 status["driver_loaded"],
             )
