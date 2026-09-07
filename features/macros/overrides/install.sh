@@ -16,6 +16,11 @@ fi
 sh "${SCRIPT_DIR}/ensure_bed_mesh_soak.sh" \
     ~/printer_data/config/custom/overrides.cfg
 
+. "${SCRIPT_DIR}/../../../installer/detect/printer_fw.sh"
+PRINTER_FW="$(detect_printer_fw)"
+sh "${SCRIPT_DIR}/set_case_fan_compat.sh" \
+    ~/printer_data/config/custom/overrides.cfg "$PRINTER_FW"
+
 # The same overrides seed is used by both setup paths. Activate the
 # Cartographer-only defaults only when Cartographer is actually configured.
 if [ -f ~/printer_data/config/custom/cartographer.cfg ]; then

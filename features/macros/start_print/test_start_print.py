@@ -27,7 +27,18 @@ class StartPrintConfigTests(unittest.TestCase):
         section = self.config.split(
             "[gcode_macro BOX_NOZZLE_CLEAN]", 1
         )[1].split("[gcode_macro START_PRINT]", 1)[0]
-        self.assertIn("{% if 'cartographer' not in printer %}", section)
+        self.assertIn(
+            "{% if 'cartographer' not in printer and "
+            "RELEASE_CASE_FAN == 1 %}",
+            section,
+        )
+
+    def test_case_fan_release_uses_installer_firmware_flag(self):
+        section = self.config.split(
+            "[gcode_macro BOX_NOZZLE_CLEAN]", 1
+        )[1].split("[gcode_macro START_PRINT]", 1)[0]
+        self.assertIn("release_stock_case_fan|default(0)|int", section)
+        self.assertIn("variable_release_stock_case_fan: 0", self.config)
 
     def test_case_fan_is_not_continuously_enforced(self):
         self.assertEqual(self.config.count("M107 P1"), 1)

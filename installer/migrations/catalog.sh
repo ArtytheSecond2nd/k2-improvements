@@ -52,5 +52,6 @@ installer-startup-fault-recovery-v1|save-config-restart|is_save_config_restart|I
 test-stock-case-fan-release-v1|macros|is_macros|Stock-probe pre-print now releases Creality's one-time 100% case-fan override
 test-low-chamber-no-wait-v1|macros|is_macros|Chamber targets at or below 35 C no longer block pre-print or missing-mesh creation
 test-low-chamber-target-policy-v2|macros|is_macros|All mesh paths now use a 2 C chamber-fan margin and keep the heater off at or below 35 C
+case-fan-firmware-scope-v1|macros|is_macros|The stock pre-print case-fan release is now enabled only on confirmed affected firmware
 EOF
 }
