@@ -16,10 +16,16 @@ cat > "$TMP_DIR/bin/curl" <<'EOF'
 case " $* " in
     *' -X POST '*)
         : > "$K2_TEST_POST_MARKER"
+        if [ -n "${K2_TEST_POST_LOG:-}" ]; then
+            printf '%s\n' "$*" >> "$K2_TEST_POST_LOG"
+        fi
         printf '%s\n' '{"result":"ok"}'
         ;;
     *'motor_control=motor_ready'*)
-        if [ -n "${K2_TEST_MOTOR_JSON:-}" ]; then
+        if [ "${K2_TEST_READY_AFTER_POST:-0}" = 1 ] &&
+           [ -e "$K2_TEST_POST_MARKER" ]; then
+            printf '%s\n' '{"result":{"status":{"motor_control":{"motor_ready":true}}}}'
+        elif [ -n "${K2_TEST_MOTOR_JSON:-}" ]; then
             printf '%s\n' "$K2_TEST_MOTOR_JSON"
         else
             printf '%s\n' '{"result":{"status":{"motor_control":{"motor_ready":true}}}}'
@@ -29,6 +35,10 @@ case " $* " in
         if [ "${K2_TEST_READY_AFTER_POST:-0}" = 1 ] &&
            [ -e "$K2_TEST_POST_MARKER" ]; then
             printf '%s\n' '{"state":"ready"}'
+        elif [ -n "${K2_TEST_TRANSITION_MARKER:-}" ] &&
+             [ ! -e "$K2_TEST_TRANSITION_MARKER" ]; then
+            : > "$K2_TEST_TRANSITION_MARKER"
+            printf '%s\n' '{"state":"startup"}'
         else
             printf '%s\n' "$K2_TEST_INFO_JSON"
         fi
@@ -91,5 +101,57 @@ if PATH="$TMP_DIR/bin:$PATH" K2_CURL="$TMP_DIR/bin/curl" \
 fi
 [ ! -e "$TMP_DIR/shutdown.post" ] ||
     fail 'installer requested firmware restart after a startup shutdown'
+
+# SAVE_CONFIG always ends with one firmware restart after successful motor
+# discovery.
+PATH="$TMP_DIR/bin:$PATH" K2_CURL="$TMP_DIR/bin/curl" \
+K2_TEST_INFO_JSON='{"state":"ready"}' \
+K2_TEST_TRANSITION_MARKER="$TMP_DIR/save-ready.transition" \
+K2_TEST_READY_AFTER_POST=1 \
+K2_TEST_POST_MARKER="$TMP_DIR/save-ready.post" \
+K2_TEST_POST_LOG="$TMP_DIR/save-ready.posts" \
+K2_TEST_SLEEP_LOG="$TMP_DIR/save-ready.sleeps" \
+K2_SAVE_CONFIG_TIMEOUT=2 \
+    sh "$REPO_DIR/features/save-config-restart/k2_save_config_restart.sh" \
+        >"$TMP_DIR/save-ready.out" 2>&1
+grep -q 'fresh Klippy host and K2 motors are ready' "$TMP_DIR/save-ready.out" ||
+    fail 'SAVE_CONFIG helper did not recognize successful motor discovery'
+[ "$(grep -c '/printer/firmware_restart' "$TMP_DIR/save-ready.posts")" -eq 1 ] ||
+    fail 'successful SAVE_CONFIG did not request exactly one firmware restart'
+
+# The confirmed post-print failure enters shutdown before motor_ready. It must
+# request the same single firmware restart instead of aborting before recovery.
+PATH="$TMP_DIR/bin:$PATH" K2_CURL="$TMP_DIR/bin/curl" \
+K2_TEST_INFO_JSON='{"state":"shutdown"}' \
+K2_TEST_TRANSITION_MARKER="$TMP_DIR/save-fault.transition" \
+K2_TEST_READY_AFTER_POST=1 \
+K2_TEST_POST_MARKER="$TMP_DIR/save-fault.post" \
+K2_TEST_POST_LOG="$TMP_DIR/save-fault.posts" \
+K2_TEST_SLEEP_LOG="$TMP_DIR/save-fault.sleeps" \
+K2_SAVE_CONFIG_TIMEOUT=2 \
+    sh "$REPO_DIR/features/save-config-restart/k2_save_config_restart.sh" \
+        >"$TMP_DIR/save-fault.out" 2>&1
+grep -q 'entered shutdown before K2 motors became ready' "$TMP_DIR/save-fault.out" ||
+    fail 'SAVE_CONFIG helper did not recognize the startup fault'
+[ "$(grep -c '/printer/firmware_restart' "$TMP_DIR/save-fault.posts")" -eq 1 ] ||
+    fail 'failed SAVE_CONFIG did not request exactly one recovery firmware restart'
+
+# A host that remains ready without motor_ready is also unsafe. After the
+# bounded wait it receives the same one-shot recovery.
+PATH="$TMP_DIR/bin:$PATH" K2_CURL="$TMP_DIR/bin/curl" \
+K2_TEST_INFO_JSON='{"state":"ready"}' \
+K2_TEST_MOTOR_JSON='{"result":{"status":{"motor_control":{"motor_ready":false}}}}' \
+K2_TEST_TRANSITION_MARKER="$TMP_DIR/save-timeout.transition" \
+K2_TEST_READY_AFTER_POST=1 \
+K2_TEST_POST_MARKER="$TMP_DIR/save-timeout.post" \
+K2_TEST_POST_LOG="$TMP_DIR/save-timeout.posts" \
+K2_TEST_SLEEP_LOG="$TMP_DIR/save-timeout.sleeps" \
+K2_SAVE_CONFIG_TIMEOUT=2 \
+    sh "$REPO_DIR/features/save-config-restart/k2_save_config_restart.sh" \
+        >"$TMP_DIR/save-timeout.out" 2>&1
+grep -q 'did not finish K2 motor initialization' "$TMP_DIR/save-timeout.out" ||
+    fail 'SAVE_CONFIG helper did not recognize motor initialization timeout'
+[ "$(grep -c '/printer/firmware_restart' "$TMP_DIR/save-timeout.posts")" -eq 1 ] ||
+    fail 'timed-out SAVE_CONFIG did not request exactly one recovery firmware restart'
 
 echo 'restart helper tests: PASS'

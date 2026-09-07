@@ -47,5 +47,6 @@ main-m191-cleanup-response-v1|macros|is_macros|M191 assisted-heating cleanup mes
 installer-protected-motor-ready-v1|save-config-restart|is_save_config_restart|Installer code reload now requires K2 motor readiness before one firmware reset
 save-config-stock-then-firmware-v1|save-config-restart|is_save_config_restart|SAVE_CONFIG now completes its stock restart before one guarded firmware reset
 save-config-stock-restart-v1|save-config-restart|is_save_config_restart|SAVE_CONFIG restored to its stock host restart with no wrapper or firmware reset
+save-config-fault-recovery-v1|save-config-restart|is_save_config_restart|SAVE_CONFIG firmware restart now also recovers failed K2 motor initialization
 EOF
 }

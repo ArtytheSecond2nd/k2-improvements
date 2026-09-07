@@ -11,7 +11,7 @@ migration_component_label() {
     case "$1" in
         cartographer) echo 'Cartographer' ;;
         macros) echo 'Macros (START_PRINT / M191 / bed mesh)' ;;
-        save-config-restart) echo 'Stock SAVE_CONFIG restart behavior' ;;
+        save-config-restart) echo 'SAVE_CONFIG restart protection' ;;
         abort_homing) echo 'Abort Homing' ;;
         screws_tilt_adjust) echo 'Screws Tilt Adjust' ;;
         kamp-adaptive-purge) echo 'KAMP adaptive purge' ;;
