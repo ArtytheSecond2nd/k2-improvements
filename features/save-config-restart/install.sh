@@ -9,10 +9,9 @@ HELPER=~/klipper/klippy/k2_save_config_restart.sh
 rm -f ~/klipper/klippy/configfile.pyc \
     ~/klipper/klippy/__pycache__/configfile.*.pyc
 ln -sfn ${SCRIPT_DIR}/configfile.py ${TARGET}
-ln -sfn ${SCRIPT_DIR}/k2_save_config_restart.sh ${HELPER}
-chmod +x ${SCRIPT_DIR}/k2_save_config_restart.sh
+rm -f ${HELPER}
 
-echo "I: installed K2 Plus protected post-SAVE_CONFIG restart sequence"
+echo "I: restored stock Klipper SAVE_CONFIG restart behavior"
 
 if [ "${1:-}" != "--no-restart" ]; then
     sh ${SCRIPT_DIR}/../../scripts/klippy_code_restart.sh

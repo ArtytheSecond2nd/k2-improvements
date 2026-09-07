@@ -1,9 +1,9 @@
-# Creality K2 Plus-safe code for reading and writing the Klipper config file
+# Code for reading and writing the Klipper config file
 #
 # Copyright (C) 2016-2021  Kevin O'Connor <kevin@koconnor.net>
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
-import sys, os, glob, re, time, logging, configparser, io, subprocess
+import sys, os, glob, re, time, logging, configparser, io
 
 error = configparser.Error
 
@@ -470,7 +470,7 @@ class PrinterConfig:
                 logging.exception(msg)
                 raise gcode.error(msg)
         
-    cmd_SAVE_CONFIG_help = "Overwrite config file and restart firmware"
+    cmd_SAVE_CONFIG_help = "Overwrite config file and restart"
     def cmd_SAVE_CONFIG(self, gcmd):
         if not self.autosave.fileconfig.sections():
             return
@@ -515,39 +515,7 @@ class PrinterConfig:
             msg = "Unable to write config file during SAVE_CONFIG"
             logging.exception(msg)
             raise gcode.error(msg)
-        # Preserve Klipper's stock SAVE_CONFIG restart, then let a detached
-        # helper wait for that restart and K2 motor discovery to complete
-        # before requesting one guarded FIRMWARE_RESTART.  The helper must be
-        # armed before this process begins its restart or the transition could
-        # be missed.
-        helper = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                              'k2_save_config_restart.sh')
-        armed = '/tmp/k2-save-config-restart.armed'
-        logname = '/tmp/k2-save-config-restart.log'
-        try:
-            try:
-                os.remove(armed)
-            except OSError:
-                pass
-            logfile = open(logname, 'a')
-            try:
-                subprocess.Popen([helper], stdin=subprocess.DEVNULL,
-                                 stdout=logfile, stderr=subprocess.STDOUT,
-                                 close_fds=True, start_new_session=True)
-            finally:
-                logfile.close()
-            arm_deadline = time.time() + 5.
-            while time.time() < arm_deadline and not os.path.exists(armed):
-                time.sleep(.05)
-            if not os.path.exists(armed):
-                raise RuntimeError("protected restart helper did not arm")
-        except Exception:
-            msg = ("Unable to arm K2 SAVE_CONFIG restart protection; "
-                   "configuration was saved but Klipper was not restarted")
-            logging.exception(msg)
-            raise gcode.error(msg)
-        gcode.respond_info(
-            "SAVE_CONFIG written; protected restart sequence armed")
+        # Request a restart
         gcode.request_restart('restart')
 
     cmd_CXSAVE_CONFIG_help = "Overwrite config file by cx "
