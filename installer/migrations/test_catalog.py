@@ -206,5 +206,15 @@ class MigrationCatalogTests(unittest.TestCase):
             },
         )
 
+    def test_macros_track_bed_assist_tolerance_update(self):
+        self.assertIn(
+            "m191-bed-assist-tolerance-v1",
+            {
+                migration_id
+                for migration_id, component, _detector, _reason in entries()
+                if component == "macros"
+            },
+        )
+
 if __name__ == "__main__":
     unittest.main()

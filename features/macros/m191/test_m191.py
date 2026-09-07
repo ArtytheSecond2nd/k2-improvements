@@ -8,15 +8,31 @@ MACRO = Path(__file__).with_name("m191.cfg").read_text(encoding="utf-8")
 
 
 class M191WorkflowTests(unittest.TestCase):
-    def test_assist_requires_chamber_below_requested_target(self):
+    def test_assist_requires_chamber_more_than_three_degrees_below_target(self):
         self.assertIn(
             "{% set WAIT_FOR_CHAMBER = S > 35.0 %}",
             MACRO,
         )
         self.assertIn(
-            "{% set USE_BED_ASSIST = WAIT_FOR_CHAMBER and CHAMBER_TEMP < S %}",
+            "{% set BED_ASSIST_TOLERANCE = 3.0 %}",
             MACRO,
         )
+        self.assertIn(
+            "{% set BED_ASSIST_THRESHOLD = S - BED_ASSIST_TOLERANCE %}",
+            MACRO,
+        )
+        self.assertIn(
+            "{% set USE_BED_ASSIST = WAIT_FOR_CHAMBER and CHAMBER_TEMP < BED_ASSIST_THRESHOLD %}",
+            MACRO,
+        )
+
+    def test_skipping_bed_assist_still_waits_for_exact_chamber_target(self):
+        self.assertIn(
+            'TEMPERATURE_WAIT SENSOR="temperature_sensor chamber_temp" '
+            "MINIMUM={S} MAXIMUM={S+5}",
+            MACRO,
+        )
+        self.assertIn("within {BED_ASSIST_TOLERANCE}c of {S}c", MACRO)
 
     def test_passive_chamber_targets_are_applied_without_waiting(self):
         wait_guard = MACRO.index("{% if WAIT_FOR_CHAMBER %}")

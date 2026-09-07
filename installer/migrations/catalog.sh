@@ -53,5 +53,6 @@ test-stock-case-fan-release-v1|macros|is_macros|Stock-probe pre-print now releas
 test-low-chamber-no-wait-v1|macros|is_macros|Chamber targets at or below 35 C no longer block pre-print or missing-mesh creation
 test-low-chamber-target-policy-v2|macros|is_macros|All mesh paths now use a 2 C chamber-fan margin and keep the heater off at or below 35 C
 case-fan-firmware-scope-v1|macros|is_macros|The stock pre-print case-fan release is now enabled only on confirmed affected firmware
+m191-bed-assist-tolerance-v1|macros|is_macros|M191 now skips bed assistance when the chamber is within 3 C of its active-heating target
 EOF
 }

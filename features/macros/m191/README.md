@@ -10,8 +10,11 @@ For targets above 35 C, the macro can temporarily use the heated bed to assist
 the chamber heater. During that active-heating path it homes when needed,
 moves the bed down to Z=195 so it sits below the chamber heater, and runs the
 model and side/auxiliary fans at 25% to circulate warm air. Bed assistance,
-movement, and circulation are all skipped when the chamber is already at the
-requested temperature.
+movement, and circulation are all skipped when the chamber is within 3 C of
+the requested temperature. The chamber heater still brings the chamber to the
+exact requested temperature before the macro returns. This tolerance prevents
+a later missing-mesh check from reheating the bed to 105 C merely because the
+chamber drifted a fraction of a degree during bed cooldown.
 
 After the chamber reaches its target, both circulation fans are turned off and
 the original slicer-requested bed target is restored. Before returning to
