@@ -55,6 +55,7 @@ test-low-chamber-target-policy-v2|macros|is_macros|All mesh paths now use a 2 C 
 case-fan-firmware-scope-v1|macros|is_macros|The stock pre-print case-fan release is now enabled only on confirmed affected firmware
 m191-bed-assist-tolerance-v1|macros|is_macros|M191 now skips bed assistance when the chamber is within 3 C of its active-heating target
 cartographer-prtouch-command-compat-v1|cartographer|is_cartographer|Cartographer now retains safe call compatibility for stock PR-Touch homing commands
+cartographer-prtouch-version-report-v1|cartographer|is_cartographer|Cartographer now preserves Creality's complete pre-file preparation selection without loading PR Touch
 case-fan-cartographer-release-v1|macros|is_macros|The firmware-gated pre-print case-fan release now applies to Cartographer
 firmware-11313-fan-switch-compat-v1|macros|is_macros|Firmware 1.1.3.13 no longer reports its missing temperature-fan switch command
 EOF

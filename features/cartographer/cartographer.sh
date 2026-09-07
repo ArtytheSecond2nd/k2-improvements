@@ -56,6 +56,8 @@ EOF
             -e 's/^#(.*carto.*)/\1/' \
             ~/printer_data/config/custom/main.cfg
 
+        sh "${SCRIPT_DIR}/install_prtouch_version_compat.sh" --no-restart
+
         sh "${SCRIPT_DIR}/../../scripts/klippy_code_restart.sh"
         echo ""
         echo "*** ENSURE Y SPACERS ARE INSTALLED ***"
@@ -84,6 +86,8 @@ EOF
             -e 's/^#(.*prtouch.*)/\1/' \
             -e 's/^([^#].*carto.*)/#\1/' \
             ~/printer_data/config/custom/main.cfg
+
+        sh "${SCRIPT_DIR}/install_prtouch_version_compat.sh" --remove --no-restart
 
         sh "${SCRIPT_DIR}/../../scripts/klippy_code_restart.sh"
         echo ""

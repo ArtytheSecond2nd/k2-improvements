@@ -68,6 +68,10 @@ sed -i "s|serial: /dev/cartographer|serial: ${CARTO_SERIAL}|g" ~/printer_data/co
 python ${SCRIPT_DIR}/../../scripts/ensure_included.py \
     ~/printer_data/config/custom/main.cfg cartographer.cfg
 
+# Keep Creality's complete pre-file preparation path available after the real
+# PR Touch driver is removed. This only changes reported configuration status.
+sh "${SCRIPT_DIR}/install_prtouch_version_compat.sh" --no-restart
+
 # A conversion from the no-Cartographer path already has the shared
 # overrides.cfg. Add the Cartographer-only touch default without replacing
 # any existing user value. On a direct install, the macros installer repeats

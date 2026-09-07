@@ -20,6 +20,12 @@ installation therefore includes the probe plugin, bridge service, Klipper
 configuration, and K2-specific macros.
 
 Installing Cartographer replaces the active stock `prtouch_v3` configuration.
+Creality's master service uses that section name to select its complete
+pre-file preparation path. The installer therefore reports an empty synthetic
+`prtouch_v3` section during Klipper connection. This preserves the stock
+preparation selection without loading the physical PR-Touch driver, claiming
+probe pins, or replacing Cartographer.
+
 The installed Cartographer configuration also supplies safe compatibility
 no-ops for the stock macros' `PRES_CHECK`, `NOZZLE_CLEAR`, and
 `NEXT_HOMEZ_NACCU` calls. Their original pressure-sensor behavior does not
