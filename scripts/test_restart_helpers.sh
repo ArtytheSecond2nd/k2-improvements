@@ -71,36 +71,39 @@ grep -q 'K2 motor controller are ready; continuing with one protected firmware r
 grep -q 'K2 motor controller reports ready' "$TMP_DIR/ready.out" ||
     fail 'post-reset motor readiness was not verified'
 
-# Klipper API readiness alone must never permit the firmware reset.
-if PATH="$TMP_DIR/bin:$PATH" K2_CURL="$TMP_DIR/bin/curl" \
+# Klipper API readiness without motor readiness must still receive exactly one
+# recovery firmware reset after the bounded wait.
+PATH="$TMP_DIR/bin:$PATH" K2_CURL="$TMP_DIR/bin/curl" \
     K2_KLIPPER_SERVICE="$TMP_DIR/bin/klipper-service" \
     K2_TEST_INFO_JSON='{"state":"ready"}' \
     K2_TEST_MOTOR_JSON='{"result":{"status":{"motor_control":{"motor_ready":false}}}}' \
+    K2_TEST_READY_AFTER_POST=1 \
     K2_TEST_POST_MARKER="$TMP_DIR/not-ready.post" \
+    K2_TEST_POST_LOG="$TMP_DIR/not-ready.posts" \
     K2_TEST_SLEEP_LOG="$TMP_DIR/not-ready.sleeps" \
     K2_MOTOR_READY_TIMEOUT=2 \
     sh "$REPO_DIR/scripts/klippy_code_restart.sh" \
-        >"$TMP_DIR/not-ready.out" 2>&1; then
-    fail 'installer accepted API ready while motors were not ready'
-fi
-[ ! -e "$TMP_DIR/not-ready.post" ] ||
-    fail 'installer requested firmware restart before motor readiness'
-grep -q 'no firmware restart was requested' "$TMP_DIR/not-ready.out" ||
-    fail 'safe stop did not explain that no reset was requested'
+        >"$TMP_DIR/not-ready.out" 2>&1
+[ "$(grep -c '/printer/firmware_restart' "$TMP_DIR/not-ready.posts")" -eq 1 ] ||
+    fail 'installer motor timeout did not request exactly one firmware restart'
+grep -q 'did not become ready within 2 seconds' "$TMP_DIR/not-ready.out" ||
+    fail 'installer did not report the motor-readiness timeout'
 
-# An explicit startup fault must also stop before the firmware-reset request.
-if PATH="$TMP_DIR/bin:$PATH" K2_CURL="$TMP_DIR/bin/curl" \
+# An explicit startup fault receives the same one-shot recovery.
+PATH="$TMP_DIR/bin:$PATH" K2_CURL="$TMP_DIR/bin/curl" \
     K2_KLIPPER_SERVICE="$TMP_DIR/bin/klipper-service" \
     K2_TEST_INFO_JSON='{"state":"shutdown"}' \
+    K2_TEST_READY_AFTER_POST=1 \
     K2_TEST_POST_MARKER="$TMP_DIR/shutdown.post" \
+    K2_TEST_POST_LOG="$TMP_DIR/shutdown.posts" \
     K2_TEST_SLEEP_LOG="$TMP_DIR/shutdown.sleeps" \
     K2_MOTOR_READY_TIMEOUT=2 \
     sh "$REPO_DIR/scripts/klippy_code_restart.sh" \
-        >"$TMP_DIR/shutdown.out" 2>&1; then
-    fail 'installer continued after a startup shutdown'
-fi
-[ ! -e "$TMP_DIR/shutdown.post" ] ||
-    fail 'installer requested firmware restart after a startup shutdown'
+        >"$TMP_DIR/shutdown.out" 2>&1
+[ "$(grep -c '/printer/firmware_restart' "$TMP_DIR/shutdown.posts")" -eq 1 ] ||
+    fail 'installer startup fault did not request exactly one firmware restart'
+grep -q 'entered shutdown before K2 motors became ready' "$TMP_DIR/shutdown.out" ||
+    fail 'installer did not report the startup fault'
 
 # SAVE_CONFIG always ends with one firmware restart after successful motor
 # discovery.

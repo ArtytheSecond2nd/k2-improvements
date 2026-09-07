@@ -15,3 +15,7 @@ After the firmware restart, both Klipper `ready` and K2 `motor_ready=true` must
 be confirmed. Only one firmware restart is attempted. If recovery fails, the
 helper forces shutdown and requires a power cycle before homing. Diagnostic
 output is written to `/tmp/k2-save-config-restart.log`.
+
+Installer workflows use the same rule when restarting the Klippy host to load
+new Python modules: motor-ready, startup-fault, and readiness-timeout outcomes
+all continue to one firmware restart, followed by final readiness validation.

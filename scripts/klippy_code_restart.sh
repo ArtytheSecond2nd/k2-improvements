@@ -5,7 +5,9 @@ set -e
 # Installers that replace already-loaded files under klippy/ therefore need a
 # true host-process restart before the K2 MCU reset and stabilization sequence.
 # A host-only restart is not safe for subsequent homing, so this helper follows
-# it with one guarded firmware restart only after every K2 motor reports ready.
+# it with one guarded firmware restart. It normally waits for every K2 motor to
+# report ready first; if the known initialization fault occurs, the same reset
+# is issued as a one-shot recovery.
 
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 RESTART_MARKER=/tmp/k2-klippy-code-restart-required
@@ -27,7 +29,8 @@ fi
 
 # The K2 service restart also begins a comparatively slow configuration load
 # and controller connection. Let firmware_restart.sh require the new Klippy
-# session and its motor controller to become ready before issuing the reset.
+# session and its motor controller to settle before issuing the reset. A
+# startup shutdown or readiness timeout is recovered by that same reset.
 if ! K2_DEFER_FIRMWARE_RESTART=0 K2_FIRMWARE_RESTART_ATTEMPTS=1 \
     K2_WAIT_FOR_KLIPPY_STARTUP=1 \
     sh "$SCRIPT_DIR/firmware_restart.sh"; then

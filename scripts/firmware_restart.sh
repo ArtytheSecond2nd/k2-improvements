@@ -70,7 +70,7 @@ if [ "$WAIT_FOR_STARTUP" = "1" ]; then
     # state value; otherwise its first response may still describe the old
     # Klippy process.
     sleep 3
-    STARTUP_READY=0
+    STARTUP_OUTCOME=timeout
     COUNT=0
     while [ "$COUNT" -lt "$MOTOR_READY_TIMEOUT" ]; do
         INFO=$("$CURL" -fsS --max-time 2 "$API_URL/printer/info" 2>/dev/null || true)
@@ -81,25 +81,32 @@ if [ "$WAIT_FOR_STARTUP" = "1" ]; then
                 2>/dev/null || true)
             if printf '%s' "$MOTOR_INFO" | \
                 grep -qE '"motor_ready"[[:space:]]*:[[:space:]]*true'; then
-                STARTUP_READY=1
+                STARTUP_OUTCOME=motors-ready
                 break
             fi
         fi
         if printf '%s' "$INFO" | \
             grep -qE '"state"[[:space:]]*:[[:space:]]*"(error|shutdown)"'; then
-            echo "E: fresh Klippy host entered shutdown before K2 motors became ready" >&2
+            STARTUP_OUTCOME=startup-fault
             break
         fi
         COUNT=$((COUNT + 1))
         sleep 1
     done
 
-    if [ "$STARTUP_READY" -ne 1 ]; then
-        echo "E: fresh Klippy host and K2 motors did not become ready within ${MOTOR_READY_TIMEOUT} seconds" >&2
-        echo "E: no firmware restart was requested; power-cycle before any homing test" >&2
-        exit 1
-    fi
-    echo "I: fresh Klippy host and K2 motor controller are ready; continuing with one protected firmware reset"
+    case "$STARTUP_OUTCOME" in
+        motors-ready)
+            echo "I: fresh Klippy host and K2 motor controller are ready; continuing with one protected firmware reset"
+            ;;
+        startup-fault)
+            echo "W: fresh Klippy host entered shutdown before K2 motors became ready" >&2
+            echo "I: continuing with one firmware restart to recover the motor controller"
+            ;;
+        *)
+            echo "W: fresh Klippy host and K2 motors did not become ready within ${MOTOR_READY_TIMEOUT} seconds" >&2
+            echo "I: continuing with one firmware restart to recover the motor controller"
+            ;;
+    esac
 fi
 
 ATTEMPT=1

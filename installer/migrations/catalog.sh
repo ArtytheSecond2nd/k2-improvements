@@ -48,5 +48,6 @@ installer-protected-motor-ready-v1|save-config-restart|is_save_config_restart|In
 save-config-stock-then-firmware-v1|save-config-restart|is_save_config_restart|SAVE_CONFIG now completes its stock restart before one guarded firmware reset
 save-config-stock-restart-v1|save-config-restart|is_save_config_restart|SAVE_CONFIG restored to its stock host restart with no wrapper or firmware reset
 save-config-fault-recovery-v1|save-config-restart|is_save_config_restart|SAVE_CONFIG firmware restart now also recovers failed K2 motor initialization
+installer-startup-fault-recovery-v1|save-config-restart|is_save_config_restart|Installer final restart now recovers failed K2 motor initialization with one firmware reset
 EOF
 }
