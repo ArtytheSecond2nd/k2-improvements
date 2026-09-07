@@ -20,6 +20,11 @@ installation therefore includes the probe plugin, bridge service, Klipper
 configuration, and K2-specific macros.
 
 Installing Cartographer replaces the active stock `prtouch_v3` configuration.
+The installed Cartographer configuration also supplies safe compatibility
+no-ops for the stock macros' `PRES_CHECK`, `NOZZLE_CLEAR`, and
+`NEXT_HOMEZ_NACCU` calls. Their original pressure-sensor behavior does not
+apply to Cartographer; physical brush cleaning continues through
+`BOX_NOZZLE_CLEAN`.
 
 The installer also adds a printer-side prime-tower scanner. Creality Print
 does not label its prime tower as an exclude object, so its actual
