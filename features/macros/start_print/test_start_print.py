@@ -23,15 +23,12 @@ class StartPrintConfigTests(unittest.TestCase):
         self.assertIn("_K2_ORIGINAL_BOX_NOZZLE_CLEAN {rawparams}", section)
         self.assertIn("M107 P1", section)
 
-    def test_case_fan_release_is_stock_probe_only(self):
+    def test_case_fan_release_applies_to_both_probe_paths(self):
         section = self.config.split(
             "[gcode_macro BOX_NOZZLE_CLEAN]", 1
         )[1].split("[gcode_macro START_PRINT]", 1)[0]
-        self.assertIn(
-            "{% if 'cartographer' not in printer and "
-            "RELEASE_CASE_FAN == 1 %}",
-            section,
-        )
+        self.assertIn("{% if RELEASE_CASE_FAN == 1 %}", section)
+        self.assertNotIn("'cartographer' not in printer", section)
 
     def test_case_fan_release_uses_installer_firmware_flag(self):
         section = self.config.split(
