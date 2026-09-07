@@ -11,7 +11,7 @@ detect_installer_branch() {
 
 detect_installer_commit() {
     if [ -d "$INSTALLER_DIR/.git" ]; then
-        git -C "$INSTALLER_DIR" rev-parse --short=12 HEAD 2>/dev/null || echo 'unknown'
+        git -C "$INSTALLER_DIR" rev-parse --short=7 HEAD 2>/dev/null || echo 'unknown'
     else
         echo 'not a git checkout'
     fi
