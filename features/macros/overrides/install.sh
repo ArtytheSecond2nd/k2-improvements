@@ -21,6 +21,19 @@ PRINTER_FW="$(detect_printer_fw)"
 sh "${SCRIPT_DIR}/set_case_fan_compat.sh" \
     ~/printer_data/config/custom/overrides.cfg "$PRINTER_FW"
 
+# Firmware 1.1.3.13 references SET_TEMPERATURE_FAN_SWITCH from its stock
+# macros but does not register the command. Enable the compatibility shim only
+# on that confirmed firmware so newer implementations cannot conflict with it.
+ln -sf "${SCRIPT_DIR}/firmware_11313.cfg" \
+    ~/printer_data/config/custom/firmware_11313.cfg
+if [ "$PRINTER_FW" = "1.1.3.13" ]; then
+    python "${SCRIPT_DIR}/../../../scripts/ensure_included.py" \
+        ~/printer_data/config/custom/main.cfg firmware_11313.cfg
+else
+    python "${SCRIPT_DIR}/../../../scripts/ensure_included.py" \
+        ~/printer_data/config/custom/main.cfg firmware_11313.cfg True
+fi
+
 # The same overrides seed is used by both setup paths. Activate the
 # Cartographer-only defaults only when Cartographer is actually configured.
 if [ -f ~/printer_data/config/custom/cartographer.cfg ]; then

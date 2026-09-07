@@ -21,6 +21,11 @@ present, its installer also adds `[cartographer touch]` with the stock
 `max_noisy_samples: 2` value. That Cartographer-only section is not activated
 for a stock PR Touch installation.
 
+On firmware `1.1.3.13`, installation also enables a compatibility definition
+for the missing `SET_TEMPERATURE_FAN_SWITCH` command still called by Creality's
+stock macros. It is a no-op because those macros already set the chamber-fan
+target and pin directly. The definition is disabled on all other firmware.
+
 Each macro is included from `custom/main.cfg`. The combined installer performs
 one firmware restart after all four components are installed and waits for K2
 motor initialization before returning.
