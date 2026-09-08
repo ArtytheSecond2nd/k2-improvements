@@ -88,6 +88,8 @@ fi
 
 # install klipper patches
 sh "${SCRIPT_DIR}/../prime_tower/install.sh"
+K2_DEFER_FIRMWARE_RESTART=1 \
+    sh "${SCRIPT_DIR}/../virtual-sdcard-guard/install.sh"
 rm -f ~/klipper/klippy/mcu.pyc \
     ~/klipper/klippy/serialhdl.pyc \
     ~/klipper/klippy/clocksync.pyc \

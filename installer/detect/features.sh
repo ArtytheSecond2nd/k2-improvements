@@ -98,6 +98,12 @@ is_save_config_restart() {
     grep -q "gcode.request_restart('restart')" \
         "$root_configfile" "$system_configfile" 2>/dev/null
 }
+is_virtual_sdcard_guard() {
+    local root_vsd="${HOME:-/mnt/UDISK/root}/klipper/klippy/extras/virtual_sdcard.py"
+    local system_vsd="${KLIPPER_DIR:-/usr/share/klipper}/klippy/extras/virtual_sdcard.py"
+    grep -q 'k2-improvements: terminal multipart upload boundary guard' \
+        "$root_vsd" "$system_vsd" 2>/dev/null
+}
 is_better_init()   { [ -f /etc/profile.d/better-init.sh ]; }
 
 is_surface_wrap()  { grep -q 'surface-selection wrapper' "$PRINTER_CFG_DIR/custom/start_print.cfg" 2>/dev/null; }
@@ -146,6 +152,7 @@ is_essentials_core() {
     is_screws_tilt &&
     is_abort_homing &&
     is_save_config_restart &&
+    is_virtual_sdcard_guard &&
     is_macros
 }
 

@@ -38,6 +38,8 @@ EOF
         ln -sf ${SCRIPT_DIR}/patches/serialhdl.py ~/klipper/klippy/serialhdl.py
         ln -sf ${SCRIPT_DIR}/patches/clocksync.py ~/klipper/klippy/clocksync.py
         sh ~/k2-improvements/features/save-config-restart/install.sh --no-restart
+        K2_DEFER_FIRMWARE_RESTART=1 \
+            sh ~/k2-improvements/features/virtual-sdcard-guard/install.sh
         ln -sf ${SCRIPT_DIR}/patches/homing.py ~/klipper/klippy/extras/homing.py
         ln -sf ${SCRIPT_DIR}/patches/temperature_mcu.py ~/klipper/klippy/extras/temperature_mcu.py
         rm -f ~/klipper/klippy/extras/bed_mesh.py*

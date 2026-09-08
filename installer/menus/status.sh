@@ -42,6 +42,7 @@ show_status() {
     status_line 'cartographer' is_cartographer
     status_line 'abort_homing' is_abort_homing
     status_line 'SAVE_CONFIG firmware restart protection' is_save_config_restart
+    status_line 'virtual SD-card upload guard' is_virtual_sdcard_guard
     status_line 'macros (start_print/m191/bed_mesh)' is_macros
 
     printf '\n Optional extras\n'

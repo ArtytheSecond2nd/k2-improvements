@@ -11,6 +11,7 @@ fluidd|is_fluidd|features/fluidd/install.sh
 screws_tilt_adjust|is_screws_tilt_firmware_restart|features/screws_tilt_adjust/install.sh
 abort_homing|is_abort_homing_firmware_restart|features/abort_homing/install.sh
 save-config-restart|is_save_config_restart|features/save-config-restart/install.sh
+virtual-sdcard-guard|is_virtual_sdcard_guard|features/virtual-sdcard-guard/install.sh
 macros|is_macros|features/macros/install.sh'
 
 menu_install_no_carto() {
@@ -80,7 +81,7 @@ menu_install_no_carto() {
         if HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 sh "$script"; then
             installed=$((installed+1))
             case "$name" in
-                screws_tilt_adjust|abort_homing|save-config-restart|macros)
+                screws_tilt_adjust|abort_homing|save-config-restart|virtual-sdcard-guard|macros)
                     printf '%s\n' "$name" >> "$migration_installed_file"
                     ;;
             esac

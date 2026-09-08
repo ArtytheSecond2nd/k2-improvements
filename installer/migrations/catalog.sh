@@ -58,5 +58,7 @@ cartographer-prtouch-command-compat-v1|cartographer|is_cartographer|Cartographer
 cartographer-prtouch-version-report-v2|cartographer|is_cartographer|Cartographer now advertises the hardware-free PR Touch status object required for Creality's complete pre-file preparation selection
 case-fan-cartographer-release-v1|macros|is_macros|The firmware-gated pre-print case-fan release now applies to Cartographer
 firmware-11313-fan-switch-compat-v1|macros|is_macros|Firmware 1.1.3.13 no longer reports its missing temperature-fan switch command
+virtual-sdcard-upload-boundary-v1|virtual-sdcard-guard|is_virtual_sdcard_guard|Virtual SD printing now ignores a verified multipart closing boundary only at physical EOF
+case-fan-demand-aware-release-v1|macros|is_macros|The case-fan release now requires the direct 100 percent override and preserves active chamber cooling
 EOF
 }

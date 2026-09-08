@@ -27,8 +27,22 @@ class StartPrintConfigTests(unittest.TestCase):
         section = self.config.split(
             "[gcode_macro BOX_NOZZLE_CLEAN]", 1
         )[1].split("[gcode_macro START_PRINT]", 1)[0]
-        self.assertIn("{% if RELEASE_CASE_FAN == 1 %}", section)
+        self.assertIn("RELEASE_CASE_FAN == 1", section)
         self.assertNotIn("'cartographer' not in printer", section)
+
+    def test_case_fan_release_requires_direct_full_speed_request(self):
+        section = self.config.split(
+            "[gcode_macro BOX_NOZZLE_CLEAN]", 1
+        )[1].split("[gcode_macro START_PRINT]", 1)[0]
+        self.assertIn('printer["output_pin fan1"].value', section)
+        self.assertIn("DIRECT_CASE_FAN >= 0.999", section)
+
+    def test_case_fan_release_preserves_active_chamber_cooling(self):
+        section = self.config.split(
+            "[gcode_macro BOX_NOZZLE_CLEAN]", 1
+        )[1].split("[gcode_macro START_PRINT]", 1)[0]
+        self.assertIn('printer["temperature_fan chamber_fan"].speed', section)
+        self.assertIn("CHAMBER_COOLING <= 0.0", section)
 
     def test_case_fan_release_uses_installer_firmware_flag(self):
         section = self.config.split(

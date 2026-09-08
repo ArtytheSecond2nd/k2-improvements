@@ -14,6 +14,7 @@ KNOWN_COMPONENTS = {
     "cartographer",
     "macros",
     "save-config-restart",
+    "virtual-sdcard-guard",
     "abort_homing",
     "screws_tilt_adjust",
     "kamp-adaptive-purge",
@@ -27,6 +28,7 @@ EXPECTED_DETECTORS = {
     "cartographer": "is_cartographer",
     "macros": "is_macros",
     "save-config-restart": "is_save_config_restart",
+    "virtual-sdcard-guard": "is_virtual_sdcard_guard",
     "abort_homing": "is_abort_homing",
     "screws_tilt_adjust": "is_screws_tilt",
     "kamp-adaptive-purge": "is_kamp",
@@ -168,12 +170,31 @@ class MigrationCatalogTests(unittest.TestCase):
         self.assertIn("read -r component <&3", menu)
         self.assertIn('done 3< "$components_file"', menu)
 
-    def test_cartographer_refresh_records_save_config_dependency(self):
+    def test_cartographer_refresh_records_shared_python_dependencies(self):
         menu = UPDATE_MENU.read_text(encoding="utf-8")
         self.assertIn("migration_record_refreshed_component", menu)
-        self.assertRegex(
-            menu,
-            r"cartographer\) dependency=save-config-restart",
+        self.assertIn(
+            "dependencies='save-config-restart virtual-sdcard-guard'", menu
+        )
+
+    def test_virtual_sdcard_guard_is_a_direct_component(self):
+        self.assertIn(
+            "virtual-sdcard-upload-boundary-v1",
+            {
+                migration_id
+                for migration_id, component, _detector, _reason in entries()
+                if component == "virtual-sdcard-guard"
+            },
+        )
+
+    def test_macros_track_demand_aware_case_fan_release(self):
+        self.assertIn(
+            "case-fan-demand-aware-release-v1",
+            {
+                migration_id
+                for migration_id, component, _detector, _reason in entries()
+                if component == "macros"
+            },
         )
 
     def test_macros_track_passive_chamber_no_wait_update(self):

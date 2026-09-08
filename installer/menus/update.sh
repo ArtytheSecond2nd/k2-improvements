@@ -12,6 +12,7 @@ migration_component_label() {
         cartographer) echo 'Cartographer' ;;
         macros) echo 'Macros (START_PRINT / M191 / bed mesh)' ;;
         save-config-restart) echo 'SAVE_CONFIG restart protection' ;;
+        virtual-sdcard-guard) echo 'Virtual SD-card upload guard' ;;
         abort_homing) echo 'Abort Homing' ;;
         screws_tilt_adjust) echo 'Screws Tilt Adjust' ;;
         kamp-adaptive-purge) echo 'KAMP adaptive purge' ;;
@@ -28,6 +29,7 @@ migration_component_installed() {
         cartographer) is_cartographer ;;
         macros) is_macros ;;
         save-config-restart) is_save_config_restart ;;
+        virtual-sdcard-guard) is_virtual_sdcard_guard ;;
         abort_homing) is_abort_homing ;;
         screws_tilt_adjust) is_screws_tilt ;;
         kamp-adaptive-purge) is_kamp ;;
@@ -66,6 +68,11 @@ migration_component_present() {
             [ -L "$configfile" ] &&
                 readlink "$configfile" 2>/dev/null | grep -q 'save-config-restart'
             ;;
+        virtual-sdcard-guard)
+            grep -q 'k2-improvements: terminal multipart upload boundary guard' \
+                "${KLIPPER_DIR:-/usr/share/klipper}/klippy/extras/virtual_sdcard.py" \
+                2>/dev/null || is_macros || is_cartographer
+            ;;
         abort_homing)
             grep -Eq 'force_stop_homing|can_force_stop_homing' \
                 "${KLIPPER_DIR:-/usr/share/klipper}/klippy/webhooks.py" 2>/dev/null
@@ -98,7 +105,7 @@ migration_capture_installed_components() {
     mkdir -p "$MIGRATION_STATE_DIR"
     temporary="$MIGRATION_STATE_DIR/.installed.$$"
     : > "$temporary"
-    for component in cartographer save-config-restart abort_homing \
+    for component in cartographer save-config-restart virtual-sdcard-guard abort_homing \
         screws_tilt_adjust macros r3men-bed kamp-adaptive-purge \
         axis_twist_compensation cartographer-plate-workflow plate-aware-mesh; do
         if migration_component_installed "$component" 2>/dev/null ||
@@ -126,7 +133,7 @@ migration_pending_entries() {
 migration_pending_components() {
     local entries component
     entries=$(migration_pending_entries)
-    for component in cartographer save-config-restart abort_homing \
+    for component in cartographer save-config-restart virtual-sdcard-guard abort_homing \
         screws_tilt_adjust macros r3men-bed kamp-adaptive-purge \
         axis_twist_compensation cartographer-plate-workflow plate-aware-mesh; do
         if printf '%s\n' "$entries" | grep -q "^[^|]*|$component|"; then
@@ -248,6 +255,10 @@ migration_repair_component() {
             HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
                 sh "$INSTALLER_DIR/features/save-config-restart/install.sh"
             ;;
+        virtual-sdcard-guard)
+            HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
+                sh "$INSTALLER_DIR/features/virtual-sdcard-guard/install.sh"
+            ;;
         abort_homing)
             HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
                 sh "$INSTALLER_DIR/features/abort_homing/install.sh"
@@ -296,7 +307,7 @@ migration_repair_component() {
 
 migration_component_restart_kind() {
     case "$1" in
-        cartographer|save-config-restart|abort_homing|screws_tilt_adjust|kamp-adaptive-purge|axis_twist_compensation)
+        cartographer|save-config-restart|virtual-sdcard-guard|abort_homing|screws_tilt_adjust|kamp-adaptive-purge|axis_twist_compensation)
             echo code
             ;;
         *)
@@ -306,7 +317,7 @@ migration_component_restart_kind() {
 }
 
 migration_record_refreshed_component() {
-    local component succeeded_file dependency
+    local component succeeded_file dependencies dependency
     component="$1"
     succeeded_file="$2"
 
@@ -314,18 +325,18 @@ migration_record_refreshed_component() {
         printf '%s\n' "$component" >> "$succeeded_file"
     fi
 
-    # Cartographer's installer always refreshes SAVE_CONFIG protection as a
-    # dependency. Record it now so a successful final restart does not ask the
-    # user to run the same installer a second time.
+    # Cartographer's installer refreshes these shared Python dependencies.
+    # Record them so a successful final restart does not offer them twice.
     case "$component" in
-        cartographer) dependency=save-config-restart ;;
-        *) dependency= ;;
+        cartographer) dependencies='save-config-restart virtual-sdcard-guard' ;;
+        *) dependencies= ;;
     esac
-    if [ -n "$dependency" ] && \
-       migration_component_applicable "$dependency" 2>/dev/null && \
-       ! grep -qxF "$dependency" "$succeeded_file" 2>/dev/null; then
-        printf '%s\n' "$dependency" >> "$succeeded_file"
-    fi
+    for dependency in $dependencies; do
+        if migration_component_applicable "$dependency" 2>/dev/null && \
+           ! grep -qxF "$dependency" "$succeeded_file" 2>/dev/null; then
+            printf '%s\n' "$dependency" >> "$succeeded_file"
+        fi
+    done
 }
 
 migration_apply_components() {

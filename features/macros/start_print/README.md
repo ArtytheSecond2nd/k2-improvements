@@ -15,8 +15,9 @@ On firmware `1.1.3.13`, the installed macros also release Creality's one-time
 100% case-fan command at the first nozzle-clean request on both the stock-probe
 and Cartographer paths. The installer disables this compatibility behavior on
 unknown or unlisted firmware, including `1.1.5.5`, where testing showed it is
-unnecessary. The fan is not continuously managed afterward, so later manual
-changes still work.
+unnecessary. The release requires an actual direct 100% request and is skipped
+while chamber-temperature control requests cooling. This also prevents later
+nozzle cleans and ordinary homing from repeatedly changing the fan.
 
 When Cartographer or KAMP has installed the shared prime-tower scanner,
 `START_PRINT` waits for that selected-file preflight before preparation moves.

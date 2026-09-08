@@ -12,6 +12,7 @@ screws_tilt_adjust|is_screws_tilt|Manual bed-screw assist
 cartographer|is_cartographer|Probe and Klipper patches
 abort_homing|is_abort_homing|Abort homing on M112/cancel
 save-config-restart|is_save_config_restart|Safe firmware reset after SAVE_CONFIG
+virtual-sdcard-guard|is_virtual_sdcard_guard|Ignore contaminated upload boundary at EOF
 macros|is_macros|START_PRINT / M191 / bed mesh'
 
 menu_features() {
