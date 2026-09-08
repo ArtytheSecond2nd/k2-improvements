@@ -466,6 +466,53 @@ menu_update_results() {
     done
 }
 
+migration_restore_tracked_checkout() {
+    local changes timestamp backup temporary
+    changes=$(git -C "$INSTALLER_DIR" status --porcelain --untracked-files=no 2>/dev/null)
+    [ -n "$changes" ] || return 0
+
+    warn 'tracked installer files have local modifications.'
+    printf '\nChanged tracked files:\n%s\n\n' "$changes"
+    printf 'The installer can save these edits as a patch, restore only tracked files\n'
+    printf 'to the current commit, and then continue the update. Untracked files are kept.\n\n'
+    if ! confirm 'Back up and discard these tracked installer edits?'; then
+        warn 'update stopped without changing the local edits.'
+        press_enter
+        return 1
+    fi
+
+    mkdir -p "$MIGRATION_STATE_DIR"
+    timestamp=$(date '+%Y%m%d-%H%M%S' 2>/dev/null || echo unknown-time)
+    backup="$MIGRATION_STATE_DIR/local-changes-$timestamp-$$.patch"
+    temporary="$backup.tmp"
+    if ! git -C "$INSTALLER_DIR" diff --binary HEAD -- > "$temporary"; then
+        rm -f "$temporary"
+        warn 'could not back up the tracked installer edits; nothing was restored.'
+        press_enter
+        return 1
+    fi
+    if ! mv -f "$temporary" "$backup"; then
+        rm -f "$temporary"
+        warn 'could not preserve the tracked installer edit backup; nothing was restored.'
+        press_enter
+        return 1
+    fi
+
+    if ! git -C "$INSTALLER_DIR" reset --hard HEAD; then
+        warn "restore failed; the saved patch is at $backup"
+        press_enter
+        return 1
+    fi
+    if [ -n "$(git -C "$INSTALLER_DIR" status --porcelain --untracked-files=no 2>/dev/null)" ]; then
+        warn "tracked installer changes remain after restore; the saved patch is at $backup"
+        press_enter
+        return 1
+    fi
+
+    info "tracked installer files restored to the current commit"
+    info "previous local edits saved at $backup"
+}
+
 migration_pull_installer() {
     local review_after old new branch temporary
     review_after="$1"
@@ -483,11 +530,7 @@ migration_pull_installer() {
 
     old=$(git -C "$INSTALLER_DIR" rev-parse --verify HEAD 2>/dev/null || echo unknown)
     branch=$(git -C "$INSTALLER_DIR" symbolic-ref --quiet --short HEAD 2>/dev/null || echo detached)
-    if [ -n "$(git -C "$INSTALLER_DIR" status --porcelain --untracked-files=no 2>/dev/null)" ]; then
-        warn 'tracked installer files have local modifications; update stopped without changing them.'
-        press_enter
-        return 1
-    fi
+    migration_restore_tracked_checkout || return 1
 
     # Preserve the old code's view of installed optional components before a
     # pull can introduce stricter or renamed detectors.

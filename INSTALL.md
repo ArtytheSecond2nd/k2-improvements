@@ -333,10 +333,12 @@ cd /mnt/UDISK/root/k2-improvements
 git pull --ff-only
 ```
 
-The update is intentionally fast-forward-only. If local modifications make the
-branch diverge or would be overwritten, the pull stops instead of silently
-discarding them. Inspect `git status --short` and `git diff` before deciding
-whether to preserve or restore those local files.
+The update is intentionally fast-forward-only. If tracked installer files have
+local modifications, the updater lists them and offers to save the edits as a
+patch before restoring the tracked checkout to its current commit. Untracked
+files are left alone. Declining the recovery prompt stops the update without
+changing anything. Saved patches are kept under
+`/mnt/UDISK/root/.k2-improvements/installer-state/updater/`.
 
 Updating the repository does not by itself reload already active macros or
 Klippy Python modules. When an update changes installation wiring or a managed

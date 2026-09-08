@@ -170,6 +170,15 @@ class MigrationCatalogTests(unittest.TestCase):
         self.assertIn("read -r component <&3", menu)
         self.assertIn('done 3< "$components_file"', menu)
 
+    def test_updater_can_back_up_and_restore_tracked_local_edits(self):
+        menu = UPDATE_MENU.read_text(encoding="utf-8")
+        self.assertIn("migration_restore_tracked_checkout", menu)
+        self.assertIn("status --porcelain --untracked-files=no", menu)
+        self.assertIn("diff --binary HEAD --", menu)
+        self.assertIn("reset --hard HEAD", menu)
+        self.assertIn("Untracked files are kept", menu)
+        self.assertIn("migration_restore_tracked_checkout || return 1", menu)
+
     def test_cartographer_refresh_records_shared_python_dependencies(self):
         menu = UPDATE_MENU.read_text(encoding="utf-8")
         self.assertIn("migration_record_refreshed_component", menu)
