@@ -1,14 +1,13 @@
 # Cartographer Fluidd Macros
 
 Adds compact `A**_CARTO_*` buttons to Fluidd for Cartographer profile
-selection, global Z-offset adjustment, calibration, model loading, homing,
-and diagnostics.
+selection, calibration, model loading, homing, and diagnostics.
 
-The installer also seeds Fluidd's UI metadata for all 12 buttons. They appear
+The installer also seeds Fluidd's UI metadata for all 11 buttons. They appear
 in the **Cartographer Calibration** category with short aliases while their
 real `A**_CARTO_*` names remain unchanged and retain their sorting order.
 Plate selectors are green (`#1AED07`), the two calibration actions are orange
-(`#FF9800`), and the remaining actions are blue (`#2196F3`). These 12 colors
+(`#FF9800`), and the remaining actions are blue (`#2196F3`). These 11 colors
 are installer-managed to keep the palette consistent. Existing non-empty
 aliases and valid category assignments are treated as user customizations and
 preserved. Refresh Fluidd after installation to load a newly seeded layout.
@@ -43,15 +42,6 @@ A13_CARTO_SELECT_EPOXY
 A14_CARTO_SELECT_HIGH_TEMP
 A15_CARTO_SELECT_CUSTOM
 ```
-
-`A16_CARTO_GLOBAL_Z_OFFSETS` opens a dynamically generated editor containing
-every saved Cartographer Touch model and its native `z_offset`. The `-0.05`,
-`-0.01`, `+0.01`, and `+0.05` buttons stage changes in 0.01 or 0.05 mm steps;
-more-negative Touch offsets move the bed farther from the nozzle. **Cancel**
-discards every staged change. **Save & Restart** updates only the changed
-`[cartographer touch_model ...]` sections through Klipper's native
-`SAVE_CONFIG` path and runs the protected restart. The editor is disabled
-while printing because saving necessarily restarts Klipper.
 
 Then click the required shared action:
 
@@ -94,7 +84,6 @@ TEXTURED_PEI            green
 EPOXY                   green
 HIGH_TEMP               green
 CUSTOM                  green
-GLOBAL_Z_OFFSETS        blue
 CARTO_SCAN_CALIBRATE    orange
 CARTO_TOUCH_CALIBRATE   orange
 CARTO_LOAD              blue

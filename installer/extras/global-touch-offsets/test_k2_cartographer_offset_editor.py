@@ -30,22 +30,10 @@ class FakeGCode:
 class FakeConfigFile:
     def __init__(self):
         self.raw_config = {
-            "cartographer touch_model custom": {
-                "threshold": "2000",
-                "speed": "2",
-                "z_offset": "-0.070",
-            },
+            "cartographer touch_model custom": {"z_offset": "-0.070"},
             "cartographer scan_model default": {"z_offset": "0"},
-            "cartographer touch_model default": {
-                "threshold": "2400",
-                "speed": "2",
-                "z_offset": "-0.060",
-            },
-            "cartographer touch_model textured_pei": {
-                "threshold": "2000",
-                "speed": "2",
-                "z_offset": "-0.050",
-            },
+            "cartographer touch_model default": {"z_offset": "-0.060"},
+            "cartographer touch_model textured_pei": {"z_offset": "-0.050"},
         }
         self.saved = []
 
@@ -115,7 +103,7 @@ class OffsetEditorTests(unittest.TestCase):
         printer = FakePrinter(state)
         return MODULE.K2CartographerOffsetEditor(FakeConfig(printer)), printer
 
-    def test_discovers_touch_models_in_plate_order_and_renders_prompt(self):
+    def test_discovers_touch_models_and_emits_live_editor_rows(self):
         editor, printer = self.make_editor()
         editor.cmd_open(FakeGCmd())
 
@@ -124,50 +112,44 @@ class OffsetEditorTests(unittest.TestCase):
             ["default", "textured_pei", "custom"],
         )
         output = "\n".join(printer.gcode.responses)
-        self.assertIn("// action:prompt_begin Global Z Offsets", output)
-        self.assertIn("DEFAULT: -0.060 mm", output)
-        self.assertIn("TEXTURED_PEI: -0.050 mm", output)
+        self.assertIn("// action:global_touch_offsets_begin", output)
+        self.assertIn("// action:global_touch_offsets_model DEFAULT|-0.060|0", output)
+        self.assertIn("TEXTURED_PEI|-0.050|1", output)
         self.assertNotIn("scan_model", output)
-        self.assertIn("Save & Restart|K2_CARTOGRAPHER_GLOBAL_Z_SAVE", output)
 
-    def test_adjustment_is_staged_and_cancel_discards_it(self):
+    def test_stage_is_cached_and_cancel_discards_all_changes(self):
         editor, printer = self.make_editor()
         editor.cmd_open(FakeGCmd())
-        editor.cmd_adjust(FakeGCmd(INDEX=0, DELTA=-0.05))
+        editor.cmd_stage(FakeGCmd(INDEX=0, VALUE=-0.135))
 
-        self.assertEqual(editor.models[0]["current"], -0.11)
-        self.assertIn("DEFAULT: -0.110 mm (changed)", "\n".join(printer.gcode.responses))
+        self.assertEqual(editor.models[0]["current"], -0.135)
         cancel = FakeGCmd()
         editor.cmd_cancel(cancel)
         self.assertIsNone(editor.models)
         self.assertEqual(printer.configfile.saved, [])
         self.assertEqual(printer.gcode.scripts, [])
-        self.assertEqual(cancel.info, ["Global Z-offset changes cancelled"])
 
-    def test_positive_adjustment_cannot_exceed_cartographer_limit(self):
+    def test_stage_rejects_positive_touch_offsets(self):
         editor, _printer = self.make_editor()
         editor.cmd_open(FakeGCmd())
-        editor.cmd_adjust(FakeGCmd(INDEX=0, DELTA=0.05))
-        editor.cmd_adjust(FakeGCmd(INDEX=0, DELTA=0.05))
-        self.assertEqual(editor.models[0]["current"], 0.0)
+        with self.assertRaisesRegex(RuntimeError, "above maximum"):
+            editor.cmd_stage(FakeGCmd(INDEX=0, VALUE=0.005))
 
-    def test_save_updates_native_model_section_then_runs_save_config(self):
+    def test_save_writes_changed_model_without_save_config(self):
         editor, printer = self.make_editor()
         editor.cmd_open(FakeGCmd())
-        editor.cmd_adjust(FakeGCmd(INDEX=1, DELTA=-0.01))
+        editor.cmd_stage(FakeGCmd(INDEX=1, VALUE=-0.075))
         editor.cmd_save(FakeGCmd())
 
         self.assertEqual(
             printer.configfile.saved,
-            [
-                (
-                    "cartographer touch_model textured_pei",
-                    "z_offset",
-                    "-0.060",
-                )
-            ],
+            [("cartographer touch_model textured_pei", "z_offset", "-0.075")],
         )
-        self.assertEqual(printer.gcode.scripts, ["SAVE_CONFIG"])
+        self.assertEqual(
+            printer.gcode.scripts,
+            ["CXSAVE_CONFIG\nFIRMWARE_RESTART"],
+        )
+        self.assertNotIn("\nSAVE_CONFIG", "\n".join(printer.gcode.scripts))
         self.assertIsNone(editor.models)
 
     def test_unchanged_save_closes_without_restart(self):
@@ -176,7 +158,7 @@ class OffsetEditorTests(unittest.TestCase):
         save = FakeGCmd()
         editor.cmd_save(save)
         self.assertEqual(printer.gcode.scripts, [])
-        self.assertEqual(save.info, ["No Global Z-offset changes to save"])
+        self.assertEqual(save.info, ["No Global Touch-offset changes to save"])
 
     def test_open_and_save_are_blocked_during_print(self):
         editor, printer = self.make_editor("printing")

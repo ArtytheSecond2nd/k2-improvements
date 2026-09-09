@@ -7,7 +7,8 @@
 _EXTRAS='prtouch-cleanup|is_prtouch_clean|Remove orphan [prtouch_v3] SAVE_CONFIG header|installer/extras/prtouch-cleanup/install.sh|is_cartographer
 surface-selection-wrapper|is_surface_wrap|START_PRINT SURFACE= param loads matching scan/touch model|installer/extras/surface-selection-wrapper/install.sh|is_cartographer
 cartographer-offset-setup|is_carto_offset_set|Cartographer mount offset profiles/custom|installer/extras/cartographer-offset-setup/install.sh|is_cartographer
-cartographer-macros|is_carto_macros|CARTO_* Fluidd buttons (profiles/calibration/global Z)|installer/extras/cartographer-macros/install.sh|is_cartographer
+cartographer-macros|is_carto_macros|CARTO_* Fluidd buttons (profiles/calibration/load)|installer/extras/cartographer-macros/install.sh|is_cartographer
+global-touch-offsets|is_global_touch_offsets|Interactive Cartographer global Touch-offset editor|installer/extras/global-touch-offsets/install.sh|is_cartographer
 axis_twist_compensation|is_axis_twist|Optional Z-drift compensation across X|features/axis_twist_compensation/install.sh|
 plate-aware-mesh|is_plate_aware_mesh|Saved meshes selected by build plate and temperature|installer/extras/plate-aware-mesh/install.sh|is_stock_probe
 secure-auth|is_secure_auth|Disable SSH password login (requires a tested public key)|features/secure-auth/install.sh|
@@ -159,9 +160,10 @@ menu_extras() {
         ui_menu_item 3 'Axis twist compensation' "$(extra_state axis_twist_compensation)"
         if is_cartographer; then
             ui_menu_item 4 'Cartographer plate workflow' "$(carto_plate_workflow_state)"
+            ui_menu_item 5 'Global Touch offsets' "$(extra_state global-touch-offsets)"
             printf '\n Security\n'
-            ui_menu_item 5 'Secure Auth' "$(extra_state secure-auth)"
-            printf '\n  0. Back\n\nSelect [0-5]: '
+            ui_menu_item 6 'Secure Auth' "$(extra_state secure-auth)"
+            printf '\n  0. Back\n\nSelect [0-6]: '
         else
             ui_menu_item 4 'Plate-aware saved meshes' "$(extra_state plate-aware-mesh)"
             printf '\n Security\n'
@@ -180,7 +182,16 @@ menu_extras() {
                     run_extra_name plate-aware-mesh
                 fi
                 ;;
-            5) run_extra_name secure-auth ;;
+            5)
+                if is_cartographer; then
+                    run_extra_name global-touch-offsets
+                else
+                    run_extra_name secure-auth
+                fi
+                ;;
+            6)
+                if is_cartographer; then run_extra_name secure-auth; fi
+                ;;
             0|b|B|q|Q) return ;;
             *) ;;
         esac

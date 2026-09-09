@@ -1,0 +1,420 @@
+diff --git a/components.d.ts b/components.d.ts
+index 18415da..4d0fee6 100644
+--- a/components.d.ts
++++ b/components.d.ts
+@@ -61,6 +61,7 @@ declare module 'vue' {
+     BedScrewsAdjustDialog: typeof import('./src/components/common/BedScrewsAdjustDialog.vue')['default']
+     CollapsableCard: typeof import('./src/components/common/CollapsableCard.vue')['default']
+     FlashMessage: typeof import('./src/components/common/FlashMessage.vue')['default']
++    GlobalTouchOffsetsDialog: typeof import('./src/components/common/GlobalTouchOffsetsDialog.vue')['default']
+     KeyboardShortcutsDialog: typeof import('./src/components/common/KeyboardShortcutsDialog.vue')['default']
+     KlippyStatusCard: typeof import('./src/components/common/KlippyStatusCard.vue')['default']
+     Login: typeof import('./src/components/common/Login.vue')['default']
+@@ -82,6 +83,8 @@ declare module 'vue' {
+     VApp: typeof import('vuetify/lib')['VApp']
+     VAppBar: typeof import('vuetify/lib')['VAppBar']
+     VBadge: typeof import('vuetify/lib')['VBadge']
++    VBreadcrumbs: typeof import('vuetify/lib')['VBreadcrumbs']
++    VBreadcrumbsItem: typeof import('vuetify/lib')['VBreadcrumbsItem']
+     VBtn: typeof import('vuetify/lib')['VBtn']
+     VBtnToggle: typeof import('vuetify/lib')['VBtnToggle']
+     VCard: typeof import('vuetify/lib')['VCard']
+diff --git a/public/global-touch-offsets-support.txt b/public/global-touch-offsets-support.txt
+new file mode 100644
+index 0000000..d00491f
+--- /dev/null
++++ b/public/global-touch-offsets-support.txt
+@@ -0,0 +1 @@
++1
+diff --git a/src/App.vue b/src/App.vue
+index 2344eab..dde2435 100644
+--- a/src/App.vue
++++ b/src/App.vue
+@@ -68,6 +68,7 @@
+         <updating-dialog />
+         <spool-selection-dialog />
+         <action-command-prompt-dialog />
++        <global-touch-offsets-dialog />
+         <keyboard-shortcuts-dialog />
+         <manual-probe-dialog />
+         <bed-screws-adjust-dialog />
+@@ -100,6 +101,7 @@ import type { FlashMessage } from '@/types'
+ import { getFilesFromDataTransfer, hasFilesInDataTransfer } from '@/util/file-system-entry'
+ import type { ThemeConfig } from '@/store/config/types'
+ import ActionCommandPromptDialog from '@/components/common/ActionCommandPromptDialog.vue'
++import GlobalTouchOffsetsDialog from '@/components/common/GlobalTouchOffsetsDialog.vue'
+ import KeyboardShortcutsDialog from '@/components/common/KeyboardShortcutsDialog.vue'
+ import { eventTargetIsContentEditable, keyboardEventToKeyboardShortcut } from '@/util/event-helpers'
+ import MmuEditTtgMapDialog from './components/widgets/mmu/MmuEditTtgMapDialog.vue'
+@@ -117,6 +119,7 @@ import MmuEditTtgMapDialog from './components/widgets/mmu/MmuEditTtgMapDialog.vu
+     FileSystemDownloadDialog,
+     FileSystemUploadDialog,
+     ActionCommandPromptDialog,
++    GlobalTouchOffsetsDialog,
+     KeyboardShortcutsDialog,
+     MmuEditTtgMapDialog
+   }
+diff --git a/src/components/common/GlobalTouchOffsetsDialog.vue b/src/components/common/GlobalTouchOffsetsDialog.vue
+new file mode 100644
+index 0000000..f66ea66
+--- /dev/null
++++ b/src/components/common/GlobalTouchOffsetsDialog.vue
+@@ -0,0 +1,159 @@
++<template>
++  <app-dialog
++    v-model="open"
++    title="Global Touch offsets"
++    cancel-button-text="Cancel"
++    save-button-text="Save & Restart"
++    max-width="450"
++    @cancel="cancel"
++    @save="save"
++  >
++    <v-card-text>
++      <div class="text-body-2 mb-3">
++        Select a Touch model and increment. Bed down makes the offset more negative.
++      </div>
++
++      <v-row
++        v-for="model in models"
++        :key="model.index"
++        dense
++      >
++        <v-col>
++          <app-btn
++            :color="selectedModelIndex === model.index ? 'primary' : undefined"
++            :outlined="selectedModelIndex !== model.index"
++            block
++            class="model-button"
++            @click="selectedModelIndex = model.index"
++          >
++            <span>{{ model.name }}</span>
++            <v-spacer />
++            <span>{{ formatOffset(workingOffsets[model.index]) }} mm</span>
++          </app-btn>
++        </v-col>
++      </v-row>
++
++      <v-row dense>
++        <v-col>
++          <app-btn-toggle
++            v-model="selectedIncrement"
++            mandatory
++            class="d-flex"
++          >
++            <app-btn
++              v-for="increment in increments"
++              :key="increment"
++              :value="increment"
++              class="flex-grow-1"
++              small
++            >
++              {{ increment.toFixed(3) }}
++            </app-btn>
++          </app-btn-toggle>
++        </v-col>
++      </v-row>
++
++      <v-row dense>
++        <v-col>
++          <app-btn
++            color="primary"
++            block
++            @click="moveBedUp"
++          >
++            Bed up / closer
++          </app-btn>
++        </v-col>
++        <v-col>
++          <app-btn
++            color="secondary"
++            block
++            @click="moveBedDown"
++          >
++            Bed down / farther
++          </app-btn>
++        </v-col>
++      </v-row>
++    </v-card-text>
++  </app-dialog>
++</template>
++
++<script lang="ts">
++import Vue from 'vue'
++import { Component, Mixins, Watch } from 'vue-property-decorator'
++import StateMixin from '@/mixins/state'
++import type { GlobalTouchOffsetModel } from '@/store/console/types'
++import { adjustTouchOffset, buildTouchOffsetSaveCommands } from '@/util/global-touch-offsets'
++
++@Component({})
++export default class GlobalTouchOffsetsDialog extends Mixins(StateMixin) {
++  readonly increments = [0.005, 0.01, 0.025, 0.05]
++  selectedIncrement = 0.01
++  selectedModelIndex = 0
++  workingOffsets: Record<number, number> = {}
++
++  get dialog () {
++    return this.$typedState.console.globalTouchOffsetsDialog
++  }
++
++  get models (): GlobalTouchOffsetModel[] {
++    return this.dialog.models
++  }
++
++  get open (): boolean {
++    return this.dialog.open
++  }
++
++  set open (value: boolean) {
++    if (!value) this.cancel()
++  }
++
++  @Watch('dialog.open')
++  onDialogOpen (open: boolean) {
++    if (!open || this.models.length === 0) return
++
++    this.workingOffsets = {}
++    this.models.forEach(model => {
++      Vue.set(this.workingOffsets, model.index, model.value)
++    })
++    this.selectedModelIndex = this.models[0].index
++    this.selectedIncrement = 0.01
++  }
++
++  formatOffset (value: number): string {
++    return Number(value).toFixed(3)
++  }
++
++  moveBedUp () {
++    this.adjustSelected(this.selectedIncrement)
++  }
++
++  moveBedDown () {
++    this.adjustSelected(-this.selectedIncrement)
++  }
++
++  adjustSelected (delta: number) {
++    const value = this.workingOffsets[this.selectedModelIndex]
++    if (value === undefined) return
++    Vue.set(
++      this.workingOffsets,
++      this.selectedModelIndex,
++      adjustTouchOffset(value, delta)
++    )
++  }
++
++  cancel () {
++    this.sendGcode('K2_CARTOGRAPHER_GLOBAL_Z_CANCEL')
++  }
++
++  save () {
++    const commands = buildTouchOffsetSaveCommands(this.models, this.workingOffsets)
++    this.sendGcode(commands.join('\n'))
++  }
++}
++</script>
++
++<style lang="scss" scoped>
++.model-button {
++  text-transform: none;
++}
++</style>
+diff --git a/src/store/console/actions.ts b/src/store/console/actions.ts
+index 90385cb..c163e18 100644
+--- a/src/store/console/actions.ts
++++ b/src/store/console/actions.ts
+@@ -1,6 +1,6 @@
+ import type { ActionTree } from 'vuex'
+ import { Globals } from '@/globals'
+-import type { ConsoleEntry, ConsoleFilter, ConsoleState, PromptDialogButton, PromptDialogItemButton, PromptDialogItemText } from './types'
++import type { ConsoleEntry, ConsoleFilter, ConsoleState, GlobalTouchOffsetModel, PromptDialogButton, PromptDialogItemButton, PromptDialogItemText } from './types'
+ import type { RootState } from '../types'
+ import { SocketActions } from '@/api/socketActions'
+ import DOMPurify from 'dompurify'
+@@ -57,6 +57,7 @@ export const actions = {
+     commit('setConsoleEntry', payload)
+ 
+     dispatch('onUpdatePromptDialog', payload)
++    dispatch('onUpdateGlobalTouchOffsetsDialog', payload)
+   },
+ 
+   /**
+@@ -160,6 +161,38 @@ export const actions = {
+     }
+   },
+ 
++  async onUpdateGlobalTouchOffsetsDialog ({ commit }, payload: ConsoleEntry) {
++    const parsedMessage = (
++      payload.type === 'action' &&
++      /^\/\/ action:global_touch_offsets_([^ ]+)(?: (.+))?/.exec(payload.message)
++    )
++
++    if (!parsedMessage) return
++
++    const [, type, param] = parsedMessage
++    switch (type) {
++      case 'begin':
++        commit('setResetGlobalTouchOffsetsDialog')
++        break
++
++      case 'model': {
++        const [name, valueText, indexText] = param.split('|')
++        const value = Number(valueText)
++        const index = Number(indexText)
++        if (name && Number.isFinite(value) && Number.isInteger(index) && index >= 0) {
++          const model: GlobalTouchOffsetModel = { name, value, index }
++          commit('setGlobalTouchOffsetModel', model)
++        }
++        break
++      }
++
++      case 'show':
++      case 'end':
++        commit('setGlobalTouchOffsetsDialogOpen', type === 'show')
++        break
++    }
++  },
++
+   /**
+    * Klipper provides us with a list of available gcode commands
+    * based on the current configuration.
+diff --git a/src/store/console/mutations.ts b/src/store/console/mutations.ts
+index 400e40b..49e0a53 100644
+--- a/src/store/console/mutations.ts
++++ b/src/store/console/mutations.ts
+@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
+ import type { MutationTree } from 'vuex'
+ import { defaultState } from './state'
+ import { Globals } from '@/globals'
+-import type { ConsoleEntry, ConsoleFilter, ConsoleState, PromptDialogItemButton, PromptDialogItem } from './types'
++import type { ConsoleEntry, ConsoleFilter, ConsoleState, GlobalTouchOffsetModel, PromptDialogItemButton, PromptDialogItem } from './types'
+ import { escapeRegExp } from 'lodash-es'
+ 
+ const compileExpression = (filter: ConsoleFilter): RegExp => {
+@@ -71,6 +71,21 @@ export const mutations = {
+     state.promptDialog.open = payload
+   },
+ 
++  setResetGlobalTouchOffsetsDialog (state) {
++    state.globalTouchOffsetsDialog = {
++      open: false,
++      models: []
++    }
++  },
++
++  setGlobalTouchOffsetModel (state, payload: GlobalTouchOffsetModel) {
++    state.globalTouchOffsetsDialog.models.push(payload)
++  },
++
++  setGlobalTouchOffsetsDialogOpen (state, payload: boolean) {
++    state.globalTouchOffsetsDialog.open = payload
++  },
++
+   /**
+    * Defines the list of available commands
+    */
+diff --git a/src/store/console/state.ts b/src/store/console/state.ts
+index 417f8d8..5fea26e 100644
+--- a/src/store/console/state.ts
++++ b/src/store/console/state.ts
+@@ -15,6 +15,10 @@ export const defaultState = (): ConsoleState => {
+       items: [],
+       footerButtons: []
+     },
++    globalTouchOffsetsDialog: {
++      open: false,
++      models: []
++    },
+     consoleFilters: [],
+     consoleFiltersRegexp: []
+   }
+diff --git a/src/store/console/types.ts b/src/store/console/types.ts
+index 2eddc92..82355da 100644
+--- a/src/store/console/types.ts
++++ b/src/store/console/types.ts
+@@ -9,6 +9,7 @@ export interface ConsoleState {
+   autoScroll: boolean;
+   lastCleared: number;
+   promptDialog: PromptDialog;
++  globalTouchOffsetsDialog: GlobalTouchOffsetsDialog;
+   consoleFilters: ConsoleFilter[];
+   consoleFiltersRegexp: RegExp[];
+ }
+@@ -48,6 +49,17 @@ export interface PromptDialogItemButton extends PromptDialogButton {
+   type: 'button';
+ }
+ 
++export interface GlobalTouchOffsetModel {
++  index: number;
++  name: string;
++  value: number;
++}
++
++export interface GlobalTouchOffsetsDialog {
++  open: boolean;
++  models: GlobalTouchOffsetModel[];
++}
++
+ export interface PromptDialogButton {
+   text: string;
+   command?: string;
+diff --git a/src/util/__tests__/global-touch-offsets.spec.ts b/src/util/__tests__/global-touch-offsets.spec.ts
+new file mode 100644
+index 0000000..f188ecb
+--- /dev/null
++++ b/src/util/__tests__/global-touch-offsets.spec.ts
+@@ -0,0 +1,24 @@
++import { adjustTouchOffset, buildTouchOffsetSaveCommands } from '../global-touch-offsets'
++
++describe('global touch offsets', () => {
++  it('moves up toward zero and prevents a positive touch offset', () => {
++    expect(adjustTouchOffset(-0.05, 0.025)).toBe(-0.025)
++    expect(adjustTouchOffset(-0.005, 0.01)).toBe(0)
++  })
++
++  it('moves down to a more-negative touch offset', () => {
++    expect(adjustTouchOffset(-0.05, -0.025)).toBe(-0.075)
++  })
++
++  it('stages only changed models before saving', () => {
++    const models = [
++      { index: 0, name: 'DEFAULT', value: -0.05 },
++      { index: 1, name: 'TEXTURED_PEI', value: -0.06 }
++    ]
++
++    expect(buildTouchOffsetSaveCommands(models, { 0: -0.075, 1: -0.06 })).toEqual([
++      'K2_CARTOGRAPHER_GLOBAL_Z_STAGE INDEX=0 VALUE=-0.075',
++      'K2_CARTOGRAPHER_GLOBAL_Z_SAVE'
++    ])
++  })
++})
+diff --git a/src/util/global-touch-offsets.ts b/src/util/global-touch-offsets.ts
+new file mode 100644
+index 0000000..8370d98
+--- /dev/null
++++ b/src/util/global-touch-offsets.ts
+@@ -0,0 +1,24 @@
++interface TouchOffsetModel {
++  index: number;
++  value: number;
++}
++
++export const adjustTouchOffset = (value: number, delta: number): number => {
++  const adjusted = Math.round((value + delta) * 1000) / 1000
++  return Math.min(0, adjusted)
++}
++
++export const buildTouchOffsetSaveCommands = (
++  models: TouchOffsetModel[],
++  workingOffsets: Record<number, number>
++): string[] => {
++  const commands = models
++    .filter(model => workingOffsets[model.index] !== model.value)
++    .map(model => (
++      `K2_CARTOGRAPHER_GLOBAL_Z_STAGE INDEX=${model.index} ` +
++      `VALUE=${workingOffsets[model.index].toFixed(3)}`
++    ))
++
++  commands.push('K2_CARTOGRAPHER_GLOBAL_Z_SAVE')
++  return commands
++}

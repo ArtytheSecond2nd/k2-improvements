@@ -176,6 +176,7 @@ Install extras individually from **Optional extras**:
 |---|---|
 | Cartographer mount offsets | [Offset setup](./installer/extras/cartographer-offset-setup/README.md) |
 | Cartographer plate profiles and slicer selection | [Macro controls](./installer/extras/cartographer-macros/README.md) · [Automatic selection](./installer/extras/surface-selection-wrapper/README.md) |
+| Cartographer global Touch offsets | [Live offset editor](./installer/extras/global-touch-offsets/README.md) |
 | KAMP adaptive purge | [KAMP guide and slicer templates](./installer/extras/kamp-adaptive-purge/README.md) |
 | Axis twist compensation | [Axis twist guide](./features/axis_twist_compensation/README.md) |
 | Plate-aware saved meshes | [Stock PR Touch plate-and-temperature mesh profiles](./installer/extras/plate-aware-mesh/README.md) |

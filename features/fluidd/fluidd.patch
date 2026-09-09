@@ -183,16 +183,15 @@ index 5d563167..73dceec5 100644
      camera_rotate_options:
        '90': 90°
        '180': 180°
-diff --git a/src/store/webcams/types.ts b/src/store/webcams/types.ts
-index 5e5a1ff0..422bbcaa 100644
---- a/src/store/webcams/types.ts
-+++ b/src/store/webcams/types.ts
-@@ -25,7 +25,7 @@ export interface WebcamConfig extends NewWebcamConfig {
-   source: WebcamSource;
- }
+diff --git a/src/typings/moonraker.webcam.d.ts b/src/typings/moonraker.webcam.d.ts
+--- a/src/typings/moonraker.webcam.d.ts
++++ b/src/typings/moonraker.webcam.d.ts
+@@ -30,7 +30,7 @@ declare namespace Moonraker.Webcam {
+     uid: string;
+   }
  
--export type WebcamService = 'mjpegstreamer' | 'mjpegstreamer-adaptive' | 'ipstream' | 'iframe' | 'hlsstream' | 'webrtc-camerastreamer' | 'webrtc-go2rtc' | 'webrtc-mediamtx' | 'uv4l-mjpeg' | 'device'
-+export type WebcamService = 'mjpegstreamer' | 'mjpegstreamer-adaptive' | 'ipstream' | 'iframe' | 'hlsstream' | 'webrtc-camerastreamer' | 'webrtc-go2rtc' | 'webrtc-mediamtx' | 'webrtc-crealityk2rtc' | 'uv4l-mjpeg' | 'device'
+-  export type Service = 'mjpegstreamer' | 'mjpegstreamer-adaptive' | 'ipstream' | 'iframe' | 'hlsstream' | 'webrtc-camerastreamer' | 'webrtc-go2rtc' | 'webrtc-mediamtx' | 'uv4l-mjpeg' | 'device'
++  export type Service = 'mjpegstreamer' | 'mjpegstreamer-adaptive' | 'ipstream' | 'iframe' | 'hlsstream' | 'webrtc-camerastreamer' | 'webrtc-go2rtc' | 'webrtc-mediamtx' | 'webrtc-crealityk2rtc' | 'uv4l-mjpeg' | 'device'
  
- export type WebcamRotation = 0 | 90 | 180 | 270
+   export type Rotation = 0 | 90 | 180 | 270
  

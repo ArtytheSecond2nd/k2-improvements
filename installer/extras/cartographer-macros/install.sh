@@ -12,7 +12,6 @@ CUSTOM="$CFG_DIR/custom"
 KLIPPER_EXTRAS="${KLIPPER_DIR:-${HOME}/klipper}/klippy/extras"
 
 [ -d "$CUSTOM" ] || { echo "ERROR: $CUSTOM not found — install macros feature first"; exit 1; }
-[ -d "$KLIPPER_EXTRAS" ] || { echo "ERROR: $KLIPPER_EXTRAS not found — Klipper is required"; exit 1; }
 grep -q '^\[cartographer\]' "$CFG_DIR/printer.cfg" "$CUSTOM"/*.cfg 2>/dev/null || {
     echo "ERROR: no [cartographer] section found — install cartographer feature first"
     exit 1
@@ -20,10 +19,18 @@ grep -q '^\[cartographer\]' "$CFG_DIR/printer.cfg" "$CUSTOM"/*.cfg 2>/dev/null |
 
 ln -sfn "$SCRIPT_DIR/cartographer_macros.cfg" "$CUSTOM/cartographer_macros.cfg"
 echo "I: symlinked cartographer_macros.cfg into custom/"
-ln -sfn "$SCRIPT_DIR/k2_cartographer_offset_editor.py" \
-    "$KLIPPER_EXTRAS/k2_cartographer_offset_editor.py"
-echo "I: installed the Cartographer Global Z-offset editor"
 
+# The first editor prototype was bundled into this plate workflow. Remove only
+# that old symlink; the separate optional feature uses a different source path.
+legacy_editor="$KLIPPER_EXTRAS/k2_cartographer_offset_editor.py"
+if [ -L "$legacy_editor" ]; then
+    case "$(readlink "$legacy_editor")" in
+        *'/cartographer-macros/k2_cartographer_offset_editor.py')
+            rm -f "$legacy_editor"
+            echo "I: removed the superseded plate-workflow offset editor"
+            ;;
+    esac
+fi
 # Wire include into custom/main.cfg
 INSTALLER_BASE="${INSTALLER_DIR:-/mnt/UDISK/k2-improvements}"
 ENSURE_INCLUDED="$INSTALLER_BASE/scripts/ensure_included.py"

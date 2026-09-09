@@ -1,4 +1,4 @@
-"""Fluidd prompt editor for saved Cartographer Touch-model Z offsets."""
+"""Live Fluidd editor for saved Cartographer Touch-model Z offsets."""
 
 import logging
 
@@ -21,7 +21,7 @@ class K2CartographerOffsetEditor:
             desc="Edit saved Cartographer Touch-model Z offsets",
         )
         self.gcode.register_command(
-            "K2_CARTOGRAPHER_GLOBAL_Z_ADJUST", self.cmd_adjust
+            "K2_CARTOGRAPHER_GLOBAL_Z_STAGE", self.cmd_stage
         )
         self.gcode.register_command(
             "K2_CARTOGRAPHER_GLOBAL_Z_CANCEL", self.cmd_cancel
@@ -89,68 +89,41 @@ class K2CartographerOffsetEditor:
     def _action(self, message):
         self.gcode.respond_raw("// action:%s" % message)
 
-    def _render_prompt(self, replace=False):
-        if replace:
-            self._action("prompt_end")
-        self._action("prompt_begin Global Z Offsets")
-        self._action(
-            "prompt_text Saved Touch-model offsets. More negative moves the bed farther from the nozzle."
-        )
-        for index, model in enumerate(self.models):
-            changed = " (changed)" if model["current"] != model["original"] else ""
-            self._action(
-                "prompt_text %s: %s mm%s"
-                % (
-                    self._safe_text(model["name"].upper()),
-                    self._format_offset(model["current"]),
-                    changed,
-                )
-            )
-            self._action("prompt_button_group_start")
-            for label, delta in (
-                ("-0.05", "-0.05"),
-                ("-0.01", "-0.01"),
-                ("+0.01", "0.01"),
-                ("+0.05", "0.05"),
-            ):
-                self._action(
-                    "prompt_button %s|K2_CARTOGRAPHER_GLOBAL_Z_ADJUST INDEX=%d DELTA=%s|secondary"
-                    % (label, index, delta)
-                )
-            self._action("prompt_button_group_end")
-        self._action(
-            "prompt_footer_button Cancel|K2_CARTOGRAPHER_GLOBAL_Z_CANCEL|error"
-        )
-        self._action(
-            "prompt_footer_button Save & Restart|K2_CARTOGRAPHER_GLOBAL_Z_SAVE|primary"
-        )
-        self._action("prompt_show")
+    def _close_prompt(self):
+        self._action("global_touch_offsets_end")
 
     def _require_session(self, gcmd):
         if self.models is None:
-            raise gcmd.error("Open GLOBAL_Z_OFFSETS before changing or saving values")
+            raise gcmd.error("Open Global_Z_Offsets_Carto before saving values")
 
     def cmd_open(self, gcmd):
         if self._printing_or_paused():
             raise gcmd.error("Global Z offsets cannot be edited during a print")
+        if self.models is not None:
+            self._close_prompt()
         self.models = self._load_models(gcmd)
-        self._render_prompt()
+        self._action("global_touch_offsets_begin")
+        for index, model in enumerate(self.models):
+            self._action(
+                "global_touch_offsets_model %s|%s|%d"
+                % (
+                    self._safe_text(model["name"].upper()),
+                    self._format_offset(model["current"]),
+                    index,
+                )
+            )
+        self._action("global_touch_offsets_show")
 
-    def cmd_adjust(self, gcmd):
+    def cmd_stage(self, gcmd):
         self._require_session(gcmd)
         index = gcmd.get_int("INDEX", minval=0, maxval=len(self.models) - 1)
-        delta = gcmd.get_float("DELTA", minval=-0.05, maxval=0.05)
-        model = self.models[index]
-        adjusted = round(model["current"] + delta, 3)
-        # Cartographer Touch models require z_offset <= 0.
-        model["current"] = min(0.0, adjusted)
-        self._render_prompt(replace=True)
+        value = round(gcmd.get_float("VALUE", minval=-5.0, maxval=0.0), 3)
+        self.models[index]["current"] = value
 
     def cmd_cancel(self, gcmd):
-        self._require_session(gcmd)
         self.models = None
-        self._action("prompt_end")
-        gcmd.respond_info("Global Z-offset changes cancelled")
+        self._close_prompt()
+        gcmd.respond_info("Global Touch-offset changes cancelled")
 
     def cmd_save(self, gcmd):
         self._require_session(gcmd)
@@ -162,26 +135,23 @@ class K2CartographerOffsetEditor:
         ]
         if not changed:
             self.models = None
-            self._action("prompt_end")
-            gcmd.respond_info("No Global Z-offset changes to save")
+            self._close_prompt()
+            gcmd.respond_info("No Global Touch-offset changes to save")
             return
 
         for model in changed:
-            self.configfile.set(
-                model["section"],
-                "z_offset",
-                self._format_offset(model["current"]),
-            )
+            value = self._format_offset(model["current"])
+            self.configfile.set(model["section"], "z_offset", value)
             logging.info(
                 "%s staged [%s] z_offset=%s",
                 LOG_PREFIX,
                 model["section"],
-                self._format_offset(model["current"]),
+                value,
             )
 
         self.models = None
-        self._action("prompt_end")
-        self.gcode.run_script_from_command("SAVE_CONFIG")
+        self._close_prompt()
+        self.gcode.run_script_from_command("CXSAVE_CONFIG\nFIRMWARE_RESTART")
 
 
 def load_config(config):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Seed the Fluidd layout for the Cartographer plate-workflow macros."""
+"""Seed Fluidd metadata for the optional Global Touch-offset editor."""
 
 import json
 import os
@@ -10,34 +10,23 @@ import urllib.request
 import uuid
 
 
-CATEGORY_NAME = "Cartographer Calibration"
+CATEGORY_NAME = "Global Touch offsets"
 CATEGORY_ID = str(
     uuid.uuid5(
         uuid.NAMESPACE_URL,
-        "https://github.com/Rcpilot33/k2-improvements/fluidd/cartographer-calibration",
+        "https://github.com/Rcpilot33/k2-improvements/fluidd/global-touch-offsets",
     )
 )
+MACRO_NAME = "GLOBAL_Z_OFFSETS_CARTO"
+MACRO_ALIAS = "Global_Z_Offsets_Carto"
+MACRO_COLOR = "#2196F3"
 
-MACRO_LAYOUT = (
-    ("A11_CARTO_SELECT_DEFAULT", "DEFAULT", "#1AED07"),
-    ("A12_CARTO_SELECT_TEXTURED_PEI", "TEXTURED_PEI", "#1AED07"),
-    ("A13_CARTO_SELECT_EPOXY", "EPOXY", "#1AED07"),
-    ("A14_CARTO_SELECT_HIGH_TEMP", "HIGH_TEMP", "#1AED07"),
-    ("A15_CARTO_SELECT_CUSTOM", "CUSTOM", "#1AED07"),
-    ("A21_CARTO_SCAN_SELECTED", "CARTO_SCAN_CALIBRATE", "#FF9800"),
-    ("A22_CARTO_TOUCH_SELECTED", "CARTO_TOUCH_CALIBRATE", "#FF9800"),
-    ("A23_CARTO_LOAD_SELECTED", "CARTO_LOAD", "#2196F3"),
-    ("A61_CARTO_TOUCH_HOME", "CARTO_TOUCH_HOME", "#2196F3"),
-    ("A62_CARTO_LIST_MODELS", "CARTO_LIST_MODELS", "#2196F3"),
-    ("A63_CARTO_INFO", "CARTO_INFO", "#2196F3"),
-)
 
 class LayoutError(RuntimeError):
     pass
 
 
 def merge_layout(namespace):
-    """Return Fluidd namespace data with missing plate-workflow defaults added."""
     if not isinstance(namespace, dict):
         raise LayoutError("Fluidd database namespace is not an object")
 
@@ -49,18 +38,15 @@ def merge_layout(namespace):
 
     categories = macros.get("categories", [])
     stored = macros.get("stored", [])
-    if not isinstance(categories, list):
-        raise LayoutError("Fluidd macro categories are not a list")
-    if not isinstance(stored, list):
-        raise LayoutError("Fluidd stored macros are not a list")
-    if any(not isinstance(item, dict) for item in categories):
-        raise LayoutError("Fluidd macro categories contain an invalid entry")
-    if any(not isinstance(item, dict) for item in stored):
-        raise LayoutError("Fluidd stored macros contain an invalid entry")
+    if not isinstance(categories, list) or any(
+        not isinstance(item, dict) for item in categories
+    ):
+        raise LayoutError("Fluidd macro categories are invalid")
+    if not isinstance(stored, list) or any(not isinstance(item, dict) for item in stored):
+        raise LayoutError("Fluidd stored macros are invalid")
 
     categories = [dict(item) for item in categories]
     stored = [dict(item) for item in stored]
-
     category = next(
         (
             item
@@ -72,45 +58,38 @@ def merge_layout(namespace):
     )
     if category is None:
         category_id = CATEGORY_ID
-        used_ids = {str(item.get("id")) for item in categories}
-        if category_id in used_ids:
+        if category_id in {str(item.get("id")) for item in categories}:
             category_id = str(uuid.uuid4())
         categories.append({"id": category_id, "name": CATEGORY_NAME})
     else:
         category_id = str(category["id"])
 
-    valid_category_ids = {str(item.get("id")) for item in categories if item.get("id")}
-    by_name = {
-        str(item.get("name", "")).casefold(): index
-        for index, item in enumerate(stored)
-        if item.get("name")
-    }
-
-    for name, alias, color in MACRO_LAYOUT:
-        index = by_name.get(name.casefold())
-        if index is None:
-            stored.append(
-                {
-                    "name": name,
-                    "alias": alias,
-                    "visible": True,
-                    "disabledWhilePrinting": False,
-                    "color": color,
-                    "categoryId": category_id,
-                }
-            )
-            by_name[name.casefold()] = len(stored) - 1
-            continue
-
-        item = stored[index]
-        # Preserve aliases and valid category choices the user has intentionally
-        # customized. Colors are installer-managed so all 11 buttons retain the
-        # requested, consistent palette.
+    item = next(
+        (
+            value
+            for value in stored
+            if str(value.get("name", "")).casefold() == MACRO_NAME.casefold()
+        ),
+        None,
+    )
+    if item is None:
+        stored.append(
+            {
+                "name": MACRO_NAME,
+                "alias": MACRO_ALIAS,
+                "visible": True,
+                "disabledWhilePrinting": True,
+                "color": MACRO_COLOR,
+                "categoryId": category_id,
+            }
+        )
+    else:
         if not item.get("alias"):
-            item["alias"] = alias
-        item["color"] = color
-        current_category = str(item.get("categoryId", "0"))
-        if current_category == "0" or current_category not in valid_category_ids:
+            item["alias"] = MACRO_ALIAS
+        item["disabledWhilePrinting"] = True
+        item["color"] = MACRO_COLOR
+        valid_ids = {str(value.get("id")) for value in categories if value.get("id")}
+        if str(item.get("categoryId", "0")) not in valid_ids:
             item["categoryId"] = category_id
 
     macros["categories"] = categories
@@ -150,7 +129,6 @@ def configure(api_url):
     payload = _request_json("{}/server/database/item?{}".format(api_url, query))
     namespace = _result_value(payload)
     updated = merge_layout(namespace)
-
     if updated == namespace:
         return False
 
@@ -168,18 +146,14 @@ def main():
     try:
         changed = configure(api_url)
     except LayoutError as exc:
-        print("E: could not configure Fluidd Cartographer macro layout: {}".format(exc))
+        print("E: could not configure Fluidd Global Touch offsets: {}".format(exc))
         return 1
 
     if changed:
-        print(
-            "I: configured 11 Fluidd macros in the '{}' category".format(
-                CATEGORY_NAME
-            )
-        )
-        print("I: refresh Fluidd to load the aliases, category, and colors")
+        print("I: configured Global_Z_Offsets_Carto in '{}'".format(CATEGORY_NAME))
+        print("I: refresh Fluidd to load its alias, category, and color")
     else:
-        print("I: Fluidd Cartographer macro layout is already configured")
+        print("I: Fluidd Global Touch-offset layout is already configured")
     return 0
 
 

@@ -41,14 +41,7 @@ class FluiddLayoutTests(unittest.TestCase):
             [color for _name, _alias, color in layout.MACRO_LAYOUT],
         )
         self.assertTrue(all(item["categoryId"] == category["id"] for item in targets.values()))
-        self.assertTrue(targets["A16_CARTO_GLOBAL_Z_OFFSETS"]["disabledWhilePrinting"])
-        self.assertTrue(
-            all(
-                not item["disabledWhilePrinting"]
-                for name, item in targets.items()
-                if name != "A16_CARTO_GLOBAL_Z_OFFSETS"
-            )
-        )
+        self.assertTrue(all(not item["disabledWhilePrinting"] for item in targets.values()))
         self.assertEqual(result["macros"]["expanded"], [0])
         self.assertEqual(result["theme"], {"isDark": True})
         self.assertEqual(result["macros"]["stored"][0], source["macros"]["stored"][0])

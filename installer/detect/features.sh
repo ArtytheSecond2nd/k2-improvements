@@ -107,11 +107,15 @@ is_virtual_sdcard_guard() {
 is_better_init()   { [ -f /etc/profile.d/better-init.sh ]; }
 
 is_surface_wrap()  { grep -q 'surface-selection wrapper' "$PRINTER_CFG_DIR/custom/start_print.cfg" 2>/dev/null; }
-is_carto_macros()  {
+is_carto_macros()  { [ -L "$PRINTER_CFG_DIR/custom/cartographer_macros.cfg" ] || \
+                     [ -f "$PRINTER_CFG_DIR/custom/cartographer_macros.cfg" ]; }
+is_global_touch_offsets() {
+    local custom="$PRINTER_CFG_DIR/custom"
     local editor="${KLIPPER_DIR:-${HOME:-/mnt/UDISK/root}/klipper}/klippy/extras/k2_cartographer_offset_editor.py"
-    { [ -L "$PRINTER_CFG_DIR/custom/cartographer_macros.cfg" ] || \
-      [ -f "$PRINTER_CFG_DIR/custom/cartographer_macros.cfg" ]; } && \
-        [ -e "$editor" ]
+    [ -e "$custom/global_touch_offsets.cfg" ] &&
+    grep -q '^\[include global_touch_offsets\.cfg\]$' "$custom/main.cfg" 2>/dev/null &&
+    [ -e "$editor" ] &&
+    [ -f /usr/share/fluidd/global-touch-offsets-support.txt ]
 }
 is_carto_plate_workflow() { is_carto_macros && is_surface_wrap; }
 is_carto_offset_set() { is_cartographer; }  # always "set" if cartographer is installed (some value is always there)

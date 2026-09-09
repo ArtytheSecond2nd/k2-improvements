@@ -21,6 +21,7 @@ KNOWN_COMPONENTS = {
     "r3men-bed",
     "axis_twist_compensation",
     "cartographer-plate-workflow",
+    "global-touch-offsets",
     "plate-aware-mesh",
 }
 
@@ -35,6 +36,7 @@ EXPECTED_DETECTORS = {
     "r3men-bed": "is_r3men_bed",
     "axis_twist_compensation": "is_axis_twist",
     "cartographer-plate-workflow": "is_carto_plate_workflow",
+    "global-touch-offsets": "is_global_touch_offsets",
     "plate-aware-mesh": "is_plate_aware_mesh",
 }
 
@@ -82,6 +84,7 @@ class MigrationCatalogTests(unittest.TestCase):
         self.assertEqual(recommended(installed), installed)
         self.assertNotIn("axis_twist_compensation", recommended(installed))
         self.assertNotIn("cartographer-plate-workflow", recommended(installed))
+        self.assertNotIn("global-touch-offsets", recommended(installed))
         self.assertNotIn("plate-aware-mesh", recommended(installed))
 
     def test_stock_install_includes_only_stock_applicable_extras(self):
