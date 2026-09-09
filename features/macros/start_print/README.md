@@ -11,14 +11,13 @@ Replaces the stock start macro with a temperature-aware workflow that:
 - levels the gantry and prepares the correct bed mesh; and
 - handles either Cartographer or the stock probe path.
 
-On firmware `1.1.3.13`, the firmware-specific compatibility include also
-releases Creality's one-time 100% case-fan command at the first nozzle-clean
-request on both the stock-probe and Cartographer paths. The include is disabled
-on unknown or unlisted firmware, including `1.1.5.5`, where testing showed it
-is unnecessary. This installer-owned decision is not exposed in the user
-overrides file. The release requires an actual direct 100% request and is
-skipped while chamber-temperature control requests cooling. This also prevents
-later nozzle cleans and ordinary homing from repeatedly changing the fan.
+On firmware `1.1.3.13` and `1.1.5.2`, the firmware-specific compatibility
+include releases a direct 100% case-fan request at the first nozzle-clean on
+both the stock-probe and Cartographer paths. This covers Creality's preflight
+behavior on `1.1.3.13` and a request left active before printing on `1.1.5.2`.
+Unknown or unlisted firmware, including `1.1.5.5`, remains unchanged. The
+release is skipped while chamber-temperature control requests cooling, and
+later nozzle cleans and ordinary homing do not repeatedly change the fan.
 
 When Cartographer or KAMP has installed the shared prime-tower scanner,
 `START_PRINT` waits for that selected-file preflight before preparation moves.
