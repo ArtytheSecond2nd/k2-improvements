@@ -6,8 +6,8 @@ selection, calibration, model loading, homing, and diagnostics.
 The installer also seeds Fluidd's UI metadata for all 11 buttons. They appear
 in the **Cartographer Calibration** category with short aliases while their
 real `A**_CARTO_*` names remain unchanged and retain their sorting order.
-Plate selectors are green (`#1AED07`), the two calibration actions are yellow
-(`#FFEB3B`), and the remaining actions are blue (`#2196F3`). These 11 colors
+Plate selectors are green (`#1AED07`), the two calibration actions are orange
+(`#FF9800`), and the remaining actions are blue (`#2196F3`). These 11 colors
 are installer-managed to keep the palette consistent. Existing non-empty
 aliases and valid category assignments are treated as user customizations and
 preserved. Refresh Fluidd after installation to load a newly seeded layout.
@@ -84,8 +84,8 @@ TEXTURED_PEI            green
 EPOXY                   green
 HIGH_TEMP               green
 CUSTOM                  green
-CARTO_SCAN_CALIBRATE    yellow
-CARTO_TOUCH_CALIBRATE   yellow
+CARTO_SCAN_CALIBRATE    orange
+CARTO_TOUCH_CALIBRATE   orange
 CARTO_LOAD              blue
 CARTO_TOUCH_HOME        blue
 CARTO_LIST_MODELS       blue

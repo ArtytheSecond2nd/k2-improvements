@@ -65,5 +65,6 @@ case-fan-1152-release-v1|macros|is_macros|Firmware 1.1.5.2 now releases a direct
 cartographer-fluidd-layout-v1|cartographer-plate-workflow|is_carto_plate_workflow|Cartographer plate macros now receive default Fluidd aliases and category organization
 cartographer-fluidd-colors-v1|cartographer-plate-workflow|is_carto_plate_workflow|Cartographer plate macro actions now receive default Fluidd colors
 cartographer-fluidd-rgb-colors-v2|cartographer-plate-workflow|is_carto_plate_workflow|Cartographer plate macro colors now use Fluidd-compatible RGB values
+cartographer-fluidd-orange-calibration-v3|cartographer-plate-workflow|is_carto_plate_workflow|Cartographer calibration macro accents now use orange for clearer visual separation
 EOF
 }

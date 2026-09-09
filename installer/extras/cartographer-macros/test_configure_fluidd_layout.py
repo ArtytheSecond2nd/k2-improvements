@@ -101,7 +101,7 @@ class FluiddLayoutTests(unittest.TestCase):
         result = layout.merge_layout(source)
         targets = {item["name"]: item for item in result["macros"]["stored"]}
         self.assertEqual(targets["A11_CARTO_SELECT_DEFAULT"]["color"], "#1AED07")
-        self.assertEqual(targets["A21_CARTO_SCAN_SELECTED"]["color"], "#FFEB3B")
+        self.assertEqual(targets["A21_CARTO_SCAN_SELECTED"]["color"], "#FF9800")
         self.assertEqual(targets["A23_CARTO_LOAD_SELECTED"]["color"], "#2196F3")
 
     def test_repairs_orphaned_category_assignment(self):
