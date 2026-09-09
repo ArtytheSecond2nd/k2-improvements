@@ -79,12 +79,30 @@ class FluiddLayoutTests(unittest.TestCase):
         self.assertEqual(first["alias"], "My Default Plate")
         self.assertEqual(first["categoryId"], "favorites")
         self.assertFalse(first["visible"])
-        self.assertEqual(first["color"], "#123456")
+        self.assertEqual(first["color"], "#1AED07")
         self.assertEqual(first["order"], 9)
         second = result["macros"]["stored"][1]
         self.assertEqual(second["alias"], "TEXTURED_PEI")
-        self.assertEqual(second["color"], "success")
+        self.assertEqual(second["color"], "#1AED07")
         self.assertEqual(second["categoryId"], "carto-user-id")
+
+    def test_normalizes_all_target_colors(self):
+        source = {
+            "macros": {
+                "categories": [],
+                "stored": [
+                    {"name": "A11_CARTO_SELECT_DEFAULT", "color": "#1aed07"},
+                    {"name": "A21_CARTO_SCAN_SELECTED", "color": "warning"},
+                    {"name": "A23_CARTO_LOAD_SELECTED", "color": "primary"},
+                ],
+            }
+        }
+
+        result = layout.merge_layout(source)
+        targets = {item["name"]: item for item in result["macros"]["stored"]}
+        self.assertEqual(targets["A11_CARTO_SELECT_DEFAULT"]["color"], "#1AED07")
+        self.assertEqual(targets["A21_CARTO_SCAN_SELECTED"]["color"], "#FFEB3B")
+        self.assertEqual(targets["A23_CARTO_LOAD_SELECTED"]["color"], "#2196F3")
 
     def test_repairs_orphaned_category_assignment(self):
         source = {
@@ -105,7 +123,7 @@ class FluiddLayoutTests(unittest.TestCase):
         item = result["macros"]["stored"][0]
         self.assertEqual(item["categoryId"], category["id"])
         self.assertEqual(item["alias"], "CARTO_INFO")
-        self.assertEqual(item["color"], "primary")
+        self.assertEqual(item["color"], "#2196F3")
 
     def test_is_idempotent(self):
         first = layout.merge_layout({"macros": {}})

@@ -19,19 +19,18 @@ CATEGORY_ID = str(
 )
 
 MACRO_LAYOUT = (
-    ("A11_CARTO_SELECT_DEFAULT", "DEFAULT", "success"),
-    ("A12_CARTO_SELECT_TEXTURED_PEI", "TEXTURED_PEI", "success"),
-    ("A13_CARTO_SELECT_EPOXY", "EPOXY", "success"),
-    ("A14_CARTO_SELECT_HIGH_TEMP", "HIGH_TEMP", "success"),
-    ("A15_CARTO_SELECT_CUSTOM", "CUSTOM", "success"),
-    ("A21_CARTO_SCAN_SELECTED", "CARTO_SCAN_CALIBRATE", "warning"),
-    ("A22_CARTO_TOUCH_SELECTED", "CARTO_TOUCH_CALIBRATE", "warning"),
-    ("A23_CARTO_LOAD_SELECTED", "CARTO_LOAD", "primary"),
-    ("A61_CARTO_TOUCH_HOME", "CARTO_TOUCH_HOME", "primary"),
-    ("A62_CARTO_LIST_MODELS", "CARTO_LIST_MODELS", "primary"),
-    ("A63_CARTO_INFO", "CARTO_INFO", "primary"),
+    ("A11_CARTO_SELECT_DEFAULT", "DEFAULT", "#1AED07"),
+    ("A12_CARTO_SELECT_TEXTURED_PEI", "TEXTURED_PEI", "#1AED07"),
+    ("A13_CARTO_SELECT_EPOXY", "EPOXY", "#1AED07"),
+    ("A14_CARTO_SELECT_HIGH_TEMP", "HIGH_TEMP", "#1AED07"),
+    ("A15_CARTO_SELECT_CUSTOM", "CUSTOM", "#1AED07"),
+    ("A21_CARTO_SCAN_SELECTED", "CARTO_SCAN_CALIBRATE", "#FFEB3B"),
+    ("A22_CARTO_TOUCH_SELECTED", "CARTO_TOUCH_CALIBRATE", "#FFEB3B"),
+    ("A23_CARTO_LOAD_SELECTED", "CARTO_LOAD", "#2196F3"),
+    ("A61_CARTO_TOUCH_HOME", "CARTO_TOUCH_HOME", "#2196F3"),
+    ("A62_CARTO_LIST_MODELS", "CARTO_LIST_MODELS", "#2196F3"),
+    ("A63_CARTO_INFO", "CARTO_INFO", "#2196F3"),
 )
-
 
 class LayoutError(RuntimeError):
     pass
@@ -104,12 +103,12 @@ def merge_layout(namespace):
             continue
 
         item = stored[index]
-        # These are installer defaults, not enforced policy. Preserve aliases
-        # and valid category choices the user has intentionally customized.
+        # Preserve aliases and valid category choices the user has intentionally
+        # customized. Colors are installer-managed so all 11 buttons retain the
+        # requested, consistent palette.
         if not item.get("alias"):
             item["alias"] = alias
-        if not item.get("color"):
-            item["color"] = color
+        item["color"] = color
         current_category = str(item.get("categoryId", "0"))
         if current_category == "0" or current_category not in valid_category_ids:
             item["categoryId"] = category_id
@@ -178,7 +177,7 @@ def main():
                 CATEGORY_NAME
             )
         )
-        print("I: refresh Fluidd to load the aliases and category")
+        print("I: refresh Fluidd to load the aliases, category, and colors")
     else:
         print("I: Fluidd Cartographer macro layout is already configured")
     return 0

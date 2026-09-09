@@ -6,10 +6,11 @@ selection, calibration, model loading, homing, and diagnostics.
 The installer also seeds Fluidd's UI metadata for all 11 buttons. They appear
 in the **Cartographer Calibration** category with short aliases while their
 real `A**_CARTO_*` names remain unchanged and retain their sorting order.
-Plate selectors are green, the two calibration actions are yellow, and the
-remaining actions are blue. Existing non-empty aliases, colors, and valid
-category assignments are treated as user customizations and preserved.
-Refresh Fluidd after installation to load a newly seeded layout.
+Plate selectors are green (`#1AED07`), the two calibration actions are yellow
+(`#FFEB3B`), and the remaining actions are blue (`#2196F3`). These 11 colors
+are installer-managed to keep the palette consistent. Existing non-empty
+aliases and valid category assignments are treated as user customizations and
+preserved. Refresh Fluidd after installation to load a newly seeded layout.
 
 These macros are installed together with the
 [surface-selection wrapper](../surface-selection-wrapper/README.md) by the
