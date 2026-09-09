@@ -24,10 +24,15 @@ class FirmwareCompatibilityTests(unittest.TestCase):
         self.assertNotIn("SET_PIN", self.config)
         self.assertNotIn("SET_TEMPERATURE_FAN_TARGET", self.config)
 
+    def test_case_fan_release_is_a_managed_firmware_setting(self):
+        self.assertIn("[gcode_macro _FIRMWARE_COMPAT_K2]", self.config)
+        self.assertIn("variable_release_stock_case_fan: 1", self.config)
+
     def test_compatibility_include_is_limited_to_11313(self):
         self.assertIn('[ "$PRINTER_FW" = "1.1.3.13" ]', self.installer)
         self.assertIn("main.cfg firmware_11313.cfg\n", self.installer)
         self.assertIn("main.cfg firmware_11313.cfg True", self.installer)
+        self.assertNotIn("set_case_fan_compat.sh", self.installer)
 
 
 if __name__ == "__main__":

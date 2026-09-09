@@ -76,6 +76,8 @@ sh "${SCRIPT_DIR}/install_prtouch_version_compat.sh" --no-restart
 # overrides.cfg. Add the Cartographer-only touch default without replacing
 # any existing user value. On a direct install, the macros installer repeats
 # this after it creates overrides.cfg.
+python3 "${SCRIPT_DIR}/../macros/overrides/cleanup_managed_overrides.py" \
+    ~/printer_data/config/custom/overrides.cfg
 sh "${SCRIPT_DIR}/../macros/overrides/enable_cartographer_touch.sh" \
     ~/printer_data/config/custom/overrides.cfg
 

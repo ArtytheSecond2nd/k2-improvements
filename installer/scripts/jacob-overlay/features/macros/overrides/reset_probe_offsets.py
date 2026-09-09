@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reset probe-dependent START_PRINT offsets during a Cartographer conversion."""
+"""Reset material START_PRINT offsets during a Cartographer conversion."""
 
 import os
 import re
@@ -10,7 +10,7 @@ import tempfile
 
 SECTION_RE = re.compile(r"^\s*\[gcode_macro\s+_START_PRINT_VARS\]\s*$", re.I)
 OFFSET_RE = re.compile(
-    r"^(\s*)(variable_offset_(PLA|PETG|ABS|ASA|DEFAULT|PROBE))"
+    r"^(\s*)(variable_offset_(PLA|PETG|ABS|ASA|DEFAULT))"
     r"(\s*:\s*)([^#\r\n]*?)([ \t]*(?:#.*)?)$",
     re.I,
 )
@@ -59,7 +59,7 @@ def main() -> int:
         )
 
     if not changed:
-        print("I: probe/material offsets are already zero in {}".format(path))
+        print("I: material offsets are already zero in {}".format(path))
         return 0
 
     mode = stat.S_IMODE(os.stat(path).st_mode)
@@ -75,7 +75,7 @@ def main() -> int:
             os.unlink(temp_path)
 
     print(
-        "I: reset probe/material offsets for Cartographer conversion: {}".format(
+        "I: reset material offsets for Cartographer conversion: {}".format(
             ", ".join(changed)
         )
     )

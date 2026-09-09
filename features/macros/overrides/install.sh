@@ -13,13 +13,14 @@ else
     echo "I: preserving existing custom/overrides.cfg"
 fi
 
+python3 "${SCRIPT_DIR}/cleanup_managed_overrides.py" \
+    ~/printer_data/config/custom/overrides.cfg
+
 sh "${SCRIPT_DIR}/ensure_bed_mesh_soak.sh" \
     ~/printer_data/config/custom/overrides.cfg
 
 . "${SCRIPT_DIR}/../../../installer/detect/printer_fw.sh"
 PRINTER_FW="$(detect_printer_fw)"
-sh "${SCRIPT_DIR}/set_case_fan_compat.sh" \
-    ~/printer_data/config/custom/overrides.cfg "$PRINTER_FW"
 
 # Firmware 1.1.3.13 references SET_TEMPERATURE_FAN_SWITCH from its stock
 # macros but does not register the command. Enable the compatibility shim only

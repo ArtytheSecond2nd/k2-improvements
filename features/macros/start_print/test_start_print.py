@@ -44,12 +44,16 @@ class StartPrintConfigTests(unittest.TestCase):
         self.assertIn('printer["temperature_fan chamber_fan"].speed', section)
         self.assertIn("CHAMBER_COOLING <= 0.0", section)
 
-    def test_case_fan_release_uses_installer_firmware_flag(self):
+    def test_case_fan_release_uses_managed_firmware_compatibility(self):
         section = self.config.split(
             "[gcode_macro BOX_NOZZLE_CLEAN]", 1
         )[1].split("[gcode_macro START_PRINT]", 1)[0]
+        self.assertIn('"gcode_macro _FIRMWARE_COMPAT_K2" in printer', section)
         self.assertIn("release_stock_case_fan|default(0)|int", section)
-        self.assertIn("variable_release_stock_case_fan: 0", self.config)
+        self.assertNotIn("variable_release_stock_case_fan:", self.config)
+
+    def test_obsolete_probe_switch_is_not_advertised(self):
+        self.assertNotIn("variable_offset_PROBE:", self.config)
 
     def test_case_fan_is_not_continuously_enforced(self):
         self.assertEqual(self.config.count("M107 P1"), 1)

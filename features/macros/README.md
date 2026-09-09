@@ -9,17 +9,20 @@ Installs the four macro components used by both guided setup paths:
 
 The overrides file is created only when missing. Re-running the installer
 preserves existing mount selections and user changes. New files seed the PLA,
-PETG, ABS, ASA, default, and probe offsets at `0`, along with a zero-minute
-heat soak.
+PETG, ABS, ASA, and default offsets at `0`, along with a zero-minute heat soak.
+Obsolete installer-managed entries are removed during updates; firmware
+compatibility state is kept in managed files rather than exposed as a user
+setting.
 
 The separate `variable_bed_mesh_soak` setting defaults to five minutes and is
 used only when the stock-probe workflow must create a missing saved mesh. Users
 who heat soak before sending a print can set it to `0`.
 
 The same overrides template serves both setup paths. When Cartographer is
-present, its installer also adds `[cartographer touch]` with the stock
-`max_noisy_samples: 2` value. That Cartographer-only section is not activated
-for a stock PR Touch installation.
+present, its installer adds one active `[cartographer touch]` section with the
+stock `max_noisy_samples: 2` value. That Cartographer-only section is absent
+from a stock PR Touch installation, and existing user-selected values are
+preserved on reinstall.
 
 On firmware `1.1.3.13`, installation also enables a compatibility definition
 for the missing `SET_TEMPERATURE_FAN_SWITCH` command still called by Creality's
