@@ -18,18 +18,18 @@ CATEGORY_ID = str(
     )
 )
 
-MACRO_ALIASES = (
-    ("A11_CARTO_SELECT_DEFAULT", "DEFAULT"),
-    ("A12_CARTO_SELECT_TEXTURED_PEI", "TEXTURED_PEI"),
-    ("A13_CARTO_SELECT_EPOXY", "EPOXY"),
-    ("A14_CARTO_SELECT_HIGH_TEMP", "HIGH_TEMP"),
-    ("A15_CARTO_SELECT_CUSTOM", "CUSTOM"),
-    ("A21_CARTO_SCAN_SELECTED", "CARTO_SCAN_CALIBRATE"),
-    ("A22_CARTO_TOUCH_SELECTED", "CARTO_TOUCH_CALIBRATE"),
-    ("A23_CARTO_LOAD_SELECTED", "CARTO_LOAD"),
-    ("A61_CARTO_TOUCH_HOME", "CARTO_TOUCH_HOME"),
-    ("A62_CARTO_LIST_MODELS", "CARTO_LIST_MODELS"),
-    ("A63_CARTO_INFO", "CARTO_INFO"),
+MACRO_LAYOUT = (
+    ("A11_CARTO_SELECT_DEFAULT", "DEFAULT", "success"),
+    ("A12_CARTO_SELECT_TEXTURED_PEI", "TEXTURED_PEI", "success"),
+    ("A13_CARTO_SELECT_EPOXY", "EPOXY", "success"),
+    ("A14_CARTO_SELECT_HIGH_TEMP", "HIGH_TEMP", "success"),
+    ("A15_CARTO_SELECT_CUSTOM", "CUSTOM", "success"),
+    ("A21_CARTO_SCAN_SELECTED", "CARTO_SCAN_CALIBRATE", "warning"),
+    ("A22_CARTO_TOUCH_SELECTED", "CARTO_TOUCH_CALIBRATE", "warning"),
+    ("A23_CARTO_LOAD_SELECTED", "CARTO_LOAD", "primary"),
+    ("A61_CARTO_TOUCH_HOME", "CARTO_TOUCH_HOME", "primary"),
+    ("A62_CARTO_LIST_MODELS", "CARTO_LIST_MODELS", "primary"),
+    ("A63_CARTO_INFO", "CARTO_INFO", "primary"),
 )
 
 
@@ -87,7 +87,7 @@ def merge_layout(namespace):
         if item.get("name")
     }
 
-    for name, alias in MACRO_ALIASES:
+    for name, alias, color in MACRO_LAYOUT:
         index = by_name.get(name.casefold())
         if index is None:
             stored.append(
@@ -96,7 +96,7 @@ def merge_layout(namespace):
                     "alias": alias,
                     "visible": True,
                     "disabledWhilePrinting": False,
-                    "color": "",
+                    "color": color,
                     "categoryId": category_id,
                 }
             )
@@ -108,6 +108,8 @@ def merge_layout(namespace):
         # and valid category choices the user has intentionally customized.
         if not item.get("alias"):
             item["alias"] = alias
+        if not item.get("color"):
+            item["color"] = color
         current_category = str(item.get("categoryId", "0"))
         if current_category == "0" or current_category not in valid_category_ids:
             item["categoryId"] = category_id

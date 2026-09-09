@@ -29,10 +29,16 @@ class FluiddLayoutTests(unittest.TestCase):
             if item["name"].startswith("A")
         }
 
-        self.assertEqual(list(targets), [name for name, _alias in layout.MACRO_ALIASES])
         self.assertEqual(
-            [targets[name]["alias"] for name, _alias in layout.MACRO_ALIASES],
-            [alias for _name, alias in layout.MACRO_ALIASES],
+            list(targets), [name for name, _alias, _color in layout.MACRO_LAYOUT]
+        )
+        self.assertEqual(
+            [targets[name]["alias"] for name, _alias, _color in layout.MACRO_LAYOUT],
+            [alias for _name, alias, _color in layout.MACRO_LAYOUT],
+        )
+        self.assertEqual(
+            [targets[name]["color"] for name, _alias, _color in layout.MACRO_LAYOUT],
+            [color for _name, _alias, color in layout.MACRO_LAYOUT],
         )
         self.assertTrue(all(item["categoryId"] == category["id"] for item in targets.values()))
         self.assertEqual(result["macros"]["expanded"], [0])
@@ -77,6 +83,7 @@ class FluiddLayoutTests(unittest.TestCase):
         self.assertEqual(first["order"], 9)
         second = result["macros"]["stored"][1]
         self.assertEqual(second["alias"], "TEXTURED_PEI")
+        self.assertEqual(second["color"], "success")
         self.assertEqual(second["categoryId"], "carto-user-id")
 
     def test_repairs_orphaned_category_assignment(self):
@@ -98,6 +105,7 @@ class FluiddLayoutTests(unittest.TestCase):
         item = result["macros"]["stored"][0]
         self.assertEqual(item["categoryId"], category["id"])
         self.assertEqual(item["alias"], "CARTO_INFO")
+        self.assertEqual(item["color"], "primary")
 
     def test_is_idempotent(self):
         first = layout.merge_layout({"macros": {}})

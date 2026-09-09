@@ -6,9 +6,10 @@ selection, calibration, model loading, homing, and diagnostics.
 The installer also seeds Fluidd's UI metadata for all 11 buttons. They appear
 in the **Cartographer Calibration** category with short aliases while their
 real `A**_CARTO_*` names remain unchanged and retain their sorting order.
-Existing non-empty aliases and valid category assignments are treated as user
-customizations and preserved. Refresh Fluidd after installation to load a
-newly seeded layout.
+Plate selectors are green, the two calibration actions are yellow, and the
+remaining actions are blue. Existing non-empty aliases, colors, and valid
+category assignments are treated as user customizations and preserved.
+Refresh Fluidd after installation to load a newly seeded layout.
 
 These macros are installed together with the
 [surface-selection wrapper](../surface-selection-wrapper/README.md) by the
@@ -74,20 +75,20 @@ of Fluidd's alphabetical macro list. The selected profile resets to `default`
 after a Klipper restart, so select a plate again before calibrating or loading.
 Utility buttons provide touch homing, model listing, and probe information.
 
-The seeded aliases, in macro-name order, are:
+The seeded aliases and colors, in macro-name order, are:
 
 ```text
-DEFAULT
-TEXTURED_PEI
-EPOXY
-HIGH_TEMP
-CUSTOM
-CARTO_SCAN_CALIBRATE
-CARTO_TOUCH_CALIBRATE
-CARTO_LOAD
-CARTO_TOUCH_HOME
-CARTO_LIST_MODELS
-CARTO_INFO
+DEFAULT                 green
+TEXTURED_PEI            green
+EPOXY                   green
+HIGH_TEMP               green
+CUSTOM                  green
+CARTO_SCAN_CALIBRATE    yellow
+CARTO_TOUCH_CALIBRATE   yellow
+CARTO_LOAD              blue
+CARTO_TOUCH_HOME        blue
+CARTO_LIST_MODELS       blue
+CARTO_INFO              blue
 ```
 
 The buttons call the Cartographer plugin commands directly, including
