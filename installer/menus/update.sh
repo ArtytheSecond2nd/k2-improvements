@@ -307,7 +307,7 @@ migration_repair_component() {
 
 migration_component_restart_kind() {
     case "$1" in
-        cartographer|save-config-restart|virtual-sdcard-guard|abort_homing|screws_tilt_adjust|kamp-adaptive-purge|axis_twist_compensation)
+        cartographer|save-config-restart|virtual-sdcard-guard|abort_homing|screws_tilt_adjust|kamp-adaptive-purge|axis_twist_compensation|cartographer-plate-workflow)
             echo code
             ;;
         *)

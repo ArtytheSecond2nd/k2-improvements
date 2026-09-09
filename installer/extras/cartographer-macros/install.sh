@@ -9,8 +9,10 @@ set -eu
 SCRIPT_DIR="$(readlink -f "$(dirname "$0")")"
 CFG_DIR="${PRINTER_CFG_DIR:-/mnt/UDISK/printer_data/config}"
 CUSTOM="$CFG_DIR/custom"
+KLIPPER_EXTRAS="${KLIPPER_DIR:-${HOME}/klipper}/klippy/extras"
 
 [ -d "$CUSTOM" ] || { echo "ERROR: $CUSTOM not found — install macros feature first"; exit 1; }
+[ -d "$KLIPPER_EXTRAS" ] || { echo "ERROR: $KLIPPER_EXTRAS not found — Klipper is required"; exit 1; }
 grep -q '^\[cartographer\]' "$CFG_DIR/printer.cfg" "$CUSTOM"/*.cfg 2>/dev/null || {
     echo "ERROR: no [cartographer] section found — install cartographer feature first"
     exit 1
@@ -18,6 +20,9 @@ grep -q '^\[cartographer\]' "$CFG_DIR/printer.cfg" "$CUSTOM"/*.cfg 2>/dev/null |
 
 ln -sfn "$SCRIPT_DIR/cartographer_macros.cfg" "$CUSTOM/cartographer_macros.cfg"
 echo "I: symlinked cartographer_macros.cfg into custom/"
+ln -sfn "$SCRIPT_DIR/k2_cartographer_offset_editor.py" \
+    "$KLIPPER_EXTRAS/k2_cartographer_offset_editor.py"
+echo "I: installed the Cartographer Global Z-offset editor"
 
 # Wire include into custom/main.cfg
 INSTALLER_BASE="${INSTALLER_DIR:-/mnt/UDISK/k2-improvements}"

@@ -24,6 +24,7 @@ MACRO_LAYOUT = (
     ("A13_CARTO_SELECT_EPOXY", "EPOXY", "#1AED07"),
     ("A14_CARTO_SELECT_HIGH_TEMP", "HIGH_TEMP", "#1AED07"),
     ("A15_CARTO_SELECT_CUSTOM", "CUSTOM", "#1AED07"),
+    ("A16_CARTO_GLOBAL_Z_OFFSETS", "GLOBAL_Z_OFFSETS", "#2196F3"),
     ("A21_CARTO_SCAN_SELECTED", "CARTO_SCAN_CALIBRATE", "#FF9800"),
     ("A22_CARTO_TOUCH_SELECTED", "CARTO_TOUCH_CALIBRATE", "#FF9800"),
     ("A23_CARTO_LOAD_SELECTED", "CARTO_LOAD", "#2196F3"),
@@ -94,7 +95,7 @@ def merge_layout(namespace):
                     "name": name,
                     "alias": alias,
                     "visible": True,
-                    "disabledWhilePrinting": False,
+                    "disabledWhilePrinting": name == "A16_CARTO_GLOBAL_Z_OFFSETS",
                     "color": color,
                     "categoryId": category_id,
                 }
@@ -173,7 +174,7 @@ def main():
 
     if changed:
         print(
-            "I: configured 11 Fluidd macros in the '{}' category".format(
+            "I: configured 12 Fluidd macros in the '{}' category".format(
                 CATEGORY_NAME
             )
         )

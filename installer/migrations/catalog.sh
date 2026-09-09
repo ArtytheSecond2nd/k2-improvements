@@ -66,5 +66,6 @@ cartographer-fluidd-layout-v1|cartographer-plate-workflow|is_carto_plate_workflo
 cartographer-fluidd-colors-v1|cartographer-plate-workflow|is_carto_plate_workflow|Cartographer plate macro actions now receive default Fluidd colors
 cartographer-fluidd-rgb-colors-v2|cartographer-plate-workflow|is_carto_plate_workflow|Cartographer plate macro colors now use Fluidd-compatible RGB values
 cartographer-fluidd-orange-calibration-v3|cartographer-plate-workflow|is_carto_plate_workflow|Cartographer calibration macro accents now use orange for clearer visual separation
+cartographer-global-z-editor-v1|cartographer-plate-workflow|is_carto_plate_workflow|Saved Cartographer Touch-model Z offsets can now be adjusted from Fluidd
 EOF
 }

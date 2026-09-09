@@ -7,7 +7,7 @@
 _EXTRAS='prtouch-cleanup|is_prtouch_clean|Remove orphan [prtouch_v3] SAVE_CONFIG header|installer/extras/prtouch-cleanup/install.sh|is_cartographer
 surface-selection-wrapper|is_surface_wrap|START_PRINT SURFACE= param loads matching scan/touch model|installer/extras/surface-selection-wrapper/install.sh|is_cartographer
 cartographer-offset-setup|is_carto_offset_set|Cartographer mount offset profiles/custom|installer/extras/cartographer-offset-setup/install.sh|is_cartographer
-cartographer-macros|is_carto_macros|CARTO_* macro buttons for Fluidd (calibrate/load/touch home)|installer/extras/cartographer-macros/install.sh|is_cartographer
+cartographer-macros|is_carto_macros|CARTO_* Fluidd buttons (profiles/calibration/global Z)|installer/extras/cartographer-macros/install.sh|is_cartographer
 axis_twist_compensation|is_axis_twist|Optional Z-drift compensation across X|features/axis_twist_compensation/install.sh|
 plate-aware-mesh|is_plate_aware_mesh|Saved meshes selected by build plate and temperature|installer/extras/plate-aware-mesh/install.sh|is_stock_probe
 secure-auth|is_secure_auth|Disable SSH password login (requires a tested public key)|features/secure-auth/install.sh|
