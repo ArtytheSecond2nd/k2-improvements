@@ -3,6 +3,13 @@
 Adds compact `A**_CARTO_*` buttons to Fluidd for Cartographer profile
 selection, calibration, model loading, homing, and diagnostics.
 
+The installer also seeds Fluidd's UI metadata for all 11 buttons. They appear
+in the **Cartographer Calibration** category with short aliases while their
+real `A**_CARTO_*` names remain unchanged and retain their sorting order.
+Existing non-empty aliases and valid category assignments are treated as user
+customizations and preserved. Refresh Fluidd after installation to load a
+newly seeded layout.
+
 These macros are installed together with the
 [surface-selection wrapper](../surface-selection-wrapper/README.md) by the
 **Cartographer plate workflow** entry in Extras.
@@ -66,6 +73,22 @@ The numeric prefixes keep the selection and shared action buttons at the top
 of Fluidd's alphabetical macro list. The selected profile resets to `default`
 after a Klipper restart, so select a plate again before calibrating or loading.
 Utility buttons provide touch homing, model listing, and probe information.
+
+The seeded aliases, in macro-name order, are:
+
+```text
+DEFAULT
+TEXTURED_PEI
+EPOXY
+HIGH_TEMP
+CUSTOM
+CARTO_SCAN_CALIBRATE
+CARTO_TOUCH_CALIBRATE
+CARTO_LOAD
+CARTO_TOUCH_HOME
+CARTO_LIST_MODELS
+CARTO_INFO
+```
 
 The buttons call the Cartographer plugin commands directly, including
 `CARTOGRAPHER_SCAN_CALIBRATE`, `CARTOGRAPHER_TOUCH_CALIBRATE`, and the scan and

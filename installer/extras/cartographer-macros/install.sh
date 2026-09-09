@@ -31,3 +31,10 @@ fi
 
 echo "I: cartographer-macros installed. CARTO_* macros appear in Fluidd"
 echo "I: after FIRMWARE_RESTART completes the full K2 startup sequence."
+
+if python3 "$SCRIPT_DIR/configure_fluidd_layout.py"; then
+    :
+else
+    echo "W: macros were installed, but their Fluidd aliases/category could not be configured"
+    echo "W: use Fluidd Settings -> Macros to configure them manually"
+fi

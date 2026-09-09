@@ -62,5 +62,6 @@ virtual-sdcard-upload-boundary-v1|virtual-sdcard-guard|is_virtual_sdcard_guard|V
 case-fan-demand-aware-release-v1|macros|is_macros|The case-fan release now requires the direct 100 percent override and preserves active chamber cooling
 managed-overrides-cleanup-v1|macros|is_macros|Obsolete probe, case-fan, and duplicate Cartographer Touch override entries are removed
 case-fan-1152-release-v1|macros|is_macros|Firmware 1.1.5.2 now releases a direct 100 percent case-fan override at print preparation when chamber cooling is idle
+cartographer-fluidd-layout-v1|cartographer-plate-workflow|is_carto_plate_workflow|Cartographer plate macros now receive default Fluidd aliases and category organization
 EOF
 }
