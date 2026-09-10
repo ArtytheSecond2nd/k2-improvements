@@ -7,6 +7,7 @@ import unittest
 
 
 MODULE_PATH = pathlib.Path(__file__).with_name("k2_material_z_offset_editor.py")
+INSTALL_PATH = pathlib.Path(__file__).with_name("install.sh")
 SPEC = importlib.util.spec_from_file_location("k2_material_z_offset_editor", MODULE_PATH)
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
@@ -197,6 +198,17 @@ class MaterialEditorTests(unittest.TestCase):
             editor.cmd_open(FakeGCmd())
         editor.cmd_apply(FakeGCmd(MATERIAL="PLA"))
         self.assertEqual(printer.objects["gcode"].scripts, ["SET_GCODE_OFFSET Z=-0.010"])
+
+    def test_installer_refreshes_start_print_handoff(self):
+        installer = INSTALL_PATH.read_text(encoding="utf-8")
+        self.assertIn(
+            'START_PRINT_SOURCE="$INSTALLER_BASE/features/macros/start_print/start_print.cfg"',
+            installer,
+        )
+        self.assertIn(
+            'ln -sfn "$START_PRINT_SOURCE" "$CUSTOM/start_print.cfg"',
+            installer,
+        )
 
 
 if __name__ == "__main__":

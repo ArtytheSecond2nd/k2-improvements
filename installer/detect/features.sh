@@ -17,7 +17,7 @@ is_cartographer() {
     grep -q '^class TriggerDispatch' "$klipper_dir/klippy/mcu.py" 2>/dev/null
 }
 is_moonraker()     { [ -d /mnt/UDISK/printer_data/moonraker ] || [ -f /mnt/UDISK/printer_data/config/moonraker.conf ]; }
-is_fluidd()        { grep -lq 'crealityk2' /usr/share/fluidd/assets/*.js 2>/dev/null; }
+is_fluidd()        { grep -ilq 'crealityk2' /usr/share/fluidd/assets/*.js 2>/dev/null; }
 is_macros() {
     local custom="$PRINTER_CFG_DIR/custom"
     local main="$custom/main.cfg"
@@ -122,6 +122,7 @@ is_material_z_offsets() {
     local editor="${KLIPPER_DIR:-${HOME:-/mnt/UDISK/root}/klipper}/klippy/extras/k2_material_z_offset_editor.py"
     [ -e "$custom/material_z_offsets.cfg" ] &&
     grep -q '^\[include material_z_offsets\.cfg\]$' "$custom/main.cfg" 2>/dev/null &&
+    grep -q 'K2_MATERIAL_Z_APPLY' "$custom/start_print.cfg" 2>/dev/null &&
     [ -e "$editor" ] &&
     grep -qx '3' /usr/share/fluidd/k2-ui-overlay-support.txt 2>/dev/null
 }

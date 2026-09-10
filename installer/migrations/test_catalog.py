@@ -271,5 +271,15 @@ class MigrationCatalogTests(unittest.TestCase):
             },
         )
 
+    def test_material_offsets_track_start_print_handoff_update(self):
+        self.assertIn(
+            "material-z-offsets-start-print-bridge-v2",
+            {
+                migration_id
+                for migration_id, component, _detector, _reason in entries()
+                if component == "material-z-offsets"
+            },
+        )
+
 if __name__ == "__main__":
     unittest.main()

@@ -11,6 +11,7 @@ HERE = pathlib.Path(__file__).parent
 ARCHIVE = HERE / "fluidd-v1.37.4.zip"
 PATCH = HERE / "fluidd-v1.37.4.patch"
 INSTALLER = HERE / "install.sh"
+FEATURE_DETECTORS = HERE.parent.parent / "detect" / "features.sh"
 
 
 class FluiddBundleTests(unittest.TestCase):
@@ -59,6 +60,10 @@ class FluiddBundleTests(unittest.TestCase):
         ))
         self.assertIn(b"WebrtcCrealityk2RtcCamera", scripts)
         self.assertNotIn(b"WebrtcCrealityk2rtcCamera", scripts)
+
+    def test_installer_detects_the_actual_camera_asset_case(self):
+        detectors = FEATURE_DETECTORS.read_text(encoding="utf-8")
+        self.assertIn("grep -ilq 'crealityk2'", detectors)
 
     def test_source_patch_and_installer_are_self_contained(self):
         patch = PATCH.read_text(encoding="utf-8")
