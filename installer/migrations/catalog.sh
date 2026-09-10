@@ -70,5 +70,7 @@ cartographer-global-z-optional-v2|cartographer-plate-workflow|is_carto_plate_wor
 global-touch-offsets-live-editor-v1|global-touch-offsets|is_global_touch_offsets|The optional global Touch-offset editor uses a live Fluidd control and saves without SAVE_CONFIG
 global-touch-offsets-camera-resolver-v2|global-touch-offsets|is_global_touch_offsets|Global Carto Touch Z Offsets restores Creality camera support
 global-touch-offsets-category-v3|global-touch-offsets|is_global_touch_offsets|Global Carto Touch Z Offsets moves its macro into the Z Offsets category
+global-touch-offsets-shared-ui-v4|global-touch-offsets|is_global_touch_offsets|Global Carto Touch Z Offsets now shares one safe Fluidd overlay with the material editor
+material-z-offsets-editor-v1|material-z-offsets|is_material_z_offsets|The optional Material Z Offsets editor and automatic material registration are available
 EOF
 }

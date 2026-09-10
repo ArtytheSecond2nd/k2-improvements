@@ -20,6 +20,7 @@ migration_component_label() {
         axis_twist_compensation) echo 'Axis Twist Compensation' ;;
         cartographer-plate-workflow) echo 'Cartographer plate workflow' ;;
         global-touch-offsets) echo 'Global Carto Touch Z Offsets' ;;
+        material-z-offsets) echo 'Material Z Offsets' ;;
         plate-aware-mesh) echo 'Plate-aware saved meshes' ;;
         *) echo "$1" ;;
     esac
@@ -38,6 +39,7 @@ migration_component_installed() {
         axis_twist_compensation) is_axis_twist ;;
         cartographer-plate-workflow) is_carto_plate_workflow ;;
         global-touch-offsets) is_global_touch_offsets ;;
+        material-z-offsets) is_material_z_offsets ;;
         plate-aware-mesh) is_plate_aware_mesh ;;
         *) return 1 ;;
     esac
@@ -98,6 +100,9 @@ migration_component_present() {
         global-touch-offsets)
             [ -e "$custom/global_touch_offsets.cfg" ]
             ;;
+        material-z-offsets)
+            [ -e "$custom/material_z_offsets.cfg" ]
+            ;;
         plate-aware-mesh)
             [ -e "$custom/plate_aware_mesh.cfg" ]
             ;;
@@ -112,7 +117,7 @@ migration_capture_installed_components() {
     : > "$temporary"
     for component in cartographer save-config-restart virtual-sdcard-guard abort_homing \
         screws_tilt_adjust macros r3men-bed kamp-adaptive-purge \
-        axis_twist_compensation cartographer-plate-workflow global-touch-offsets plate-aware-mesh; do
+        axis_twist_compensation cartographer-plate-workflow global-touch-offsets material-z-offsets plate-aware-mesh; do
         if migration_component_installed "$component" 2>/dev/null ||
            migration_component_present "$component" 2>/dev/null; then
             printf '%s\n' "$component" >> "$temporary"
@@ -140,7 +145,7 @@ migration_pending_components() {
     entries=$(migration_pending_entries)
     for component in cartographer save-config-restart virtual-sdcard-guard abort_homing \
         screws_tilt_adjust macros r3men-bed kamp-adaptive-purge \
-        axis_twist_compensation cartographer-plate-workflow global-touch-offsets plate-aware-mesh; do
+        axis_twist_compensation cartographer-plate-workflow global-touch-offsets material-z-offsets plate-aware-mesh; do
         if printf '%s\n' "$entries" | grep -q "^[^|]*|$component|"; then
             printf '%s\n' "$component"
         fi
@@ -303,6 +308,10 @@ migration_repair_component() {
             HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
                 sh "$INSTALLER_DIR/installer/extras/global-touch-offsets/install.sh"
             ;;
+        material-z-offsets)
+            HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
+                sh "$INSTALLER_DIR/installer/extras/material-z-offsets/install.sh"
+            ;;
         plate-aware-mesh)
             HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
                 sh "$INSTALLER_DIR/installer/extras/plate-aware-mesh/install.sh" --no-restart
@@ -316,7 +325,7 @@ migration_repair_component() {
 
 migration_component_restart_kind() {
     case "$1" in
-        cartographer|save-config-restart|virtual-sdcard-guard|abort_homing|screws_tilt_adjust|kamp-adaptive-purge|axis_twist_compensation|global-touch-offsets)
+        cartographer|save-config-restart|virtual-sdcard-guard|abort_homing|screws_tilt_adjust|kamp-adaptive-purge|axis_twist_compensation|global-touch-offsets|material-z-offsets)
             echo code
             ;;
         *)

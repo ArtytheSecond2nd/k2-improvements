@@ -22,6 +22,7 @@ KNOWN_COMPONENTS = {
     "axis_twist_compensation",
     "cartographer-plate-workflow",
     "global-touch-offsets",
+    "material-z-offsets",
     "plate-aware-mesh",
 }
 
@@ -37,6 +38,7 @@ EXPECTED_DETECTORS = {
     "axis_twist_compensation": "is_axis_twist",
     "cartographer-plate-workflow": "is_carto_plate_workflow",
     "global-touch-offsets": "is_global_touch_offsets",
+    "material-z-offsets": "is_material_z_offsets",
     "plate-aware-mesh": "is_plate_aware_mesh",
 }
 

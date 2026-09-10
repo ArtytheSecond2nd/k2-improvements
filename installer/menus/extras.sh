@@ -9,6 +9,7 @@ surface-selection-wrapper|is_surface_wrap|START_PRINT SURFACE= param loads match
 cartographer-offset-setup|is_carto_offset_set|Cartographer mount offset profiles/custom|installer/extras/cartographer-offset-setup/install.sh|is_cartographer
 cartographer-macros|is_carto_macros|CARTO_* Fluidd buttons (profiles/calibration/load)|installer/extras/cartographer-macros/install.sh|is_cartographer
 global-touch-offsets|is_global_touch_offsets|Interactive Cartographer global Touch-offset editor|installer/extras/global-touch-offsets/install.sh|is_cartographer
+material-z-offsets|is_material_z_offsets|Interactive material Z-offset editor|installer/extras/material-z-offsets/install.sh|is_macros
 axis_twist_compensation|is_axis_twist|Optional Z-drift compensation across X|features/axis_twist_compensation/install.sh|
 plate-aware-mesh|is_plate_aware_mesh|Saved meshes selected by build plate and temperature|installer/extras/plate-aware-mesh/install.sh|is_stock_probe
 secure-auth|is_secure_auth|Disable SSH password login (requires a tested public key)|features/secure-auth/install.sh|
@@ -27,6 +28,7 @@ _extras_requires_label() {
     case "$1" in
         is_cartographer) echo "needs Cartographer" ;;
         is_stock_probe)  echo "stock PR Touch only" ;;
+        is_macros)       echo "needs Macros" ;;
         *)               echo "blocked: $1" ;;
     esac
 }
@@ -48,6 +50,7 @@ extra_state() {
         case "$req" in
             is_cartographer) state_requires 'CARTOGRAPHER' ;;
             is_stock_probe) state_requires 'STOCK PR TOUCH' ;;
+            is_macros) state_requires 'MACROS' ;;
             *) state_blocked ;;
         esac
     else
@@ -161,14 +164,16 @@ menu_extras() {
         if is_cartographer; then
             ui_menu_item 4 'Cartographer plate workflow' "$(carto_plate_workflow_state)"
             ui_menu_item 5 'Global Carto Touch Z Offsets' "$(extra_state global-touch-offsets)"
+            ui_menu_item 6 'Material Z Offsets' "$(extra_state material-z-offsets)"
+            printf '\n Security\n'
+            ui_menu_item 7 'Secure Auth' "$(extra_state secure-auth)"
+            printf '\n  0. Back\n\nSelect [0-7]: '
+        else
+            ui_menu_item 4 'Plate-aware saved meshes' "$(extra_state plate-aware-mesh)"
+            ui_menu_item 5 'Material Z Offsets' "$(extra_state material-z-offsets)"
             printf '\n Security\n'
             ui_menu_item 6 'Secure Auth' "$(extra_state secure-auth)"
             printf '\n  0. Back\n\nSelect [0-6]: '
-        else
-            ui_menu_item 4 'Plate-aware saved meshes' "$(extra_state plate-aware-mesh)"
-            printf '\n Security\n'
-            ui_menu_item 5 'Secure Auth' "$(extra_state secure-auth)"
-            printf '\n  0. Back\n\nSelect [0-5]: '
         fi
         read -r c
         case "$c" in
@@ -186,10 +191,17 @@ menu_extras() {
                 if is_cartographer; then
                     run_extra_name global-touch-offsets
                 else
-                    run_extra_name secure-auth
+                    run_extra_name material-z-offsets
                 fi
                 ;;
             6)
+                if is_cartographer; then
+                    run_extra_name material-z-offsets
+                else
+                    run_extra_name secure-auth
+                fi
+                ;;
+            7)
                 if is_cartographer; then run_extra_name secure-auth; fi
                 ;;
             0|b|B|q|Q) return ;;
@@ -233,6 +245,9 @@ install_extra() {
                 printf '  This extra is for a K2 Plus using the stock PR Touch probe.\n'
                 printf '  Cartographer installations create adaptive meshes per print and use\n'
                 printf '  the separate Cartographer plate workflow.\n\n'
+                ;;
+            is_macros)
+                printf '  This extra requires the managed START_PRINT macros first.\n\n'
                 ;;
             *)
                 printf '  Precondition function "%s" returned false.\n\n' "$req"

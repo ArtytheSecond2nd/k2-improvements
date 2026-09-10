@@ -86,6 +86,15 @@ class StartPrintConfigTests(unittest.TestCase):
         self.assertLess(active_heater, passive_branch)
         self.assertLess(passive_branch, passive_heater)
 
+    def test_optional_material_editor_owns_offset_application(self):
+        self.assertIn('"k2_material_z_offset_editor" in printer', self.config)
+        self.assertIn('K2_MATERIAL_Z_APPLY MATERIAL="{MATERIAL}"', self.config)
+        self.assertEqual(self.config.count("SET_GCODE_OFFSET Z={OFFSET}"), 1)
+
+    def test_material_defaults_start_at_point_zero_five(self):
+        for material in ("PLA", "PETG", "ABS", "ASA", "DEFAULT"):
+            self.assertIn("variable_offset_%s: 0.05" % material, self.config)
+
 
 if __name__ == "__main__":
     unittest.main()
