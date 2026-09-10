@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static checks for firmware-scoped macro compatibility."""
+"""Static checks for firmware-scoped command compatibility."""
 
 import pathlib
 import unittest
@@ -26,18 +26,21 @@ class FirmwareCompatibilityTests(unittest.TestCase):
         self.assertNotIn("SET_PIN", self.config)
         self.assertNotIn("SET_TEMPERATURE_FAN_TARGET", self.config)
 
-    def test_case_fan_release_is_managed_for_both_validated_firmwares(self):
+    def test_case_fan_release_flags_are_retired(self):
         for config in (self.config, self.config_1152):
-            self.assertIn("[gcode_macro _FIRMWARE_COMPAT_K2]", config)
-            self.assertIn("variable_release_stock_case_fan: 1", config)
+            self.assertNotIn("[gcode_macro _FIRMWARE_COMPAT_K2]", config)
+            self.assertNotIn("variable_release_stock_case_fan", config)
 
     def test_compatibility_include_is_limited_to_11313(self):
         self.assertIn('[ "$PRINTER_FW" = "1.1.3.13" ]', self.installer)
         self.assertIn("main.cfg firmware_11313.cfg\n", self.installer)
         self.assertIn("main.cfg firmware_11313.cfg True", self.installer)
-        self.assertIn('[ "$PRINTER_FW" = "1.1.5.2" ]', self.installer)
-        self.assertIn("main.cfg firmware_1152.cfg\n", self.installer)
+        self.assertNotIn('[ "$PRINTER_FW" = "1.1.5.2" ]', self.installer)
         self.assertIn("main.cfg firmware_1152.cfg True", self.installer)
+        self.assertIn(
+            "rm -f ~/printer_data/config/custom/firmware_1152.cfg",
+            self.installer,
+        )
         self.assertNotIn("set_case_fan_compat.sh", self.installer)
 
 

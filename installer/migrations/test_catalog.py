@@ -291,5 +291,15 @@ class MigrationCatalogTests(unittest.TestCase):
             },
         )
 
+    def test_macros_track_firmware_independent_case_fan_release(self):
+        self.assertIn(
+            "case-fan-runtime-state-v2",
+            {
+                migration_id
+                for migration_id, component, _detector, _reason in entries()
+                if component == "macros"
+            },
+        )
+
 if __name__ == "__main__":
     unittest.main()

@@ -28,7 +28,7 @@ class StartPrintConfigTests(unittest.TestCase):
         section = self.config.split(
             "[gcode_macro BOX_NOZZLE_CLEAN]", 1
         )[1].split("[gcode_macro START_PRINT]", 1)[0]
-        self.assertIn("RELEASE_CASE_FAN == 1", section)
+        self.assertIn("DIRECT_CASE_FAN >= 0.999", section)
         self.assertNotIn("'cartographer' not in printer", section)
 
     def test_case_fan_release_requires_direct_full_speed_request(self):
@@ -45,12 +45,12 @@ class StartPrintConfigTests(unittest.TestCase):
         self.assertIn('printer["temperature_fan chamber_fan"].speed', section)
         self.assertIn("CHAMBER_COOLING <= 0.0", section)
 
-    def test_case_fan_release_uses_managed_firmware_compatibility(self):
+    def test_case_fan_release_is_runtime_state_gated(self):
         section = self.config.split(
             "[gcode_macro BOX_NOZZLE_CLEAN]", 1
         )[1].split("[gcode_macro START_PRINT]", 1)[0]
-        self.assertIn('"gcode_macro _FIRMWARE_COMPAT_K2" in printer', section)
-        self.assertIn("release_stock_case_fan|default(0)|int", section)
+        self.assertNotIn("_FIRMWARE_COMPAT_K2", section)
+        self.assertNotIn("RELEASE_CASE_FAN", section)
         self.assertNotIn("variable_release_stock_case_fan:", self.config)
 
     def test_obsolete_probe_switch_is_not_advertised(self):

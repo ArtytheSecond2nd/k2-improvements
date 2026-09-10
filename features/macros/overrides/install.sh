@@ -35,19 +35,12 @@ else
         ~/printer_data/config/custom/main.cfg firmware_11313.cfg True
 fi
 
-# Firmware 1.1.5.2 does not turn the case fan on automatically during the
-# validated path, but a direct fan request left active before printing must be
-# released by the same guarded first-nozzle-clean behavior. Keep this separate
-# from the 1.1.3.13 command shim so newer firmware cannot inherit that no-op.
-ln -sf "${SCRIPT_DIR}/firmware_1152.cfg" \
-    ~/printer_data/config/custom/firmware_1152.cfg
-if [ "$PRINTER_FW" = "1.1.5.2" ]; then
-    python "${SCRIPT_DIR}/../../../scripts/ensure_included.py" \
-        ~/printer_data/config/custom/main.cfg firmware_1152.cfg
-else
-    python "${SCRIPT_DIR}/../../../scripts/ensure_included.py" \
-        ~/printer_data/config/custom/main.cfg firmware_1152.cfg True
-fi
+# The case-fan release is now guarded by live fan state on every firmware.
+# Remove the former 1.1.5.2-only include and its installed link. The tracked
+# placeholder remains harmless while an older checkout is being updated.
+python "${SCRIPT_DIR}/../../../scripts/ensure_included.py" \
+    ~/printer_data/config/custom/main.cfg firmware_1152.cfg True
+rm -f ~/printer_data/config/custom/firmware_1152.cfg
 
 # The same overrides seed is used by both setup paths. Activate the
 # Cartographer-only defaults only when Cartographer is actually configured.

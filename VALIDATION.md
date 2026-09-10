@@ -52,7 +52,7 @@ For the no-Cartographer path, a saved `default` mesh must match the active
 |---|:---:|
 | Complete Creality pre-file preparation retained with Cartographer and without PR Touch command errors | PASS |
 | Creality touchscreen live Z-offset display and adjustment | PASS |
-| Firmware-scoped pre-print case-fan override release | PASS |
+| Runtime-state pre-print case-fan override release | PASS |
 | Bed tilt, Cartographer adaptive mesh, nozzle-clean handoff, Touch home, and print | PASS |
 | Selected High Temperature plate Scan and Touch calibration, loading, and print path | PASS |
 | Global Carto Touch Z Offset editor reads and rewrites saved Touch-model offsets | PASS |
