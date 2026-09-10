@@ -19,7 +19,7 @@ migration_component_label() {
         r3men-bed) echo 'R3MEN bed thermistor profile' ;;
         axis_twist_compensation) echo 'Axis Twist Compensation' ;;
         cartographer-plate-workflow) echo 'Cartographer plate workflow' ;;
-        global-touch-offsets) echo 'Global Touch offsets' ;;
+        global-touch-offsets) echo 'Global Carto Touch Z Offsets' ;;
         plate-aware-mesh) echo 'Plate-aware saved meshes' ;;
         *) echo "$1" ;;
     esac

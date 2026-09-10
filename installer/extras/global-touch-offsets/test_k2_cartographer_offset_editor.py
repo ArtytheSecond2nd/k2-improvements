@@ -158,7 +158,7 @@ class OffsetEditorTests(unittest.TestCase):
         save = FakeGCmd()
         editor.cmd_save(save)
         self.assertEqual(printer.gcode.scripts, [])
-        self.assertEqual(save.info, ["No Global Touch-offset changes to save"])
+        self.assertEqual(save.info, ["No Global Carto Touch Z Offset changes to save"])
 
     def test_open_and_save_are_blocked_during_print(self):
         editor, printer = self.make_editor("printing")

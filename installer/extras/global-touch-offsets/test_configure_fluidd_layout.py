@@ -13,7 +13,7 @@ class FluiddLayoutTests(unittest.TestCase):
         category = result["macros"]["categories"][0]
         item = result["macros"]["stored"][0]
 
-        self.assertEqual(category["name"], "Global Touch offsets")
+        self.assertEqual(category["name"], "Just Z Offsets")
         self.assertEqual(item["name"], "GLOBAL_Z_OFFSETS_CARTO")
         self.assertEqual(item["alias"], "Global_Z_Offsets_Carto")
         self.assertEqual(item["categoryId"], category["id"])
@@ -47,6 +47,25 @@ class FluiddLayoutTests(unittest.TestCase):
         first = layout.merge_layout({"macros": {}})
         second = layout.merge_layout(copy.deepcopy(first))
         self.assertEqual(second, first)
+
+    def test_renames_existing_legacy_category(self):
+        source = {
+            "macros": {
+                "categories": [{"id": "legacy", "name": "Global Touch offsets"}],
+                "stored": [
+                    {
+                        "name": "GLOBAL_Z_OFFSETS_CARTO",
+                        "categoryId": "legacy",
+                    }
+                ],
+            }
+        }
+        result = layout.merge_layout(source)
+        self.assertEqual(
+            result["macros"]["categories"],
+            [{"id": "legacy", "name": "Just Z Offsets"}],
+        )
+        self.assertEqual(result["macros"]["stored"][0]["categoryId"], "legacy")
 
     def test_rejects_malformed_state(self):
         with self.assertRaises(layout.LayoutError):

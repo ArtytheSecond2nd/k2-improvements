@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Seed Fluidd metadata for the optional Global Touch-offset editor."""
+"""Seed Fluidd metadata for the optional Cartographer Touch-offset editor."""
 
 import json
 import os
@@ -10,7 +10,8 @@ import urllib.request
 import uuid
 
 
-CATEGORY_NAME = "Global Touch offsets"
+CATEGORY_NAME = "Just Z Offsets"
+LEGACY_CATEGORY_NAME = "Global Touch offsets"
 CATEGORY_ID = str(
     uuid.uuid5(
         uuid.NAMESPACE_URL,
@@ -51,7 +52,8 @@ def merge_layout(namespace):
         (
             item
             for item in categories
-            if str(item.get("name", "")).casefold() == CATEGORY_NAME.casefold()
+            if str(item.get("name", "")).casefold()
+            in {CATEGORY_NAME.casefold(), LEGACY_CATEGORY_NAME.casefold()}
             and item.get("id")
         ),
         None,
@@ -63,6 +65,7 @@ def merge_layout(namespace):
         categories.append({"id": category_id, "name": CATEGORY_NAME})
     else:
         category_id = str(category["id"])
+        category["name"] = CATEGORY_NAME
 
     item = next(
         (
@@ -146,14 +149,14 @@ def main():
     try:
         changed = configure(api_url)
     except LayoutError as exc:
-        print("E: could not configure Fluidd Global Touch offsets: {}".format(exc))
+        print("E: could not configure Fluidd Z Offsets category: {}".format(exc))
         return 1
 
     if changed:
         print("I: configured Global_Z_Offsets_Carto in '{}'".format(CATEGORY_NAME))
         print("I: refresh Fluidd to load its alias, category, and color")
     else:
-        print("I: Fluidd Global Touch-offset layout is already configured")
+        print("I: Fluidd Z Offsets category is already configured")
     return 0
 
 

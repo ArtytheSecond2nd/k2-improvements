@@ -68,5 +68,6 @@ cartographer-fluidd-rgb-colors-v2|cartographer-plate-workflow|is_carto_plate_wor
 cartographer-fluidd-orange-calibration-v3|cartographer-plate-workflow|is_carto_plate_workflow|Cartographer calibration macro accents now use orange for clearer visual separation
 cartographer-global-z-optional-v2|cartographer-plate-workflow|is_carto_plate_workflow|The global Touch-offset editor is now a separate optional feature
 global-touch-offsets-live-editor-v1|global-touch-offsets|is_global_touch_offsets|The optional global Touch-offset editor uses a live Fluidd control and saves without SAVE_CONFIG
+global-touch-offsets-camera-resolver-v2|global-touch-offsets|is_global_touch_offsets|Global Carto Touch Z Offsets restores Creality camera support and moves its macro into Just Z Offsets
 EOF
 }

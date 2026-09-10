@@ -160,7 +160,7 @@ menu_extras() {
         ui_menu_item 3 'Axis twist compensation' "$(extra_state axis_twist_compensation)"
         if is_cartographer; then
             ui_menu_item 4 'Cartographer plate workflow' "$(carto_plate_workflow_state)"
-            ui_menu_item 5 'Global Touch offsets' "$(extra_state global-touch-offsets)"
+            ui_menu_item 5 'Global Carto Touch Z Offsets' "$(extra_state global-touch-offsets)"
             printf '\n Security\n'
             ui_menu_item 6 'Secure Auth' "$(extra_state secure-auth)"
             printf '\n  0. Back\n\nSelect [0-6]: '

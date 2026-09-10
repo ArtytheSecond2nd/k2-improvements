@@ -10,11 +10,11 @@ index 2cfc776a..9081496e 100644
              { text: $t('app.setting.camera_type_options.video'), value: 'ipstream' },
              { text: $t('app.setting.camera_type_options.iframe'), value: 'iframe' }
            ]"
-diff --git a/src/components/widgets/camera/services/WebrtcCrealityk2rtcCamera.vue b/src/components/widgets/camera/services/WebrtcCrealityk2rtcCamera.vue
+diff --git a/src/components/widgets/camera/services/WebrtcCrealityk2RtcCamera.vue b/src/components/widgets/camera/services/WebrtcCrealityk2RtcCamera.vue
 new file mode 100644
 index 00000000..4a9087f9
 --- /dev/null
-+++ b/src/components/widgets/camera/services/WebrtcCrealityk2rtcCamera.vue
++++ b/src/components/widgets/camera/services/WebrtcCrealityk2RtcCamera.vue
 @@ -0,0 +1,155 @@
 +<template>
 +  <video
@@ -45,7 +45,7 @@ index 00000000..4a9087f9
 +]
 +
 +@Component({})
-+export default class WebrtcCrealityk2rtcCamera extends Mixins(CameraMixin) {
++export default class WebrtcCrealityk2RtcCamera extends Mixins(CameraMixin) {
 +  @Ref('streamingElement')
 +  readonly cameraVideo!: HTMLVideoElement
 +
@@ -100,7 +100,7 @@ index 00000000..4a9087f9
 +              await pc.setRemoteDescription(new RTCSessionDescription(jsonRes))
 +            }
 +          } catch (e) {
-+            consola.error('[WebrtcCrealityk2rtcCamera] onicecandidate', e)
++            consola.error('[WebrtcCrealityk2RtcCamera] onicecandidate', e)
 +            this.onError()
 +          }
 +        }
@@ -119,9 +119,9 @@ index 00000000..4a9087f9
 +      const offer = await pc.createOffer()
 +      await pc.setLocalDescription(offer)
 +
-+      consola.debug('[WebrtcCrealityk2rtcCamera] Set Creality K2 Camera')
++      consola.debug('[WebrtcCrealityk2RtcCamera] Set Creality K2 Camera')
 +    } catch (e) {
-+      consola.error(`[WebrtcCrealityk2rtcCamera] failed to start playback "${this.camera.name}"`, e)
++      consola.error(`[WebrtcCrealityk2RtcCamera] failed to start playback "${this.camera.name}"`, e)
 +      this.onError()
 +    }
 +  }

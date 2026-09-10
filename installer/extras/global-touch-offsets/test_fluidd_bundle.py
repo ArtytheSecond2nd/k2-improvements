@@ -20,7 +20,7 @@ class FluiddBundleTests(unittest.TestCase):
             release = json.loads(bundle.read("release_info.json"))
             self.assertEqual(release["project_owner"], "Jacob10383")
             self.assertEqual(release["version"], "v1.37.4")
-            self.assertEqual(bundle.read("global-touch-offsets-support.txt"), b"1\n")
+            self.assertEqual(bundle.read("global-touch-offsets-support.txt"), b"2\n")
             brands = json.loads(bundle.read("config.json"))["themePresets"]
             brand_names = {brand["name"] for brand in brands}
             self.assertIn("Automated Layers", brand_names)
@@ -36,9 +36,10 @@ class FluiddBundleTests(unittest.TestCase):
 
     def test_bundle_contains_live_dialog_protocol(self):
         with zipfile.ZipFile(ARCHIVE) as bundle:
+            names = set(bundle.namelist())
             scripts = [
                 bundle.read(name)
-                for name in bundle.namelist()
+                for name in names
                 if name.startswith("assets/") and name.endswith(".js")
             ]
             for token in (
@@ -51,6 +52,22 @@ class FluiddBundleTests(unittest.TestCase):
                     any(token in script for script in scripts),
                     "missing bundled UI token: {!r}".format(token),
                 )
+            self.assertTrue(
+                any(
+                    name.startswith("assets/WebrtcCrealityk2RtcCamera-")
+                    and name.endswith(".js")
+                    for name in names
+                ),
+                "Creality camera component name does not match Fluidd's service resolver",
+            )
+            self.assertTrue(
+                any(b"WebrtcCrealityk2RtcCamera" in script for script in scripts),
+                "compiled camera resolver key is missing",
+            )
+            self.assertFalse(
+                any(b"WebrtcCrealityk2rtcCamera" in script for script in scripts),
+                "incorrectly cased camera resolver key remains",
+            )
 
     def test_source_patch_and_installer_are_self_contained(self):
         patch = SOURCE_PATCH.read_text(encoding="utf-8")

@@ -11,6 +11,7 @@ KLIPPER_EXTRAS="${KLIPPER_DIR:-${HOME}/klipper}/klippy/extras"
 FLUIDD_ROOT="${FLUIDD_DIR:-/usr/share/fluidd}"
 FLUIDD_ARCHIVE="$SCRIPT_DIR/fluidd-v1.37.4.zip"
 FLUIDD_VERSION=v1.37.4
+FLUIDD_OVERLAY_VERSION=2
 PYTHON="${K2_PYTHON:-python3}"
 
 [ -d "$CUSTOM" ] || { echo "ERROR: $CUSTOM not found — install macros first"; exit 1; }
@@ -42,14 +43,14 @@ install_fluidd_dialog() {
             ;;
     esac
 
-    if [ -f "$fluidd_target/global-touch-offsets-support.txt" ]; then
-        echo "I: Fluidd Global Touch-offset dialog is already installed"
+    if [ "$(cat "$fluidd_target/global-touch-offsets-support.txt" 2>/dev/null || true)" = "$FLUIDD_OVERLAY_VERSION" ]; then
+        echo "I: Fluidd Global Carto Touch Z Offsets dialog is already installed"
         return
     fi
 
     installed_version="$(cat "$fluidd_target/.version" 2>/dev/null || true)"
     [ "$installed_version" = "$FLUIDD_VERSION" ] || {
-        echo "ERROR: Global Touch offsets requires Jacob Fluidd $FLUIDD_VERSION"
+        echo "ERROR: Global Carto Touch Z Offsets requires Jacob Fluidd $FLUIDD_VERSION"
         echo "       Installed version: ${installed_version:-unknown}"
         echo "       Reinstall the Fluidd core component, then try again."
         exit 1
@@ -73,7 +74,7 @@ install_fluidd_dialog() {
     [ "$(cat "$staging/.version" 2>/dev/null || true)" = "$FLUIDD_VERSION" ] &&
         [ -f "$staging/index.html" ] &&
         [ -f "$staging/sw.js" ] &&
-        [ -f "$staging/global-touch-offsets-support.txt" ] || {
+        [ "$(cat "$staging/global-touch-offsets-support.txt" 2>/dev/null || true)" = "$FLUIDD_OVERLAY_VERSION" ] || {
             echo "ERROR: bundled Fluidd UI failed validation"
             exit 1
         }
@@ -86,7 +87,7 @@ install_fluidd_dialog() {
     mv "$fluidd_target" "$replaced"
     if ! mv "$staging" "$fluidd_target"; then
         mv "$replaced" "$fluidd_target"
-        echo "ERROR: could not activate the Fluidd Global Touch-offset dialog"
+        echo "ERROR: could not activate the Fluidd Global Carto Touch Z Offsets dialog"
         exit 1
     fi
     rm -rf "$replaced"
@@ -95,7 +96,7 @@ install_fluidd_dialog() {
     if [ "${K2_SKIP_NGINX_RESTART:-0}" != "1" ]; then
         /etc/init.d/nginx restart
     fi
-    echo "I: installed the Fluidd Global Touch-offset dialog"
+    echo "I: installed the Fluidd Global Carto Touch Z Offsets dialog"
 }
 
 install_fluidd_dialog
@@ -110,7 +111,7 @@ if ! "$PYTHON" "$SCRIPT_DIR/configure_fluidd_layout.py"; then
     echo "W: editor installed, but its Fluidd category metadata could not be configured"
 fi
 
-echo "I: optional Global Touch-offset editor installed"
+echo "I: optional Global Carto Touch Z Offsets editor installed"
 if [ "${K2_SKIP_KLIPPY_RESTART:-0}" != "1" ]; then
     sh "$INSTALLER_BASE/scripts/klippy_code_restart.sh"
 fi

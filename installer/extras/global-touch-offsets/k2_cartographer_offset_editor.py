@@ -123,7 +123,7 @@ class K2CartographerOffsetEditor:
     def cmd_cancel(self, gcmd):
         self.models = None
         self._close_prompt()
-        gcmd.respond_info("Global Touch-offset changes cancelled")
+        gcmd.respond_info("Global Carto Touch Z Offset changes cancelled")
 
     def cmd_save(self, gcmd):
         self._require_session(gcmd)
@@ -136,7 +136,7 @@ class K2CartographerOffsetEditor:
         if not changed:
             self.models = None
             self._close_prompt()
-            gcmd.respond_info("No Global Touch-offset changes to save")
+            gcmd.respond_info("No Global Carto Touch Z Offset changes to save")
             return
 
         for model in changed:

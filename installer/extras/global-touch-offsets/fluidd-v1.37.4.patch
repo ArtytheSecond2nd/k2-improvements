@@ -25,7 +25,7 @@ index 0000000..d00491f
 --- /dev/null
 +++ b/public/global-touch-offsets-support.txt
 @@ -0,0 +1 @@
-+1
++2
 diff --git a/src/App.vue b/src/App.vue
 index 2344eab..dde2435 100644
 --- a/src/App.vue
@@ -63,7 +63,7 @@ index 0000000..f66ea66
 +<template>
 +  <app-dialog
 +    v-model="open"
-+    title="Global Touch offsets"
++    title="Global Carto Touch Z Offsets"
 +    cancel-button-text="Cancel"
 +    save-button-text="Save & Restart"
 +    max-width="450"
