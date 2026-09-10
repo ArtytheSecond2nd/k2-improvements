@@ -75,5 +75,6 @@ material-z-offsets-editor-v1|material-z-offsets|is_material_z_offsets|The option
 material-z-offsets-start-print-bridge-v2|material-z-offsets|is_material_z_offsets|Material Z Offsets now refreshes and verifies its START_PRINT handoff
 macros-preserve-carto-surface-wrapper-v1|macros|is_macros|Macro repairs now preserve an installed Cartographer surface-selection wrapper
 case-fan-runtime-state-v2|macros|is_macros|The guarded pre-print case-fan release now applies independently of firmware version
+case-fan-any-direct-request-v3|macros|is_macros|Pre-print now releases any nonzero direct case-fan request while preserving chamber cooling
 EOF
 }

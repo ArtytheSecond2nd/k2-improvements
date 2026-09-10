@@ -11,7 +11,7 @@ Replaces the stock start macro with a temperature-aware workflow that:
 - levels the gantry and prepares the correct bed mesh; and
 - handles either Cartographer or the stock probe path.
 
-On all firmware, the first nozzle-clean releases a direct 100% case-fan
+On all firmware, the first nozzle-clean releases any nonzero direct case-fan
 request left active before printing on both the stock-probe and Cartographer
 paths. The release is skipped while chamber-temperature control requests
 cooling, and later nozzle cleans and ordinary homing do not repeatedly change

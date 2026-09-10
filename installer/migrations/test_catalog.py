@@ -301,5 +301,15 @@ class MigrationCatalogTests(unittest.TestCase):
             },
         )
 
+    def test_macros_track_any_nonzero_case_fan_release(self):
+        self.assertIn(
+            "case-fan-any-direct-request-v3",
+            {
+                migration_id
+                for migration_id, component, _detector, _reason in entries()
+                if component == "macros"
+            },
+        )
+
 if __name__ == "__main__":
     unittest.main()
