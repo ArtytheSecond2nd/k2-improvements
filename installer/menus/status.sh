@@ -52,6 +52,7 @@ show_status() {
     if [ -f "$INSTALLER_DIR/installer/extras/kamp-adaptive-purge/install.sh" ]; then
         status_line 'KAMP adaptive purge' is_kamp
     fi
+    status_line 'Material Z Offsets' is_material_z_offsets
     if ! is_cartographer; then
         status_line 'Plate-aware saved meshes' is_plate_aware_mesh
     fi
@@ -63,6 +64,7 @@ show_status() {
         else
             printf '  %-43s %s\n' 'Cartographer plate workflow' "$(state_not_installed)"
         fi
+        status_line 'Global Carto Touch Z Offsets' is_global_touch_offsets
 
         printf '\n Maintenance\n'
         if is_prtouch_clean; then
