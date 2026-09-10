@@ -28,7 +28,9 @@ purge profiles, plate selection, and switching between PLA and PETG.
 
 Firmware `1.1.5.5` received the broadest optional-feature cycle. Firmware
 `1.1.3.13` and `1.1.5.2` then repeated all three installation paths and the
-core print workflows with the current code.
+core print workflows with the current code. Firmware `1.1.5.2` also completed
+the newer compatibility, offset-editor, Fluidd, and installer integration
+checks listed below.
 
 ### Core print workflows
 
@@ -43,6 +45,35 @@ core print workflows with the current code.
 For the no-Cartographer path, a saved `default` mesh must match the active
 `[bed_mesh] probe_count` before the first print. In particular, saved `5,5` and
 `19,19` default meshes are not interchangeable.
+
+### Firmware `1.1.5.2` completion and added-workflow integration
+
+| Test | Status |
+|---|:---:|
+| Complete Creality pre-file preparation retained with Cartographer and without PR Touch command errors | PASS |
+| Creality touchscreen live Z-offset display and adjustment | PASS |
+| Firmware-scoped pre-print case-fan override release | PASS |
+| Bed tilt, Cartographer adaptive mesh, nozzle-clean handoff, Touch home, and print | PASS |
+| Selected High Temperature plate Scan and Touch calibration, loading, and print path | PASS |
+| Global Carto Touch Z Offset editor reads and rewrites saved Touch-model offsets | PASS |
+| Material Z Offset editor reads and rewrites `overrides.cfg` values | PASS |
+| Unknown `PLA-CF` uses the active `DEFAULT`, registers as `PLA_CF` at `0.050`, and remains restart-safe | PASS |
+| Fluidd macro aliases, `Z Offsets` grouping, action colors, and phone layout | PASS |
+| Combined Fluidd offset-dialog overlay retains the Creality camera service | PASS |
+| Core macro repair followed by Cartographer plate-workflow repair and protected restart | PASS |
+| Installer status detects Fluidd, Cartographer, macros, KAMP, and the plate workflow correctly | PASS |
+| `G28` after the final installer and configuration restart sequences | PASS |
+
+The first unknown-material print deliberately used the currently loaded
+`DEFAULT` value of `0.060`, wrote `variable_offset_PLA_CF: 0.050` immediately
+before `variable_offset_DEFAULT` in `overrides.cfg`, and did not interrupt the
+print with an automatic restart. The saved material becomes active after a
+Klippy restart, `FIRMWARE_RESTART`, or power cycle.
+
+The `1.1.5.2` plate-calibration check used one selected plate to verify the
+complete firmware-specific path. The five predefined selectors and their
+shared Scan, Touch, and Load actions had already completed the exhaustive
+plate-profile cycle on firmware `1.1.5.5`.
 
 ### Features, extras, and detectors (`1.1.5.5` exhaustive cycle)
 
