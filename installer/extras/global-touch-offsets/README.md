@@ -1,7 +1,7 @@
 # Global Carto Touch Z Offsets
 
 This optional Cartographer feature adds a single `Global_Z_Offsets_Carto`
-button in Fluidd's **Just Z Offsets** category. It discovers the saved
+button in Fluidd's **Z Offsets** category. It discovers the saved
 Cartographer Touch models instead of assuming a fixed plate list.
 
 The dialog keeps edits locally until **Save & Restart** is pressed. Select a

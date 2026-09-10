@@ -13,7 +13,7 @@ class FluiddLayoutTests(unittest.TestCase):
         category = result["macros"]["categories"][0]
         item = result["macros"]["stored"][0]
 
-        self.assertEqual(category["name"], "Just Z Offsets")
+        self.assertEqual(category["name"], "Z Offsets")
         self.assertEqual(item["name"], "GLOBAL_Z_OFFSETS_CARTO")
         self.assertEqual(item["alias"], "Global_Z_Offsets_Carto")
         self.assertEqual(item["categoryId"], category["id"])
@@ -63,9 +63,28 @@ class FluiddLayoutTests(unittest.TestCase):
         result = layout.merge_layout(source)
         self.assertEqual(
             result["macros"]["categories"],
-            [{"id": "legacy", "name": "Just Z Offsets"}],
+            [{"id": "legacy", "name": "Z Offsets"}],
         )
         self.assertEqual(result["macros"]["stored"][0]["categoryId"], "legacy")
+
+    def test_renames_intermediate_category(self):
+        source = {
+            "macros": {
+                "categories": [{"id": "intermediate", "name": "Just Z Offsets"}],
+                "stored": [
+                    {
+                        "name": "GLOBAL_Z_OFFSETS_CARTO",
+                        "categoryId": "intermediate",
+                    }
+                ],
+            }
+        }
+        result = layout.merge_layout(source)
+        self.assertEqual(
+            result["macros"]["categories"],
+            [{"id": "intermediate", "name": "Z Offsets"}],
+        )
+        self.assertEqual(result["macros"]["stored"][0]["categoryId"], "intermediate")
 
     def test_rejects_malformed_state(self):
         with self.assertRaises(layout.LayoutError):

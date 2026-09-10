@@ -10,8 +10,12 @@ import urllib.request
 import uuid
 
 
-CATEGORY_NAME = "Just Z Offsets"
-LEGACY_CATEGORY_NAME = "Global Touch offsets"
+CATEGORY_NAME = "Z Offsets"
+LEGACY_CATEGORY_NAMES = {"Global Touch offsets", "Just Z Offsets"}
+CATEGORY_NAMES_CASEFOLD = {
+    CATEGORY_NAME.casefold(),
+    *(name.casefold() for name in LEGACY_CATEGORY_NAMES),
+}
 CATEGORY_ID = str(
     uuid.uuid5(
         uuid.NAMESPACE_URL,
@@ -52,8 +56,7 @@ def merge_layout(namespace):
         (
             item
             for item in categories
-            if str(item.get("name", "")).casefold()
-            in {CATEGORY_NAME.casefold(), LEGACY_CATEGORY_NAME.casefold()}
+            if str(item.get("name", "")).casefold() in CATEGORY_NAMES_CASEFOLD
             and item.get("id")
         ),
         None,
