@@ -14,4 +14,5 @@ can be adjusted and activated by the next Save & Restart.
 
 The installer also refreshes the managed `start_print.cfg` link so the apply
 and automatic-registration handoff is active immediately after the installer's
-protected restart.
+protected restart. If the Cartographer plate workflow is already installed,
+its surface-selection wrapper is reapplied after that refresh.

@@ -10,11 +10,16 @@ CUSTOM="$CFG_DIR/custom"
 KLIPPER_EXTRAS="${KLIPPER_DIR:-${HOME}/klipper}/klippy/extras"
 PYTHON="${K2_PYTHON:-python3}"
 START_PRINT_SOURCE="$INSTALLER_BASE/features/macros/start_print/start_print.cfg"
+HAD_SURFACE_WRAPPER=0
 
 [ -f "$CUSTOM/overrides.cfg" ] || { echo "ERROR: install macros before Material Z Offsets"; exit 1; }
 [ -e "$CUSTOM/start_print.cfg" ] || { echo "ERROR: install macros before Material Z Offsets"; exit 1; }
 [ -d "$KLIPPER_EXTRAS" ] || { echo "ERROR: Klipper extras directory not found: $KLIPPER_EXTRAS"; exit 1; }
 [ -f "$START_PRINT_SOURCE" ] || { echo "ERROR: managed START_PRINT source not found: $START_PRINT_SOURCE"; exit 1; }
+
+if grep -q 'surface-selection wrapper' "$CUSTOM/start_print.cfg" 2>/dev/null; then
+    HAD_SURFACE_WRAPPER=1
+fi
 
 sh "$INSTALLER_BASE/installer/extras/fluidd-ui-overlay/install.sh"
 "$PYTHON" "$SCRIPT_DIR/k2_material_z_offset_editor.py" \
@@ -23,6 +28,9 @@ sh "$INSTALLER_BASE/installer/extras/fluidd-ui-overlay/install.sh"
 # Refresh this managed link so installing the optional editor cannot leave an
 # older START_PRINT in place with a working UI but no apply/register handoff.
 ln -sfn "$START_PRINT_SOURCE" "$CUSTOM/start_print.cfg"
+if [ "$HAD_SURFACE_WRAPPER" -eq 1 ]; then
+    sh "$INSTALLER_BASE/installer/extras/surface-selection-wrapper/install.sh"
+fi
 ln -sfn "$SCRIPT_DIR/material_z_offsets.cfg" "$CUSTOM/material_z_offsets.cfg"
 ln -sfn "$SCRIPT_DIR/k2_material_z_offset_editor.py" \
     "$KLIPPER_EXTRAS/k2_material_z_offset_editor.py"

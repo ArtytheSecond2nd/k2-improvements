@@ -209,6 +209,13 @@ class MaterialEditorTests(unittest.TestCase):
             'ln -sfn "$START_PRINT_SOURCE" "$CUSTOM/start_print.cfg"',
             installer,
         )
+        capture = installer.index("HAD_SURFACE_WRAPPER=1")
+        refresh = installer.index(
+            'ln -sfn "$START_PRINT_SOURCE" "$CUSTOM/start_print.cfg"'
+        )
+        restore = installer.index("surface-selection-wrapper/install.sh")
+        self.assertLess(capture, refresh)
+        self.assertLess(refresh, restore)
 
 
 if __name__ == "__main__":

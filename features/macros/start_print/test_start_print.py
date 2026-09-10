@@ -6,6 +6,7 @@ import unittest
 
 
 CONFIG = pathlib.Path(__file__).with_name("start_print.cfg")
+MACROS_INSTALLER = CONFIG.parent.parent / "install.sh"
 
 
 class StartPrintConfigTests(unittest.TestCase):
@@ -94,6 +95,14 @@ class StartPrintConfigTests(unittest.TestCase):
     def test_material_defaults_start_at_point_zero_five(self):
         for material in ("PLA", "PETG", "ABS", "ASA", "DEFAULT"):
             self.assertIn("variable_offset_%s: 0.05" % material, self.config)
+
+    def test_macro_repair_preserves_plate_surface_wrapper(self):
+        installer = MACROS_INSTALLER.read_text(encoding="utf-8")
+        capture = installer.index("HAD_SURFACE_WRAPPER=1")
+        refresh = installer.index("for sub in start_print m191 bed_mesh overrides")
+        restore = installer.index("surface-selection-wrapper/install.sh")
+        self.assertLess(capture, refresh)
+        self.assertLess(refresh, restore)
 
 
 if __name__ == "__main__":

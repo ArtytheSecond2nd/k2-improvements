@@ -281,5 +281,15 @@ class MigrationCatalogTests(unittest.TestCase):
             },
         )
 
+    def test_macros_track_surface_wrapper_preservation(self):
+        self.assertIn(
+            "macros-preserve-carto-surface-wrapper-v1",
+            {
+                migration_id
+                for migration_id, component, _detector, _reason in entries()
+                if component == "macros"
+            },
+        )
+
 if __name__ == "__main__":
     unittest.main()
