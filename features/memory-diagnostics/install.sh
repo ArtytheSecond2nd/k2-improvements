@@ -2,7 +2,8 @@
 set -eu
 
 SCRIPT_DIR="$(readlink -f "$(dirname "$0")")"
-INSTALLER_BASE="${INSTALLER_DIR:-/mnt/UDISK/k2-improvements}"
+REPO_ROOT="$(readlink -f "$SCRIPT_DIR/../..")"
+INSTALLER_BASE="${INSTALLER_DIR:-$REPO_ROOT}"
 CFG_DIR="${PRINTER_CFG_DIR:-/mnt/UDISK/printer_data/config}"
 CUSTOM="$CFG_DIR/custom"
 KLIPPER_ROOT="${KLIPPER_DIR:-${HOME}/klipper}"
