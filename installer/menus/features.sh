@@ -13,6 +13,7 @@ cartographer|is_cartographer|Probe and Klipper patches
 abort_homing|is_abort_homing|Abort homing on M112/cancel
 save-config-restart|is_save_config_restart|Safe firmware reset after SAVE_CONFIG
 virtual-sdcard-guard|is_virtual_sdcard_guard|Ignore contaminated upload boundary at EOF
+memory-diagnostics|is_memory_diagnostics|Bounded OOM and fragmentation recorder
 macros|is_macros|START_PRINT / M191 / bed mesh'
 
 menu_features() {

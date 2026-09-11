@@ -104,6 +104,14 @@ is_virtual_sdcard_guard() {
     grep -q 'k2-improvements: terminal multipart upload boundary guard' \
         "$root_vsd" "$system_vsd" 2>/dev/null
 }
+is_memory_diagnostics() {
+    local custom="$PRINTER_CFG_DIR/custom"
+    local klipper_dir="${KLIPPER_DIR:-${HOME:-/mnt/UDISK/root}/klipper}"
+    [ -e "$custom/memory_diagnostics.cfg" ] &&
+    [ -e "$klipper_dir/klippy/extras/memory_diagnostics.py" ] &&
+    grep -q '^\[include memory_diagnostics\.cfg\]$' \
+        "$custom/main.cfg" 2>/dev/null
+}
 is_better_init()   { [ -f /etc/profile.d/better-init.sh ]; }
 
 is_surface_wrap()  { grep -q 'surface-selection wrapper' "$PRINTER_CFG_DIR/custom/start_print.cfg" 2>/dev/null; }
