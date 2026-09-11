@@ -27,8 +27,10 @@ Flashing instructions are available [here](./firmware/README.md).
    before homing only if the restart reports an error.
 7. Tune final Z with an actual first-layer print. Touch calibration establishes
    the model threshold and speed; it does not replace print-level Z tuning.
-8. Optionally install **Cartographer plate workflow** to maintain separate
-   `default`, `textured_pei`, `epoxy`, `high_temp`, and `custom` model pairs.
+8. The default selector and shared calibration actions are installed with
+   Cartographer. Optionally enable **Cartographer plate workflow** to reveal
+   selectors for separate `textured_pei`, `epoxy`, `high_temp`, and `custom`
+   model pairs and add automatic slicer selection.
 
 ## Print Mount and spacers for K2
 
@@ -68,8 +70,9 @@ Option 2. Route the cable through the gasket in the back of the machine where th
 
 Follow steps 1-6 in the [scan calibration guide](https://docs.cartographer3d.com/cartographer-probe/installation-and-setup/software-configuration/scan-calibration), then complete steps 1-4 in the [touch calibration guide](https://docs.cartographer3d.com/cartographer-probe/installation-and-setup/software-configuration/touch-calibration).
 
-If the optional Cartographer plate workflow is installed, use its shared
-selector/action buttons for each physical plate:
+Use `A11` and the shared actions below for the default plate. If the optional
+Cartographer plate workflow is installed, its named selectors use the same
+actions for each physical plate:
 
 1. Select `default`, `textured_pei`, `epoxy`, `high_temp`, or `custom` with
    `A11` through `A15`.

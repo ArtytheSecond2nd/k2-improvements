@@ -94,8 +94,7 @@ migration_component_present() {
             [ -e "$custom/axis_twist_compensation.cfg" ]
             ;;
         cartographer-plate-workflow)
-            [ -e "$custom/cartographer_macros.cfg" ] ||
-                grep -q 'surface-selection wrapper' "$custom/start_print.cfg" 2>/dev/null
+            grep -q 'surface-selection wrapper' "$custom/start_print.cfg" 2>/dev/null
             ;;
         global-touch-offsets)
             [ -e "$custom/global_touch_offsets.cfg" ]
@@ -300,7 +299,8 @@ migration_repair_component() {
             ;;
         cartographer-plate-workflow)
             HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
-                sh "$INSTALLER_DIR/installer/extras/cartographer-macros/install.sh" &&
+                sh "$INSTALLER_DIR/installer/extras/cartographer-macros/install.sh" \
+                    --show-plate-selectors &&
             HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
                 sh "$INSTALLER_DIR/installer/extras/surface-selection-wrapper/install.sh"
             ;;

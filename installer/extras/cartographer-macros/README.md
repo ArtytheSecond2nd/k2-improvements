@@ -3,18 +3,21 @@
 Adds compact `A**_CARTO_*` buttons to Fluidd for Cartographer profile
 selection, calibration, model loading, homing, and diagnostics.
 
-The installer also seeds Fluidd's UI metadata for all 11 buttons. They appear
-in the **Cartographer Calibration** category with short aliases while their
-real `A**_CARTO_*` names remain unchanged and retain their sorting order.
+The core Cartographer installer seeds Fluidd's UI metadata for all 11 buttons.
+They appear in the **Cartographer Calibration** category with short aliases
+while their real `A**_CARTO_*` names remain unchanged and retain their sorting
+order. The default selector and shared calibration, loading, homing, and
+diagnostic actions are visible immediately. The four named plate selectors
+remain hidden until the optional **Cartographer plate workflow** is enabled.
 Plate selectors are green (`#1AED07`), the two calibration actions are orange
 (`#FF9800`), and the remaining actions are blue (`#2196F3`). These 11 colors
 are installer-managed to keep the palette consistent. Existing non-empty
 aliases and valid category assignments are treated as user customizations and
 preserved. Refresh Fluidd after installation to load a newly seeded layout.
 
-These macros are installed together with the
-[surface-selection wrapper](../surface-selection-wrapper/README.md) by the
-**Cartographer plate workflow** entry in Extras.
+All macros are installed with Cartographer. The **Cartographer plate workflow**
+entry in Extras reveals the four named plate selectors and installs the
+[surface-selection wrapper](../surface-selection-wrapper/README.md).
 
 ## Included plate profiles
 
@@ -28,11 +31,11 @@ The model names mirror the four bed types shown by Creality Print 7.1:
 | Smooth PEI / High Temp Plate | `high_temp` | `A14` |
 | Customized Plate | `custom` | `A15` |
 
-`default` remains available as a manual fallback profile. The wrapper uses it
+`default` is always visible as the manual fallback profile. The wrapper uses it
 when `START_PRINT` is called without a `SURFACE` value; Creality Print's
 explicit unknown-plate branch instead uses `textured_pei`.
 
-The workflow always has two explicit steps. First click exactly one matching
+Calibration always has two explicit steps. First click exactly one matching
 **Select** button:
 
 ```text
@@ -76,7 +79,8 @@ of Fluidd's alphabetical macro list. The selected profile resets to `default`
 after a Klipper restart, so select a plate again before calibrating or loading.
 Utility buttons provide touch homing, model listing, and probe information.
 
-The seeded aliases and colors, in macro-name order, are:
+The seeded aliases and colors, in macro-name order, are shown below. The four
+named plate aliases are hidden until the optional plate workflow is enabled.
 
 ```text
 DEFAULT                 green

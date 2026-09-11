@@ -59,7 +59,7 @@ show_status() {
     if is_cartographer; then
         if is_carto_plate_workflow; then
             printf '  %-43s %s\n' 'Cartographer plate workflow' "$(state_installed)"
-        elif is_carto_macros || is_surface_wrap; then
+        elif is_surface_wrap; then
             printf '  %-43s %s\n' 'Cartographer plate workflow' "$(state_incomplete)"
         else
             printf '  %-43s %s\n' 'Cartographer plate workflow' "$(state_not_installed)"

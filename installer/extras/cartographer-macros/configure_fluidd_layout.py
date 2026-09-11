@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Seed the Fluidd layout for the Cartographer plate-workflow macros."""
+"""Seed the Fluidd layout for the Cartographer calibration macros."""
 
 import json
 import os
@@ -32,12 +32,24 @@ MACRO_LAYOUT = (
     ("A63_CARTO_INFO", "CARTO_INFO", "#2196F3"),
 )
 
+PLATE_SELECTOR_NAMES = {
+    "A12_CARTO_SELECT_TEXTURED_PEI",
+    "A13_CARTO_SELECT_EPOXY",
+    "A14_CARTO_SELECT_HIGH_TEMP",
+    "A15_CARTO_SELECT_CUSTOM",
+}
+
+
 class LayoutError(RuntimeError):
     pass
 
 
-def merge_layout(namespace):
-    """Return Fluidd namespace data with missing plate-workflow defaults added."""
+def merge_layout(namespace, show_plate_selectors=False):
+    """Return Fluidd namespace data with Cartographer layout defaults added.
+
+    A core installation hides the four named plate selectors. The optional
+    plate workflow asks to reveal them explicitly.
+    """
     if not isinstance(namespace, dict):
         raise LayoutError("Fluidd database namespace is not an object")
 
@@ -87,13 +99,14 @@ def merge_layout(namespace):
     }
 
     for name, alias, color in MACRO_LAYOUT:
+        is_plate_selector = name in PLATE_SELECTOR_NAMES
         index = by_name.get(name.casefold())
         if index is None:
             stored.append(
                 {
                     "name": name,
                     "alias": alias,
-                    "visible": True,
+                    "visible": show_plate_selectors or not is_plate_selector,
                     "disabledWhilePrinting": False,
                     "color": color,
                     "categoryId": category_id,
@@ -109,6 +122,8 @@ def merge_layout(namespace):
         if not item.get("alias"):
             item["alias"] = alias
         item["color"] = color
+        if is_plate_selector:
+            item["visible"] = show_plate_selectors
         current_category = str(item.get("categoryId", "0"))
         if current_category == "0" or current_category not in valid_category_ids:
             item["categoryId"] = category_id
@@ -144,12 +159,12 @@ def _request_json(url, method="GET", body=None):
         raise LayoutError(str(exc))
 
 
-def configure(api_url):
+def configure(api_url, show_plate_selectors=False):
     api_url = api_url.rstrip("/")
     query = urllib.parse.urlencode({"namespace": "fluidd"})
     payload = _request_json("{}/server/database/item?{}".format(api_url, query))
     namespace = _result_value(payload)
-    updated = merge_layout(namespace)
+    updated = merge_layout(namespace, show_plate_selectors=show_plate_selectors)
 
     if updated == namespace:
         return False
@@ -164,19 +179,32 @@ def configure(api_url):
 
 
 def main():
+    show_plate_selectors = False
+    args = sys.argv[1:]
+    if args == ["--show-plate-selectors"]:
+        show_plate_selectors = True
+    elif args:
+        print("E: usage: configure_fluidd_layout.py [--show-plate-selectors]")
+        return 2
+
     api_url = os.environ.get("MOONRAKER_URL", "http://127.0.0.1:7125")
     try:
-        changed = configure(api_url)
+        changed = configure(api_url, show_plate_selectors=show_plate_selectors)
     except LayoutError as exc:
         print("E: could not configure Fluidd Cartographer macro layout: {}".format(exc))
         return 1
 
     if changed:
         print(
-            "I: configured 11 Fluidd macros in the '{}' category".format(
-                CATEGORY_NAME
-            )
+            "I: configured 11 Fluidd macros in the '{}' category".format(CATEGORY_NAME)
         )
+        if show_plate_selectors:
+            print("I: named plate selectors are visible")
+        else:
+            print(
+                "I: named plate selectors are hidden until the optional "
+                "plate workflow is installed"
+            )
         print("I: refresh Fluidd to load the aliases, category, and colors")
     else:
         print("I: Fluidd Cartographer macro layout is already configured")

@@ -91,7 +91,7 @@ show_secure_auth_setup_guide() {
 carto_plate_workflow_state() {
     if is_carto_plate_workflow; then
         state_installed
-    elif is_carto_macros || is_surface_wrap; then
+    elif is_surface_wrap; then
         state_incomplete
     elif ! is_cartographer; then
         state_requires 'CARTOGRAPHER'
@@ -104,7 +104,7 @@ run_carto_plate_workflow() {
     clear
     ui_heading 'CARTOGRAPHER PLATE PROFILES / AUTO-SELECTION'
     printf '\nThis installs the two tied parts of the plate workflow:\n'
-    printf '  - CARTO_* Fluidd buttons for the four Creality Print plate types\n'
+    printf '  - reveals CARTO_* buttons for the four Creality Print plate types\n'
     printf '  - START_PRINT surface selection using the slicer plate choice\n\n'
 
     if ! is_cartographer; then
@@ -113,8 +113,8 @@ run_carto_plate_workflow() {
         return 1
     fi
 
-    printf '  %-32s %s\n' 'Cartographer Fluidd macros' \
-        "$(if is_carto_macros; then state_installed; else state_not_installed; fi)"
+    printf '  %-32s %s\n' 'Named plate selectors' \
+        "$(if is_surface_wrap; then state_installed; else state_not_installed; fi)"
     printf '  %-32s %s\n\n' 'Surface-selection wrapper' \
         "$(if is_surface_wrap; then state_installed; else state_not_installed; fi)"
 
@@ -130,6 +130,7 @@ run_carto_plate_workflow() {
     info 'refreshing Cartographer Fluidd macros'
     HOME="$pwd_home" PATH="/opt/bin:/opt/sbin:$PATH" \
         sh "$INSTALLER_DIR/installer/extras/cartographer-macros/install.sh" \
+            --show-plate-selectors \
         || failed=1
 
     if [ "$failed" -eq 0 ]; then

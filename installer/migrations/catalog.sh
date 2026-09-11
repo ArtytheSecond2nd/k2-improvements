@@ -76,5 +76,6 @@ material-z-offsets-start-print-bridge-v2|material-z-offsets|is_material_z_offset
 macros-preserve-carto-surface-wrapper-v1|macros|is_macros|Macro repairs now preserve an installed Cartographer surface-selection wrapper
 case-fan-runtime-state-v2|macros|is_macros|The guarded pre-print case-fan release now applies independently of firmware version
 case-fan-any-direct-request-v3|macros|is_macros|Pre-print now releases any nonzero direct case-fan request while preserving chamber cooling
+cartographer-default-controls-core-v1|cartographer|is_cartographer|Cartographer now installs default calibration controls while named plate selectors remain optional
 EOF
 }

@@ -42,6 +42,9 @@ class FluiddLayoutTests(unittest.TestCase):
         )
         self.assertTrue(all(item["categoryId"] == category["id"] for item in targets.values()))
         self.assertTrue(all(not item["disabledWhilePrinting"] for item in targets.values()))
+        self.assertTrue(targets["A11_CARTO_SELECT_DEFAULT"]["visible"])
+        for name in layout.PLATE_SELECTOR_NAMES:
+            self.assertFalse(targets[name]["visible"])
         self.assertEqual(result["macros"]["expanded"], [0])
         self.assertEqual(result["theme"], {"isDark": True})
         self.assertEqual(result["macros"]["stored"][0], source["macros"]["stored"][0])
@@ -72,7 +75,7 @@ class FluiddLayoutTests(unittest.TestCase):
             }
         }
 
-        result = layout.merge_layout(source)
+        result = layout.merge_layout(source, show_plate_selectors=True)
         categories = result["macros"]["categories"]
         self.assertEqual(len(categories), 2)
         first = result["macros"]["stored"][0]
@@ -86,6 +89,25 @@ class FluiddLayoutTests(unittest.TestCase):
         self.assertEqual(second["alias"], "TEXTURED_PEI")
         self.assertEqual(second["color"], "#1AED07")
         self.assertEqual(second["categoryId"], "carto-user-id")
+        self.assertTrue(second["visible"])
+
+    def test_optional_workflow_reveals_all_named_plate_selectors(self):
+        source = layout.merge_layout({"macros": {}})
+
+        result = layout.merge_layout(source, show_plate_selectors=True)
+        targets = {item["name"]: item for item in result["macros"]["stored"]}
+
+        for name in layout.PLATE_SELECTOR_NAMES:
+            self.assertTrue(targets[name]["visible"])
+
+    def test_core_layout_hides_previously_visible_plate_selectors(self):
+        source = layout.merge_layout({"macros": {}}, show_plate_selectors=True)
+
+        result = layout.merge_layout(source)
+        targets = {item["name"]: item for item in result["macros"]["stored"]}
+
+        for name in layout.PLATE_SELECTOR_NAMES:
+            self.assertFalse(targets[name]["visible"])
 
     def test_normalizes_all_target_colors(self):
         source = {

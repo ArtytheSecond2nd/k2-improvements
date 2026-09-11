@@ -293,7 +293,7 @@ Install extras individually from **Optional extras**:
 | Extra | Purpose |
 |---|---|
 | [Cartographer offset setup](./installer/extras/cartographer-offset-setup/README.md) | Select Jamin, JimmyV legacy/final, or custom offsets; requires Cartographer. |
-| Cartographer plate workflow ([macros](./installer/extras/cartographer-macros/README.md), [automatic selection](./installer/extras/surface-selection-wrapper/README.md)) | Installs selector/action controls and slicer-driven surface selection; requires Cartographer. |
+| Cartographer plate workflow ([macros](./installer/extras/cartographer-macros/README.md), [automatic selection](./installer/extras/surface-selection-wrapper/README.md)) | Reveals the four named plate selectors and installs slicer-driven surface selection; the default selector and shared actions are installed with Cartographer. |
 | [Global Carto Touch Z Offsets](./installer/extras/global-touch-offsets/README.md) | Adds a live editor for saved Cartographer Touch-model `z_offset` values; includes its tested Jacob Fluidd v1.37.4 UI overlay. |
 | [Axis twist compensation](./features/axis_twist_compensation/README.md) | Compensates optional Z drift across X. |
 | [KAMP adaptive purge](./installer/extras/kamp-adaptive-purge/README.md) | Installs the patched adaptive purge workflow and slicer templates. |

@@ -136,4 +136,9 @@ else
     echo "W: moonraker not found, skipping update manager registration"
 fi
 
+# Install the complete calibration macro engine as part of Cartographer.
+# Fluidd shows the default selector and shared actions; named plate selectors
+# remain hidden until the optional plate workflow is enabled.
+sh "${SCRIPT_DIR}/../../installer/extras/cartographer-macros/install.sh"
+
 sh "${SCRIPT_DIR}/../../scripts/klippy_code_restart.sh"
