@@ -331,5 +331,15 @@ class MigrationCatalogTests(unittest.TestCase):
             },
         )
 
+    def test_screws_tilt_tracks_probe_aware_points(self):
+        self.assertIn(
+            "screws-tilt-probe-aware-points-v1",
+            {
+                migration_id
+                for migration_id, component, _detector, _reason in entries()
+                if component == "screws_tilt_adjust"
+            },
+        )
+
 if __name__ == "__main__":
     unittest.main()
