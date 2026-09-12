@@ -189,6 +189,7 @@ are under **Cartographer tools**, and PR Touch `SAVE_CONFIG` cleanup is under
 | Axis twist compensation | [Axis twist guide](./features/axis_twist_compensation/README.md) |
 | Plate-aware saved meshes | [Stock PR Touch plate-and-temperature mesh profiles](./installer/extras/plate-aware-mesh/README.md) |
 | R3MEN bed thermistor profile | [R3MEN guide](./features/r3men-bed/README.md) |
+| Stock nozzle camera stream | [Factory nozzle-camera guide](./installer/extras/nozzle-camera/README.md) |
 | Secure Auth | [Overview](./features/secure-auth/README.md) · [Key setup](./features/secure-auth/SETUP.md) |
 | PR Touch `SAVE_CONFIG` cleanup | [Cleanup guide](./installer/extras/prtouch-cleanup/README.md) |
 

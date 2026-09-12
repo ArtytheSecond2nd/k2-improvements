@@ -31,6 +31,12 @@ class StatusMenuTests(unittest.TestCase):
         self.assertLess(cartographer_branch, global_offsets)
         self.assertLess(global_offsets, maintenance)
 
+    def test_stock_nozzle_camera_is_reported(self):
+        self.assertIn(
+            "status_line 'Stock nozzle camera stream' is_nozzle_camera",
+            self.status,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -54,6 +54,14 @@ is_r3men_bed() {
 }
 is_obico()         { [ -d /mnt/UDISK/moonraker-obico ]; }
 is_secure_auth()   { grep -Fq '# k2-improvements: secure-auth installed' /etc/init.d/dropbear 2>/dev/null; }
+is_nozzle_camera() {
+    local custom="$PRINTER_CFG_DIR/custom"
+    local klipper_dir="${KLIPPER_DIR:-/usr/share/klipper}"
+    [ -e "$custom/nozzle_camera.cfg" ] &&
+    [ -x /mnt/UDISK/bin/nozzle-camera.sh ] &&
+    [ -e "$klipper_dir/klippy/extras/gcode_shell_command.py" ] &&
+    grep -q '^\[include nozzle_camera\.cfg\]$' "$custom/main.cfg" 2>/dev/null
+}
 is_skip_setup()    {
     command -v jq >/dev/null 2>&1 &&
         jq -e '.user_info.self_test_sw == 0' \

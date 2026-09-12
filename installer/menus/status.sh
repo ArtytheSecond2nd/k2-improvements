@@ -49,6 +49,7 @@ show_status() {
     status_line 'axis_twist_compensation' is_axis_twist
     status_line 'secure-auth' is_secure_auth
     status_line 'R3MEN bed thermistor profile' is_r3men_bed
+    status_line 'Stock nozzle camera stream' is_nozzle_camera
     if [ -f "$INSTALLER_DIR/installer/extras/kamp-adaptive-purge/install.sh" ]; then
         status_line 'KAMP adaptive purge' is_kamp
     fi

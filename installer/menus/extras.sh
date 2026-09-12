@@ -15,6 +15,11 @@ plate-aware-mesh|is_plate_aware_mesh|Saved meshes selected by build plate and te
 secure-auth|is_secure_auth|Disable SSH password login (requires a tested public key)|features/secure-auth/install.sh|
 r3men-bed|is_r3men_bed|R3MEN graphite-bed thermistor profile|features/r3men-bed/install.sh|'
 
+if [ -f "$INSTALLER_DIR/installer/extras/nozzle-camera/install.sh" ]; then
+    _EXTRAS="${_EXTRAS}
+nozzle-camera|is_nozzle_camera|Stream the factory nozzle camera in Fluidd|installer/extras/nozzle-camera/install.sh|"
+fi
+
 # Keep this conditional so older checkouts without the KAMP extra do not
 # advertise an installer that is not present.
 if [ -f "$INSTALLER_DIR/installer/extras/kamp-adaptive-purge/install.sh" ]; then
@@ -159,50 +164,53 @@ menu_extras() {
         ui_heading 'OPTIONAL EXTRAS'
         printf '\n Hardware\n'
         ui_menu_item 1 'R3MEN bed thermistor profile' "$(extra_state r3men-bed)"
+        printf '\n Camera\n'
+        ui_menu_item 2 'Stock nozzle camera stream' "$(extra_state nozzle-camera)"
         printf '\n Print workflow\n'
-        ui_menu_item 2 'KAMP adaptive purge' "$(extra_state kamp-adaptive-purge)"
-        ui_menu_item 3 'Axis twist compensation' "$(extra_state axis_twist_compensation)"
+        ui_menu_item 3 'KAMP adaptive purge' "$(extra_state kamp-adaptive-purge)"
+        ui_menu_item 4 'Axis twist compensation' "$(extra_state axis_twist_compensation)"
         if is_cartographer; then
-            ui_menu_item 4 'Cartographer plate workflow' "$(carto_plate_workflow_state)"
-            ui_menu_item 5 'Global Carto Touch Z Offsets' "$(extra_state global-touch-offsets)"
+            ui_menu_item 5 'Cartographer plate workflow' "$(carto_plate_workflow_state)"
+            ui_menu_item 6 'Global Carto Touch Z Offsets' "$(extra_state global-touch-offsets)"
+            ui_menu_item 7 'Material Z Offsets' "$(extra_state material-z-offsets)"
+            printf '\n Security\n'
+            ui_menu_item 8 'Secure Auth' "$(extra_state secure-auth)"
+            printf '\n  0. Back\n\nSelect [0-8]: '
+        else
+            ui_menu_item 5 'Plate-aware saved meshes' "$(extra_state plate-aware-mesh)"
             ui_menu_item 6 'Material Z Offsets' "$(extra_state material-z-offsets)"
             printf '\n Security\n'
             ui_menu_item 7 'Secure Auth' "$(extra_state secure-auth)"
             printf '\n  0. Back\n\nSelect [0-7]: '
-        else
-            ui_menu_item 4 'Plate-aware saved meshes' "$(extra_state plate-aware-mesh)"
-            ui_menu_item 5 'Material Z Offsets' "$(extra_state material-z-offsets)"
-            printf '\n Security\n'
-            ui_menu_item 6 'Secure Auth' "$(extra_state secure-auth)"
-            printf '\n  0. Back\n\nSelect [0-6]: '
         fi
         read -r c
         case "$c" in
             1) run_extra_name r3men-bed ;;
-            2) run_extra_name kamp-adaptive-purge ;;
-            3) run_extra_name axis_twist_compensation ;;
-            4)
+            2) run_extra_name nozzle-camera ;;
+            3) run_extra_name kamp-adaptive-purge ;;
+            4) run_extra_name axis_twist_compensation ;;
+            5)
                 if is_cartographer; then
                     run_carto_plate_workflow
                 else
                     run_extra_name plate-aware-mesh
                 fi
                 ;;
-            5)
+            6)
                 if is_cartographer; then
                     run_extra_name global-touch-offsets
                 else
                     run_extra_name material-z-offsets
                 fi
                 ;;
-            6)
+            7)
                 if is_cartographer; then
                     run_extra_name material-z-offsets
                 else
                     run_extra_name secure-auth
                 fi
                 ;;
-            7)
+            8)
                 if is_cartographer; then run_extra_name secure-auth; fi
                 ;;
             0|b|B|q|Q) return ;;
