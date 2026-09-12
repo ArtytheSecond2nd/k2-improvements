@@ -3,7 +3,9 @@
 Creality's K2 Plus master-server selects its complete pre-file preparation
 path when Klipper advertises a ``prtouch_v3`` object. Cartographer removes the
 physical PR Touch driver, so this compatibility layer reports a hardware-free
-status object and an empty synthetic config section while Klipper connects.
+status object and an empty synthetic config section while Klipper loads its
+configuration.  The connect event remains as a fallback for unusual section
+ordering.
 
 It does not add a real PR Touch configuration section, import the driver,
 register a probe, claim a pin, or issue G-code.
@@ -30,14 +32,25 @@ class K2PRTouchVersionCompat:
             desc="Show Creality PR Touch version-reporting compatibility status",
         )
         self.printer.register_event_handler("klippy:connect", self._handle_connect)
+        # Creality's master-server may inspect config status as soon as Klippy's
+        # API appears during a cold boot.  Waiting for klippy:connect can lose
+        # that race and make the service cache the reduced preparation path.
+        self._install_compatibility("configuration initialization")
 
     def _handle_connect(self):
+        self._install_compatibility("klippy:connect")
+
+    def _install_compatibility(self, stage):
+        if self.installed:
+            return
+
         cartographer = self.printer.lookup_object("cartographer", None)
         self.configfile = self.printer.lookup_object("configfile", None)
         if cartographer is None or self.configfile is None:
             logging.info(
-                "%s inactive; Cartographer or configfile is not loaded",
+                "%s deferred during %s; Cartographer or configfile is not loaded",
                 LOG_PREFIX,
+                stage,
             )
             return
 
@@ -54,10 +67,15 @@ class K2PRTouchVersionCompat:
         self.native_section = (
             SYNTHETIC_SECTION in raw_config or SYNTHETIC_SECTION in settings
         )
+        if native_object is self:
+            self.object_registered = True
+            self.installed = True
+            return
         if self.native_section or native_object is not None:
             logging.warning(
-                "%s inactive; a real %s section or object is already reported",
+                "%s inactive during %s; a real %s section or object is already reported",
                 LOG_PREFIX,
+                stage,
                 SYNTHETIC_SECTION,
             )
             return
@@ -71,9 +89,10 @@ class K2PRTouchVersionCompat:
         self.object_registered = True
         self.installed = True
         logging.info(
-            "%s reporting synthetic %s status object; no PR Touch driver loaded",
+            "%s reporting synthetic %s status object during %s; no PR Touch driver loaded",
             LOG_PREFIX,
             SYNTHETIC_SECTION,
+            stage,
         )
 
     def get_status(self, eventtime):

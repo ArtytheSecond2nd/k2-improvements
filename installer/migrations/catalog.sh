@@ -81,5 +81,6 @@ m191-configurable-settings-v1|macros|is_macros|M191 bed assistance and chamber w
 m191-bed-assist-editor-v2|macros|is_macros|M191 settings can now be edited from the Fluidd Bed Assist control
 axis-twist-probe-aware-range-v1|axis_twist_compensation|is_axis_twist|Axis Twist calibration now limits motion using the active probe offsets and toolhead range
 screws-tilt-probe-aware-points-v1|screws_tilt_adjust|is_screws_tilt|Screws Tilt now positions the active probe near each screw while respecting toolhead boundaries
+cartographer-prtouch-cold-boot-registration-v1|cartographer|is_cartographer|Cartographer now reports PR Touch preparation compatibility before Creality checks it during a cold boot
 EOF
 }
