@@ -27,6 +27,19 @@ Invalid settings stop the macro before Klipper executes its heater, fan, or
 movement commands. `M191 S0` always retains its immediate heater-off and fan-off
 behavior.
 
+## Fluidd editor
+
+The **Bed_Assist** macro appears in Fluidd's **Chamber Heating** category. It
+opens a live editor with friendly setting names and the applicable minimum and
+maximum ranges. Select a setting, choose an increment of 1, 5, or 10, and use
+the Down or Up control. Bed Assist itself displays Enabled or Disabled; Down
+disables it and Up enables it.
+
+Only the setting list scrolls. The Bed Assist title, increment selector,
+Down/Up controls, Cancel, and Save & Restart remain fixed. Cancel discards the
+session. Save & Restart writes only changed values to `custom/overrides.cfg`
+and restarts Klipper. The editor is unavailable while printing or paused.
+
 ## Bed-assist target selection
 
 When `bed_assist_degrees_above_commanded` is greater than zero, M191 adds it to

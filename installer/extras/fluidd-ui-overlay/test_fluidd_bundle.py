@@ -21,7 +21,7 @@ class FluiddBundleTests(unittest.TestCase):
             info = json.loads(archive.read("release_info.json"))
             self.assertEqual(info["project_owner"], "Jacob10383")
             self.assertEqual(info["version"], "v1.37.4")
-            self.assertEqual(archive.read("k2-ui-overlay-support.txt").decode().strip(), "3")
+            self.assertEqual(archive.read("k2-ui-overlay-support.txt").decode().strip(), "4")
             self.assertNotIn("global-touch-offsets-support.txt", archive.namelist())
 
     def test_entry_points_reference_files_in_the_archive(self):
@@ -32,7 +32,7 @@ class FluiddBundleTests(unittest.TestCase):
             for asset in re.findall(r'(?:src|href)="\./(assets/[^"#?]+)', index):
                 self.assertIn(asset, names)
 
-    def test_contains_both_live_offset_dialogs(self):
+    def test_contains_all_live_settings_dialogs(self):
         with zipfile.ZipFile(ARCHIVE) as archive:
             scripts = b"\n".join(
                 archive.read(name) for name in archive.namelist()
@@ -44,6 +44,9 @@ class FluiddBundleTests(unittest.TestCase):
             b"K2_CARTOGRAPHER_GLOBAL_Z_STAGE",
             b"K2_MATERIAL_Z_STAGE",
             b"Material Z Offsets",
+            b"m191_settings_",
+            b"K2_M191_SETTINGS_STAGE",
+            b"Bed Assist",
         ):
             self.assertIn(value, scripts)
 
@@ -70,6 +73,7 @@ class FluiddBundleTests(unittest.TestCase):
         installer = INSTALLER.read_text(encoding="utf-8")
         self.assertIn("GlobalTouchOffsetsDialog.vue", patch)
         self.assertIn("MaterialZOffsetsDialog.vue", patch)
+        self.assertIn("M191SettingsDialog.vue", patch)
         self.assertIn("WebrtcCrealityk2RtcCamera.vue", patch)
         self.assertIn("fluidd-v1.37.4.zip", installer)
         self.assertNotIn("Rcpilot33/fluidd", installer)

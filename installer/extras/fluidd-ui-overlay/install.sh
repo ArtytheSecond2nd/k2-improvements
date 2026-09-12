@@ -1,5 +1,5 @@
 #!/bin/sh
-# Install the shared Fluidd UI used by the optional Z-offset editors.
+# Install the shared Fluidd UI used by the live settings editors.
 
 set -eu
 
@@ -7,7 +7,7 @@ SCRIPT_DIR="$(readlink -f "$(dirname "$0")")"
 FLUIDD_ROOT="${FLUIDD_DIR:-/usr/share/fluidd}"
 FLUIDD_ARCHIVE="$SCRIPT_DIR/fluidd-v1.37.4.zip"
 FLUIDD_VERSION=v1.37.4
-OVERLAY_VERSION=3
+OVERLAY_VERSION=4
 
 [ -f "$FLUIDD_ARCHIVE" ] || { echo "ERROR: bundled Fluidd UI archive is missing: $FLUIDD_ARCHIVE"; exit 1; }
 [ -d "$FLUIDD_ROOT" ] || { echo "ERROR: Fluidd is not installed at $FLUIDD_ROOT"; exit 1; }
@@ -22,13 +22,13 @@ case "$fluidd_target" in
 esac
 
 if [ "$(cat "$fluidd_target/k2-ui-overlay-support.txt" 2>/dev/null || true)" = "$OVERLAY_VERSION" ]; then
-    echo "I: shared Fluidd Z-offset controls are already installed"
+    echo "I: shared Fluidd settings controls are already installed"
     exit 0
 fi
 
 installed_version="$(cat "$fluidd_target/.version" 2>/dev/null || true)"
 [ "$installed_version" = "$FLUIDD_VERSION" ] || {
-    echo "ERROR: Z-offset controls require Jacob Fluidd $FLUIDD_VERSION"
+    echo "ERROR: settings controls require Jacob Fluidd $FLUIDD_VERSION"
     echo "       Installed version: ${installed_version:-unknown}"
     echo "       Reinstall the Fluidd core component, then try again."
     exit 1
@@ -78,4 +78,4 @@ trap - EXIT INT TERM
 if [ "${K2_SKIP_NGINX_RESTART:-0}" != "1" ]; then
     /etc/init.d/nginx restart
 fi
-echo "I: installed the shared Fluidd Z-offset controls"
+echo "I: installed the shared Fluidd settings controls"

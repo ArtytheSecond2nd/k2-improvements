@@ -3,17 +3,35 @@
 set -e
 
 SCRIPT_DIR="$(readlink -f $(dirname $0))"
+INSTALLER_BASE="${INSTALLER_DIR:-/mnt/UDISK/root/k2-improvements}"
+CFG_DIR="${PRINTER_CFG_DIR:-${HOME}/printer_data/config}"
+CUSTOM="$CFG_DIR/custom"
+KLIPPER_EXTRAS="${KLIPPER_DIR:-${HOME}/klipper}/klippy/extras"
+PYTHON="${K2_PYTHON:-python3}"
 
-test -d ~/printer_data/config/custom || mkdir -p ~/printer_data/config/custom
+test -d "$CUSTOM" || mkdir -p "$CUSTOM"
+[ -d "$KLIPPER_EXTRAS" ] || { echo "ERROR: Klipper extras directory not found: $KLIPPER_EXTRAS"; exit 1; }
 
 # add the main.cfg to printer.cfg
-python ${SCRIPT_DIR}/../../../scripts/ensure_included.py \
-    ~/printer_data/config/printer.cfg custom/main.cfg
+"$PYTHON" ${SCRIPT_DIR}/../../../scripts/ensure_included.py \
+    "$CFG_DIR/printer.cfg" custom/main.cfg
 # add the m191.cfg
 ln -sf ${SCRIPT_DIR}/m191.cfg \
-    ~/printer_data/config/custom/m191.cfg
-python ${SCRIPT_DIR}/../../../scripts/ensure_included.py \
-    ~/printer_data/config/custom/main.cfg m191.cfg
+    "$CUSTOM/m191.cfg"
+"$PYTHON" ${SCRIPT_DIR}/../../../scripts/ensure_included.py \
+    "$CUSTOM/main.cfg" m191.cfg
+
+# Install the live Bed_Assist settings editor and its shared Fluidd dialog.
+sh "$INSTALLER_BASE/installer/extras/fluidd-ui-overlay/install.sh"
+ln -sfn "$SCRIPT_DIR/m191_settings.cfg" "$CUSTOM/m191_settings.cfg"
+ln -sfn "$SCRIPT_DIR/k2_m191_settings_editor.py" \
+    "$KLIPPER_EXTRAS/k2_m191_settings_editor.py"
+"$PYTHON" ${SCRIPT_DIR}/../../../scripts/ensure_included.py \
+    "$CUSTOM/main.cfg" m191_settings.cfg
+
+if ! "$PYTHON" "$SCRIPT_DIR/configure_fluidd_layout.py"; then
+    echo "W: Bed_Assist installed, but its Fluidd category metadata could not be configured"
+fi
 
 if [ "${1:-}" != "--no-restart" ]; then
     sh "${SCRIPT_DIR}/../../../scripts/firmware_restart.sh"
