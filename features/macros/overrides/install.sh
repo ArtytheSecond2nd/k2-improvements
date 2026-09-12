@@ -19,6 +19,9 @@ python3 "${SCRIPT_DIR}/cleanup_managed_overrides.py" \
 sh "${SCRIPT_DIR}/ensure_bed_mesh_soak.sh" \
     ~/printer_data/config/custom/overrides.cfg
 
+python3 "${SCRIPT_DIR}/ensure_m191_settings.py" \
+    ~/printer_data/config/custom/overrides.cfg
+
 . "${SCRIPT_DIR}/../../../installer/detect/printer_fw.sh"
 PRINTER_FW="$(detect_printer_fw)"
 

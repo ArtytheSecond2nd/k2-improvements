@@ -65,13 +65,23 @@ class StartPrintConfigTests(unittest.TestCase):
         self.assertIn("{% if CHAMBER_TEMP > 35 %}", self.config)
         self.assertNotIn("{% if CHAMBER_TEMP > 40 %}", self.config)
 
-    def test_preheat_applies_fan_margin_for_existing_mesh_path(self):
+    def test_preheat_uses_shared_m191_fan_margin_for_existing_mesh_path(self):
+        self.assertIn(
+            'printer["gcode_macro _M191_VARS"].chamber_fan_margin',
+            self.config,
+        )
         self.assertIn(
             "SET_TEMPERATURE_FAN_TARGET TEMPERATURE_FAN=chamber_fan "
-            "TARGET={CHAMBER_TEMP + 2.0}",
+            "TARGET={CHAMBER_TEMP + CHAMBER_FAN_MARGIN}",
             self.config,
         )
         self.assertNotIn("M141 S{CHAMBER_TEMP}", self.config)
+
+    def test_shared_fan_margin_is_validated(self):
+        self.assertIn(
+            "CHAMBER_FAN_MARGIN < 0.0 or CHAMBER_FAN_MARGIN > 10.0",
+            self.config,
+        )
 
     def test_preheat_keeps_passive_chamber_heater_off(self):
         active_guard = self.config.index("{% if CHAMBER_TEMP > 35 %}")

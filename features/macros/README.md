@@ -14,6 +14,12 @@ Obsolete installer-managed entries are removed during updates; firmware
 compatibility state is kept in managed files rather than exposed as a user
 setting.
 
+The installer also adds any missing `_M191_VARS` defaults without replacing
+existing selections. These settings control bed assistance, its Z position and
+temperature policy, circulation-fan percentage, chamber-fan margin, and wait
+tolerances. See the [M191 documentation](./m191/README.md) for ranges and exact
+behavior.
+
 The separate `variable_bed_mesh_soak` setting defaults to five minutes and is
 used only when the stock-probe workflow must create a missing saved mesh. Users
 who heat soak before sending a print can set it to `0`.
