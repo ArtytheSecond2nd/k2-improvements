@@ -45,24 +45,12 @@ else
 fi
 
 mkdir -p /mnt/UDISK/root
-cd /mnt/UDISK/root
-
-if [ -d /mnt/UDISK/root/k2-improvements/.git ]; then
-    echo "I: k2-improvements already exists; updating existing repo."
-    cd /mnt/UDISK/root/k2-improvements
-    /opt/bin/git remote set-url origin "$REPO_URL"
-    /opt/bin/git fetch origin
-    if /opt/bin/git show-ref --verify --quiet "refs/heads/$BRANCH"; then
-        /opt/bin/git checkout "$BRANCH"
-    else
-        /opt/bin/git checkout -b "$BRANCH" "origin/$BRANCH"
-    fi
-    /opt/bin/git pull --ff-only origin "$BRANCH"
-else
-    echo "I: Cloning k2-improvements..."
-    cd /mnt/UDISK/root
-    /opt/bin/git clone -b "$BRANCH" "$REPO_URL" k2-improvements
-fi
+sh "$CURDIR/repository-refresh.sh" \
+    "$REPO_URL" \
+    "$BRANCH" \
+    /mnt/UDISK/root/k2-improvements \
+    /mnt/UDISK/root/.k2-improvements/bootstrap-recovery \
+    /opt/bin/git
 
 START_MENU="no"
 

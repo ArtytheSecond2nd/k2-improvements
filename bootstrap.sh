@@ -62,6 +62,7 @@ PY
 }
 
 download "$BASE_URL/bootstrap/bootstrap.sh" "$BOOTSTRAP_DIR/bootstrap.sh"
+download "$BASE_URL/bootstrap/repository-refresh.sh" "$BOOTSTRAP_DIR/repository-refresh.sh"
 download "$BASE_URL/bootstrap/entware/install.sh" "$BOOTSTRAP_DIR/entware/install.sh"
 download "$BASE_URL/bootstrap/entware/wget-ssl.py" "$BOOTSTRAP_DIR/entware/wget-ssl.py"
 download "$BASE_URL/bootstrap/entware/unslung.init" "$BOOTSTRAP_DIR/entware/unslung.init"
@@ -70,6 +71,7 @@ download "$BASE_URL/bootstrap/better-root/install.sh" "$BOOTSTRAP_DIR/better-roo
 download "$BASE_URL/bootstrap/better-root/README.md" "$BOOTSTRAP_DIR/better-root/README.md"
 
 chmod +x "$BOOTSTRAP_DIR/bootstrap.sh"
+chmod +x "$BOOTSTRAP_DIR/repository-refresh.sh"
 chmod +x "$BOOTSTRAP_DIR/entware/install.sh"
 chmod +x "$BOOTSTRAP_DIR/better-root/install.sh"
 

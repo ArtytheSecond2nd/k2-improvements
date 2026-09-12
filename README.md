@@ -108,6 +108,13 @@ Bootstrap prepares the required command-line tools, persistent root
 environment, and repository checkout. The menu then performs the printer setup
 path or optional feature you select.
 
+The same documented bootstrap command is also the installer recovery path. It
+first attempts a normal fast-forward update. If the checkout has diverged or is
+too old to update normally, bootstrap clones and verifies the selected branch
+before replacing the checkout. A checkout containing local file changes is
+preserved without its Git history under
+`/mnt/UDISK/root/.k2-improvements/bootstrap-recovery/`.
+
 > [!NOTE]
 > On the first run, `better-root` may intentionally close the SSH connection.
 > Reconnect and run:
