@@ -80,15 +80,22 @@ class StartPrintConfigTests(unittest.TestCase):
             self.config,
         )
         active = self.config.index("{% if CHAMBER_TEMP > 35 %}")
-        fan_off = self.config.index(
-            "SET_TEMPERATURE_FAN_TARGET TEMPERATURE_FAN=chamber_fan TARGET=0",
+        active_fan_target = self.config.index(
+            "SET_TEMPERATURE_FAN_TARGET TEMPERATURE_FAN=chamber_fan "
+            "TARGET={CHAMBER_TEMP + CHAMBER_FAN_MARGIN}",
             active,
         )
-        passive = self.config.index("{% elif CHAMBER_TEMP > 0 %}", fan_off)
+        passive = self.config.index(
+            "{% elif CHAMBER_TEMP > 0 %}", active_fan_target
+        )
         baseline = self.config.index("{% else %}", passive)
-        self.assertLess(active, fan_off)
-        self.assertLess(fan_off, passive)
+        self.assertLess(active, active_fan_target)
+        self.assertLess(active_fan_target, passive)
         self.assertLess(passive, baseline)
+        self.assertNotIn(
+            "SET_TEMPERATURE_FAN_TARGET TEMPERATURE_FAN=chamber_fan TARGET=0",
+            self.config,
+        )
         self.assertNotIn("M141 S{CHAMBER_TEMP}", self.config)
 
     def test_shared_fan_margin_is_validated(self):

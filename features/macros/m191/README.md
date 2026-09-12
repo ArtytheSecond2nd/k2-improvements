@@ -19,7 +19,7 @@ are missing but does not overwrite existing values.
 | `bed_assist_degrees_above_commanded` | `0.0` | `0` to `120` C | When above zero, calculates the assist target by adding this value to the slicer's commanded bed temperature. |
 | `bed_assist_z_height` | `195.0` | `30` to `330` mm | Bed position used to circulate warm air below the chamber heater. |
 | `circulation_fan_speed` | `25.0` | `0` to `100` percent | Model and side/auxiliary fan speed during assistance. |
-| `chamber_fan_margin` | `2.0` | `0` to `10` C | Amount added to passive chamber targets through 35 C; active chamber heating disables the cooling fan. |
+| `chamber_fan_margin` | `2.0` | `0` to `10` C | Amount added to every nonzero chamber request to set the post-preparation exhaust ceiling. |
 | `bed_restore_tolerance` | `5.0` | above `0` to `20` C | Allowed difference around the original bed target before M191 returns. |
 | `chamber_wait_max_delta` | `5.0` | above `0` to `20` C | Upper allowance used while waiting for the chamber target. |
 
@@ -60,8 +60,11 @@ the bed to return within the configured tolerance of its original nonzero
 target. A zero original bed target does not cause an impossible cooldown wait.
 
 The chamber cooling-fan margin is shared with `START_PRINT`, so existing-mesh
-and newly generated-mesh paths apply the same target policy. M191 does not
-silently raise or retain a higher chamber-heater target.
+and newly generated-mesh paths apply the same target policy. Once START_PRINT
+knows the requested chamber temperature, both passive and actively heated
+requests set the chamber exhaust ceiling to that temperature plus the margin.
+The fan remains off below this ceiling and can immediately cool an already-hot
+chamber. M191 does not silently raise or retain a higher chamber-heater target.
 
 This macro is called by the project's `START_PRINT` workflow when the slicer
 requests an actively heated chamber temperature.

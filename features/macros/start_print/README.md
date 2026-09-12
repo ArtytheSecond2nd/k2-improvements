@@ -6,8 +6,8 @@ Replaces the stock start macro with a temperature-aware workflow that:
 - waits for chamber targets above Creality's 35 C active-heating threshold
   through `M191`, while lower nonzero targets are applied without blocking;
 - restores the chamber cooling-fan target after Creality preparation: 35 C when
-  no chamber temperature is requested, the configured M191 margin above passive
-  targets through 35 C, and disabled while active chamber heating is requested;
+  no chamber temperature is requested, or the configured M191 margin above any
+  nonzero requested chamber temperature;
 - applies material-specific Z offsets;
 - levels the gantry and prepares the correct bed mesh; and
 - handles either Cartographer or the stock probe path.
