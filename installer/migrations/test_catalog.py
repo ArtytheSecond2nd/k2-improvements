@@ -321,5 +321,15 @@ class MigrationCatalogTests(unittest.TestCase):
             },
         )
 
+    def test_axis_twist_tracks_probe_aware_calibration_range(self):
+        self.assertIn(
+            "axis-twist-probe-aware-range-v1",
+            {
+                migration_id
+                for migration_id, component, _detector, _reason in entries()
+                if component == "axis_twist_compensation"
+            },
+        )
+
 if __name__ == "__main__":
     unittest.main()
