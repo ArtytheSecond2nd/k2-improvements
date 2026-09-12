@@ -43,7 +43,7 @@ def patch_webhooks(filepath):
 
     if 'force_stop_homing' in original_content and 'can_force_stop_homing' in original_content:
         print("Already patched, no changes needed.")
-        sys.exit(2)
+        return None
 
     estop_reg = 'self.register_endpoint("emergency_stop", self._handle_estop_request)'
     if estop_reg not in original_content:
@@ -99,5 +99,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     filepath = sys.argv[1]
-    success = patch_webhooks(filepath)
-    sys.exit(0 if success else 1)
+    result = patch_webhooks(filepath)
+    if result is None:
+        sys.exit(2)
+    sys.exit(0 if result else 1)
