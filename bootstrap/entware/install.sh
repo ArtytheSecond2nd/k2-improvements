@@ -1,5 +1,7 @@
 #!/bin/ash
 
+set -e
+
 cd $(dirname ${0})
 
 unset LD_LIBRARY_PATH
@@ -8,23 +10,23 @@ unset LD_PRELOAD
 LOADER=ld-linux.so.3
 GLIBC=2.27
 
-echo -e "Info: Removing old directories..."
+echo "Info: Removing old directories..."
 rm -rf /opt
 rm -rf /mnt/UDISK/opt
 
-echo -e "Info: Creating directory..."
+echo "Info: Creating directory..."
 mkdir -p /mnt/UDISK/opt
 
-echo -e "Info: Linking folder..."
+echo "Info: Linking folder..."
 ln -nsf /mnt/UDISK/opt /opt
 
-echo -e "Info: Creating subdirectories..."
+echo "Info: Creating subdirectories..."
 for folder in bin etc lib/opkg tmp var/lock
 do
   mkdir -p /mnt/UDISK/opt/$folder
 done
 
-echo -e "Info: Downloading opkg package manager from Entware repo..."
+echo "Info: Downloading opkg package manager from Entware repo..."
 chmod 755 ./wget-ssl.py
 URL="https://bin.entware.net/armv7sf-k3.2/installer"
 
@@ -44,14 +46,14 @@ else
   exit 1
 fi
 
-echo -e "Info: Applying permissions..."
+echo "Info: Applying permissions..."
 chmod 755 /opt/bin/opkg
 chmod 777 /opt/tmp
 
 # put the python wget in place long enough to bootstrap opkg with the full version
 cp wget-ssl.py /bin/wget
 
-echo -e "Info: Installing basic packages..."
+echo "Info: Installing basic packages..."
 /opt/bin/opkg update
 # replace the bootstrap wget-ssl implementation
 /opt/bin/opkg install wget-ssl
@@ -61,11 +63,11 @@ export PATH=/opt/bin:$PATH
 /opt/bin/opkg install entware-opt git git-http curl jq unzip
 
 
-echo -e "Info: Installing SFTP server support..."
+echo "Info: Installing SFTP server support..."
 /opt/bin/opkg install openssh-sftp-server
-ln -s /opt/libexec/sftp-server /usr/libexec/sftp-server
+ln -sf /opt/libexec/sftp-server /usr/libexec/sftp-server
 
-echo -e "Info: Configuring files..."
+echo "Info: Configuring files..."
 for file in passwd group shells shadow gshadow; do
   if [ -f /etc/$file ]; then
     ln -sf /etc/$file /opt/etc/$file
@@ -76,11 +78,11 @@ done
 
 [ -f /etc/localtime ] && ln -sf /etc/localtime /opt/etc/localtime
 
-echo -e "Info: Applying changes in system profile..."
+echo "Info: Applying changes in system profile..."
 mkdir -p /etc/profile.d
 echo 'export PATH="/opt/bin:/opt/sbin:$PATH"' > /etc/profile.d/entware.sh
 
-echo -e "Info: Adding startup script..."
+echo "Info: Adding startup script..."
 
 cp unslung.init /etc/init.d/unslung
 chmod 755 /etc/init.d/unslung

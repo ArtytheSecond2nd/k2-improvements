@@ -131,10 +131,6 @@ class PrinterProbe:
             raise self.printer.command_error(reason)
         # Allow axis_twist_compensation to update results
         self.printer.send_event("probe:update_results", epos)
-        # add z compensation to probe position
-        self.gcode.respond_info("probe at %.3f,%.3f is z=%.6f z_compensation=%.6f"
-                                % (epos[0], epos[1], epos[2],z_compensation))
-        epos[2] += z_compensation
         self.gcode.respond_info("probe at %.3f,%.3f is z=%.6f"
                                 % (epos[0], epos[1], epos[2]))
         return epos[:3]
@@ -310,11 +306,7 @@ class PrinterProbe:
         except Exception as err:
             logging.error("record_gcode_offset_when_printing error: %s" % err)
 def run_single_probe(probe, gcmd):
-    probe_session = probe.start_probe_session(gcmd)
-    probe_session.run_probe(gcmd)
-    pos = probe_session.pull_probed_results()[0]
-    probe_session.end_probe_session()
-    return pos
+    return probe.run_probe(gcmd)
 # Endstop wrapper that enables probe specific features
 class ProbeEndstopWrapper:
     def __init__(self, config):
@@ -382,20 +374,6 @@ class ProbeEndstopWrapper:
             self.raise_probe()
     def get_position_endstop(self):
         return self.position_endstop
-    def start_probe_session(self, gcmd):
-        if self.multi_probe_pending:
-            self._probe_state_error()
-        self.mcu_probe.multi_probe_begin()
-        self.multi_probe_pending = True
-        self.results = []
-        return self
-    def end_probe_session(self):
-        if not self.multi_probe_pending:
-            self._probe_state_error()
-        self.results = []
-        self.multi_probe_pending = False
-        self.mcu_probe.multi_probe_end()
-        
 # Helper code that can probe a series of points and report the
 # position at each point.
 class ProbePointsHelper:

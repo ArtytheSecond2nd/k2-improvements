@@ -7,12 +7,47 @@
 import math
 from . import probe
 
+
+PROBE_BOUNDARY_MARGIN = .5
+ADJUSTMENT_ACCESS_BED_DROP = 200.
+ADJUSTMENT_ACCESS_SPEED = 20.
+
+
+def calculate_safe_probe_coordinate(requested, axis_minimum, axis_maximum,
+                                    probe_offset,
+                                    margin=PROBE_BOUNDARY_MARGIN):
+    """Return the closest bed coordinate reachable by nozzle and probe."""
+    if axis_minimum >= axis_maximum:
+        raise ValueError("axis minimum must be less than axis maximum")
+    if margin < 0.:
+        raise ValueError("probe boundary margin cannot be negative")
+
+    safe_minimum = max(axis_minimum + margin,
+                       axis_minimum + probe_offset + margin)
+    safe_maximum = min(axis_maximum - margin,
+                       axis_maximum + probe_offset - margin)
+    if safe_minimum > safe_maximum:
+        raise ValueError("active probe has no reachable range")
+    return min(max(requested, safe_minimum), safe_maximum)
+
+
+def calculate_bed_access_z(current_z, axis_maximum,
+                           distance=ADJUSTMENT_ACCESS_BED_DROP,
+                           margin=PROBE_BOUNDARY_MARGIN):
+    """Return a safe absolute Z that lowers the bed after probing."""
+    if distance < 0.:
+        raise ValueError("bed access distance cannot be negative")
+    if margin < 0.:
+        raise ValueError("bed access boundary margin cannot be negative")
+    return min(current_z + distance, axis_maximum - margin)
+
+
 class ScrewsTiltAdjust:
     def __init__(self, config):
         self.config = config
         self.printer = config.get_printer()
         self.screws = []
-        self.results = []
+        self.results = {}
         self.max_diff = None
         self.max_diff_error = False
         # Read config
@@ -37,6 +72,10 @@ class ScrewsTiltAdjust:
                                                     self.probe_finalize,
                                                     default_points=points)
         self.probe_helper.minimum_points(3)
+        # screwN values describe physical bed locations. Convert them to
+        # toolhead coordinates with the active probe's live X/Y offsets.
+        self.probe_helper.use_xy_offsets(True)
+        self.active_probe_points = points
         # Register command
         self.gcode = self.printer.lookup_object('gcode')
         self.gcode.register_command("SCREWS_TILT_CALCULATE",
@@ -46,7 +85,86 @@ class ScrewsTiltAdjust:
                                      "screws by calculating the number " \
                                      "of turns to level it."
 
+    @staticmethod
+    def _coord_value(coord, index, name):
+        try:
+            return float(coord[index])
+        except (IndexError, KeyError, TypeError):
+            return float(getattr(coord, name))
+
+    def _prepare_safe_probe_points(self, gcmd):
+        active_probe = self.printer.lookup_object('probe', None)
+        if active_probe is None:
+            raise gcmd.error(
+                "SCREWS_TILT_CALCULATE requires an active probe")
+        offsets = active_probe.get_offsets()
+        x_offset, y_offset = float(offsets[0]), float(offsets[1])
+
+        toolhead = self.printer.lookup_object('toolhead')
+        eventtime = self.printer.get_reactor().monotonic()
+        status = toolhead.get_status(eventtime)
+        minimum = status['axis_minimum']
+        maximum = status['axis_maximum']
+        axis_minimum = (
+            self._coord_value(minimum, 0, 'x'),
+            self._coord_value(minimum, 1, 'y'))
+        axis_maximum = (
+            self._coord_value(maximum, 0, 'x'),
+            self._coord_value(maximum, 1, 'y'))
+
+        safe_points = []
+        try:
+            for coord, _name in self.screws:
+                safe_x = calculate_safe_probe_coordinate(
+                    coord[0], axis_minimum[0], axis_maximum[0], x_offset)
+                safe_y = calculate_safe_probe_coordinate(
+                    coord[1], axis_minimum[1], axis_maximum[1], y_offset)
+                safe_points.append((safe_x, safe_y))
+        except ValueError as err:
+            raise gcmd.error("SCREWS_TILT_CALCULATE: %s" % (err,))
+
+        # Preflight every offset-adjusted toolhead target before probing.
+        for safe_x, safe_y in safe_points:
+            toolhead_x = safe_x - x_offset
+            toolhead_y = safe_y - y_offset
+            if not (axis_minimum[0] <= toolhead_x <= axis_maximum[0] and
+                    axis_minimum[1] <= toolhead_y <= axis_maximum[1]):
+                raise gcmd.error(
+                    "SCREWS_TILT_CALCULATE: calculated toolhead target "
+                    "X=%.3f Y=%.3f is outside the motion range" %
+                    (toolhead_x, toolhead_y))
+
+        self.active_probe_points = safe_points
+        self.probe_helper.update_probe_points(safe_points, 3)
+
+        safe_min_x = calculate_safe_probe_coordinate(
+            axis_minimum[0], axis_minimum[0], axis_maximum[0], x_offset)
+        safe_max_x = calculate_safe_probe_coordinate(
+            axis_maximum[0], axis_minimum[0], axis_maximum[0], x_offset)
+        safe_min_y = calculate_safe_probe_coordinate(
+            axis_minimum[1], axis_minimum[1], axis_maximum[1], y_offset)
+        safe_max_y = calculate_safe_probe_coordinate(
+            axis_maximum[1], axis_minimum[1], axis_maximum[1], y_offset)
+        gcmd.respond_info(
+            "SCREWS_TILT_CALCULATE: active probe offsets X=%.3f Y=%.3f; "
+            "safe physical probe range X=%.3f..%.3f Y=%.3f..%.3f" % (
+                x_offset, y_offset, safe_min_x, safe_max_x,
+                safe_min_y, safe_max_y))
+
+        for (requested, name), actual in zip(self.screws, safe_points):
+            toolhead_x = actual[0] - x_offset
+            toolhead_y = actual[1] - y_offset
+            suffix = ""
+            if (abs(actual[0] - requested[0]) > .0005 or
+                    abs(actual[1] - requested[1]) > .0005):
+                suffix = " (closest safely reachable point)"
+            gcmd.respond_info(
+                "%s: probe X=%.3f Y=%.3f; toolhead X=%.3f Y=%.3f%s" %
+                (name, actual[0], actual[1], toolhead_x, toolhead_y,
+                 suffix))
+
     def cmd_SCREWS_TILT_CALCULATE(self, gcmd):
+        self._prepare_safe_probe_points(gcmd)
         self.max_diff = gcmd.get_float("MAX_DEVIATION", None)
         # Option to force all turns to be in the given direction (CW or CCW)
         direction = gcmd.get("DIRECTION", default=None)
@@ -58,6 +176,25 @@ class ScrewsTiltAdjust:
                         gcmd.get_commandline(),))
         self.direction = direction
         self.probe_helper.start_probe(gcmd)
+        self._lower_bed_for_adjustment(gcmd)
+
+    def _lower_bed_for_adjustment(self, gcmd):
+        toolhead = self.printer.lookup_object('toolhead')
+        eventtime = self.printer.get_reactor().monotonic()
+        maximum = toolhead.get_status(eventtime)['axis_maximum']
+        axis_maximum_z = self._coord_value(maximum, 2, 'z')
+        current_z = float(toolhead.get_position()[2])
+        target_z = calculate_bed_access_z(current_z, axis_maximum_z)
+        if target_z <= current_z:
+            gcmd.respond_info(
+                "SCREWS_TILT_CALCULATE: bed is already at its safe "
+                "adjustment-access limit")
+            return
+        gcmd.respond_info(
+            "SCREWS_TILT_CALCULATE: lowering bed %.1f mm to Z=%.1f "
+            "for adjustment access" % (target_z - current_z, target_z))
+        toolhead.manual_move([None, None, target_z], ADJUSTMENT_ACCESS_SPEED)
+        toolhead.wait_moves()
 
     def get_status(self, eventtime):
         return {'error': self.max_diff_error,
@@ -89,7 +226,8 @@ class ScrewsTiltAdjust:
                                 "CW=clockwise, CCW=counter-clockwise")
         for i, screw in enumerate(self.screws):
             z = positions[i][2]
-            coord, name = screw
+            _configured_coord, name = screw
+            coord = self.active_probe_points[i]
             if i == i_base:
                 # Show the results
                 self.gcode.respond_info(

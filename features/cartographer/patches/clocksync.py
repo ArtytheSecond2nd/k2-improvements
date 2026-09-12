@@ -4,7 +4,6 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import logging, math
-import mymodule.mymovie as mymovie
 import numpy as np
 RTT_AGE = .000010 / (60. * 60.)
 DECAY = 1. / 30.
@@ -137,7 +136,7 @@ class ClockSync:
         new_freq = self.clock_covariance / self.time_variance
         pred_stddev = math.sqrt(self.prediction_variance)
         self.serial.set_clock_est(new_freq, self.time_avg + TRANSMIT_EXTRA,
-                                  mymovie.Py_fast_convert_to_int(self.clock_avg - 3. * pred_stddev), clock)
+                                  int(self.clock_avg - 3. * pred_stddev), clock)
         self.clock_est = (self.time_avg + self.min_half_rtt,
                           self.clock_avg, new_freq)
         self.sync_array[1]=self.clock_est[0]
@@ -147,14 +146,14 @@ class ClockSync:
         #              sent_time, new_freq, clock - exp_clock, pred_stddev)
     # clock frequency conversions
     def print_time_to_clock(self, print_time):
-        return mymovie.Py_fast_convert_to_int(print_time * self.mcu_freq)
+        return int(print_time * self.mcu_freq)
     def clock_to_print_time(self, clock):
         return clock / self.mcu_freq
     # system time conversions
     def get_clock(self, eventtime):
         sample_time, clock, freq = self.clock_est
         value=clock + (eventtime - sample_time) * freq
-        return mymovie.Py_fast_convert_to_int(value)
+        return int(value)
     def estimate_clock_systime(self, reqclock):
         sample_time, clock, freq = self.clock_est
         return float(reqclock - clock)/freq + sample_time
@@ -208,7 +207,7 @@ class SecondarySync(ClockSync):
     # clock frequency conversions
     def print_time_to_clock(self, print_time):
         adjusted_offset, adjusted_freq = self.clock_adj
-        return mymovie.Py_fast_convert_to_int((print_time - adjusted_offset) * adjusted_freq)
+        return int((print_time - adjusted_offset) * adjusted_freq)
     def clock_to_print_time(self, clock):
         adjusted_offset, adjusted_freq = self.clock_adj
         return clock / adjusted_freq + adjusted_offset

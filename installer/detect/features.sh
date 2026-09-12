@@ -117,13 +117,22 @@ is_better_init()   { [ -f /etc/profile.d/better-init.sh ]; }
 is_surface_wrap()  { grep -q 'surface-selection wrapper' "$PRINTER_CFG_DIR/custom/start_print.cfg" 2>/dev/null; }
 is_carto_macros()  { [ -L "$PRINTER_CFG_DIR/custom/cartographer_macros.cfg" ] || \
                      [ -f "$PRINTER_CFG_DIR/custom/cartographer_macros.cfg" ]; }
+has_settings_ui_overlay() {
+    local marker version
+    marker="${FLUIDD_DIR:-/usr/share/fluidd}/k2-ui-overlay-support.txt"
+    version=$(cat "$marker" 2>/dev/null) || return 1
+    case "$version" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    [ "$version" -ge 3 ]
+}
 is_global_touch_offsets() {
     local custom="$PRINTER_CFG_DIR/custom"
     local editor="${KLIPPER_DIR:-${HOME:-/mnt/UDISK/root}/klipper}/klippy/extras/k2_cartographer_offset_editor.py"
     [ -e "$custom/global_touch_offsets.cfg" ] &&
     grep -q '^\[include global_touch_offsets\.cfg\]$' "$custom/main.cfg" 2>/dev/null &&
     [ -e "$editor" ] &&
-    grep -qx '3' /usr/share/fluidd/k2-ui-overlay-support.txt 2>/dev/null
+    has_settings_ui_overlay
 }
 is_material_z_offsets() {
     local custom="$PRINTER_CFG_DIR/custom"
@@ -132,7 +141,7 @@ is_material_z_offsets() {
     grep -q '^\[include material_z_offsets\.cfg\]$' "$custom/main.cfg" 2>/dev/null &&
     grep -q 'K2_MATERIAL_Z_APPLY' "$custom/start_print.cfg" 2>/dev/null &&
     [ -e "$editor" ] &&
-    grep -qx '3' /usr/share/fluidd/k2-ui-overlay-support.txt 2>/dev/null
+    has_settings_ui_overlay
 }
 is_carto_plate_workflow() { is_carto_macros && is_surface_wrap; }
 is_carto_offset_set() { is_cartographer; }  # always "set" if cartographer is installed (some value is always there)

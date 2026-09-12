@@ -25,7 +25,7 @@
 
 set -eu
 
-D="${1:-/mnt/UDISK/k2-improvements}"
+D="${1:-/mnt/UDISK/root/k2-improvements}"
 [ -d "$D" ] || { echo "ERROR: $D not found"; exit 1; }
 
 SCRIPT_DIR="$(readlink -f "$(dirname "$0")")"

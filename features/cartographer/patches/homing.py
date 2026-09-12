@@ -418,7 +418,8 @@ class PrinterHoming:
                                 ret = self.run_G28_two_Z()
                                 if ret == MOTOR_PROTECT_ERROR:
                                     gcode.respond_info("Z MOTOR_PROTECT_ERROR")
-                                    raise
+                                    raise self.printer.command_error(
+                                        "Z motor protection triggered during homing")
                                 gcode.run_script_from_command("SET_VELOCITY_LIMIT ACCEL=%s" % max_accel )
                                 # Mark photoelectric leveling as done BEFORE scanner check
                                 # This preserves the leveling work even if scanner is disconnected
@@ -439,7 +440,8 @@ class PrinterHoming:
                                 ret = self.run_G28_two_Z()
                                 if ret == MOTOR_PROTECT_ERROR:
                                     gcode.respond_info("Z MOTOR_PROTECT_ERROR")
-                                    raise
+                                    raise self.printer.command_error(
+                                        "Z motor protection triggered during homing")
                                 gcode.run_script_from_command("SET_VELOCITY_LIMIT ACCEL=%s" % max_accel )
                                 # Mark photoelectric leveling as done BEFORE scanner check
                                 z_align.is_already_zodwn = True

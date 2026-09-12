@@ -99,7 +99,7 @@ After installing the firmware or completing the reset:
 Copy this entire command into the printer's SSH session:
 
 ```sh
-python3 -c 'import urllib.request; urllib.request.urlretrieve("https://raw.githubusercontent.com/Rcpilot33/k2-improvements/main/bootstrap.sh", "/tmp/bootstrap.sh")' && sh /tmp/bootstrap.sh localhost --menu
+python3 -c 'import urllib.request; urllib.request.urlretrieve("https://raw.githubusercontent.com/Rcpilot33/k2-improvements/main/bootstrap.sh", "/tmp/bootstrap.sh")' && sh /tmp/bootstrap.sh --menu
 ```
 
 Enter `y` when bootstrap offers to open the installer menu.
@@ -114,14 +114,6 @@ too old to update normally, bootstrap clones and verifies the selected branch
 before replacing the checkout. A checkout containing local file changes is
 preserved without its Git history under
 `/mnt/UDISK/root/.k2-improvements/bootstrap-recovery/`.
-
-> [!NOTE]
-> On the first run, `better-root` may intentionally close the SSH connection.
-> Reconnect and run:
->
-> ```sh
-> sh /mnt/UDISK/root/k2-improvements/menu.sh
-> ```
 
 For factory-reset preparation, Cartographer hardware and firmware steps,
 unattended bootstrap, recovery procedures, and detailed menu behavior, read
@@ -177,7 +169,9 @@ See the [Cartographer setup and calibration guide](./features/cartographer/SETUP
 
 ## Optional features
 
-Install extras individually from **Optional extras**:
+Most extras are installed from **Optional extras**. Cartographer mount offsets
+are under **Cartographer tools**, and PR Touch `SAVE_CONFIG` cleanup is under
+**Maintenance and recovery**.
 
 | Extra | Documentation |
 |---|---|

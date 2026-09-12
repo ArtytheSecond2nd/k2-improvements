@@ -15,7 +15,7 @@ Thanks to [@JaminCollins](https://github.com/jamincollins) and
 - Install `SCREWS_TILT_CALCULATE` support.
 - Heat the bed to at least 60 C and allow it to soak for 10 minutes.
 - Create a fresh bed mesh at that temperature.
-- Install Python on the computer that will run `bed_leveling.py`.
+- Install Python on the computer that will run `bedlevel.py`.
 
 ## Level the bed screws
 
@@ -27,7 +27,7 @@ Thanks to [@JaminCollins](https://github.com/jamincollins) and
 
 ## Configure the analysis script
 
-Copy `bed_leveling.py` to your computer; do not run it on the printer.
+Copy `bedlevel.py` to your computer; do not run it on the printer.
 
 1. Enter the bed-mesh values in the section identified near the top of the
    script.

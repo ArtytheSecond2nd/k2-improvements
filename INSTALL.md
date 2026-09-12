@@ -99,7 +99,7 @@ home, and clones or updates this branch at:
 Copy this entire command into the printer's SSH session:
 
 ```sh
-python3 -c 'import urllib.request; urllib.request.urlretrieve("https://raw.githubusercontent.com/Rcpilot33/k2-improvements/main/bootstrap.sh", "/tmp/bootstrap.sh")' && sh /tmp/bootstrap.sh localhost --menu
+python3 -c 'import urllib.request; urllib.request.urlretrieve("https://raw.githubusercontent.com/Rcpilot33/k2-improvements/main/bootstrap.sh", "/tmp/bootstrap.sh")' && sh /tmp/bootstrap.sh --menu
 ```
 
 The `--menu` path asks whether to open the installer after bootstrap. Enter
@@ -111,7 +111,7 @@ without opening the menu.
 Use this form to install or update only the bootstrap and repository:
 
 ```sh
-python3 -c 'import urllib.request; urllib.request.urlretrieve("https://raw.githubusercontent.com/Rcpilot33/k2-improvements/main/bootstrap.sh", "/tmp/bootstrap.sh")' && sh /tmp/bootstrap.sh localhost --no-menu
+python3 -c 'import urllib.request; urllib.request.urlretrieve("https://raw.githubusercontent.com/Rcpilot33/k2-improvements/main/bootstrap.sh", "/tmp/bootstrap.sh")' && sh /tmp/bootstrap.sh --no-menu
 ```
 
 The default when no menu flag is supplied is also `--no-menu`.
@@ -182,7 +182,7 @@ color:
 - Green: `INSTALLED` or `COMPLETE`
 - Gray: `NOT INSTALLED` or `AVAILABLE`
 - Yellow: `REQUIRES ...`, `INCOMPLETE`, or `RECOVERY`
-- Red: `DESTRUCTIVE` or `ERROR`
+- Red: `DESTRUCTIVE`
 
 Returning an active Cartographer setup to stock PR Touch is a planned recovery
 workflow and is not currently enabled.
@@ -288,7 +288,9 @@ and build surface.
 
 ## Optional extras
 
-Install extras individually from **Optional extras**:
+Most extras are installed from **Optional extras**. Cartographer offset setup
+is under **Cartographer tools**, and PR Touch cleanup is under **Maintenance
+and recovery**.
 
 | Extra | Purpose |
 |---|---|

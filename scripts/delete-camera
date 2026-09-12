@@ -9,7 +9,7 @@ fi
 
 cd "$(dirname $0)" || exit
 
-if type -p curl > /dev/null; then
+if command -v curl > /dev/null; then
     CURL=curl
 else
     CURL=./python-curl.py

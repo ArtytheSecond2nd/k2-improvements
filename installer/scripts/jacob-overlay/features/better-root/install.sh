@@ -16,17 +16,30 @@ move_homedir() {
     fi
 }
 
+ensure_link() {
+    source_path="$1"
+    link_path="$2"
+    if [ -L "$link_path" ]; then
+        ln -sfn "$source_path" "$link_path"
+    elif [ -e "$link_path" ]; then
+        echo "I: preserving existing non-symlink path: $link_path"
+    else
+        ln -s "$source_path" "$link_path"
+    fi
+}
+
 link_up() {
     cd /mnt/UDISK/root
-    # link up the various printer bits in their normal location.
-    # `ln -sfn` is idempotent: re-running this script (or running it after
-    # moonraker has already been installed by a feature pack) won't fail
-    # with "File exists" the way bare `ln -s` does.
-    ln -sfn /usr/share/klipper       klipper
-    ln -sfn /usr/share/klippy-env    klippy-env
-    ln -sfn /mnt/UDISK/printer_data  printer_data
-    [ -d /usr/share/moonraker ]     && ln -sfn /usr/share/moonraker     moonraker
-    [ -d /usr/share/moonraker-env ] && ln -sfn /usr/share/moonraker-env moonraker-env
+    # Link printer components without replacing real directories.
+    ensure_link /usr/share/klipper klipper
+    ensure_link /usr/share/klippy-env klippy-env
+    ensure_link /mnt/UDISK/printer_data printer_data
+    if [ -d /usr/share/moonraker ]; then
+        ensure_link /usr/share/moonraker moonraker
+    fi
+    if [ -d /usr/share/moonraker-env ]; then
+        ensure_link /usr/share/moonraker-env moonraker-env
+    fi
 }
 
 aliases() {
@@ -36,9 +49,6 @@ alias grep='grep --color=always'
 EOF
 }
 
-if grep -qE 'root.*UDISK' /etc/passwd; then
-    exit 0
-fi
 move_homedir
 link_up
 #aliases

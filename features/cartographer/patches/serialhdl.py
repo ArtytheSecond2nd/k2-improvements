@@ -147,7 +147,7 @@ class SerialReader:
                                         can_filters=filters,
                                         bustype='socketcan')
                 bus.send(set_id_msg)
-            except can.CanError as e:
+            except (can.CanError, os.error, IOError) as e:
                 logging.warn("%sUnable to open CAN port: %s",
                              self.warn_prefix, e)
                 self.reactor.pause(self.reactor.monotonic() + 5.)
@@ -309,6 +309,8 @@ class SerialReader:
                                 self.ffi_lib.serialqueue_free_commandqueue)
     # Dumping debug lists
     def dump_debug(self):
+        if self.serialqueue is None:
+            return ""
         out = []
         out.append("Dumping serial stats: %s" % (
             self.stats(self.reactor.monotonic()),))
