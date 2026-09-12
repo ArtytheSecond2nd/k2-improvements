@@ -142,6 +142,24 @@ class CompatibilityTests(unittest.TestCase):
         self.assertIs(printer.objects["prtouch_v3"], compat)
         self.assertTrue(compat.get_status(0)["installed"])
 
+    def test_status_finalization_restores_config_before_connect(self):
+        printer = FakePrinter()
+        compat = MODULE.K2PRTouchVersionCompat(FakeConfig(printer))
+        configfile = printer.objects["configfile"]
+        configfile.status_raw_config.clear()
+        configfile.status_raw_config["cartographer"] = {"mcu": "cartographer"}
+        configfile.status_settings = {
+            "cartographer": {"mcu": "cartographer"}
+        }
+
+        self.assertFalse(compat.get_status(0)["config_reported"])
+        printer.handlers["configfile:status_built"](configfile)
+
+        self.assertEqual(configfile.status_raw_config["prtouch_v3"], {})
+        self.assertEqual(configfile.status_settings["prtouch_v3"], {})
+        self.assertIs(printer.objects["prtouch_v3"], compat)
+        self.assertTrue(compat.get_status(0)["config_reported"])
+
 
 if __name__ == "__main__":
     unittest.main()

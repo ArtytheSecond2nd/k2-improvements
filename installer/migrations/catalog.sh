@@ -80,5 +80,6 @@ cartographer-default-controls-core-v1|cartographer|is_cartographer|Cartographer 
 m191-configurable-settings-v1|macros|is_macros|M191 bed assistance and chamber waiting settings are now configurable
 m191-bed-assist-editor-v2|macros|is_macros|M191 settings can now be edited from the Fluidd Bed Assist control
 cartographer-prtouch-cold-boot-registration-v1|cartographer|is_cartographer|Cartographer now reports PR Touch preparation compatibility before Creality checks it during a cold boot
+cartographer-prtouch-config-finalization-v2|cartographer|is_cartographer|Cartographer now restores PR Touch preparation compatibility before Klipper exposes its finalized configuration
 EOF
 }
