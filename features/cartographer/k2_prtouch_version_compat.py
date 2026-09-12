@@ -31,19 +31,23 @@ class K2PRTouchVersionCompat:
             self.cmd_status,
             desc="Show Creality PR Touch version-reporting compatibility status",
         )
+        self.printer.register_event_handler(
+            "configfile:status_built", self._handle_config_status_built
+        )
         self.printer.register_event_handler("klippy:connect", self._handle_connect)
         # Creality's master-server may inspect config status as soon as Klippy's
         # API appears during a cold boot.  Waiting for klippy:connect can lose
         # that race and make the service cache the reduced preparation path.
         self._install_compatibility("configuration initialization")
 
+    def _handle_config_status_built(self, configfile):
+        self.configfile = configfile
+        self._install_compatibility("config status finalization")
+
     def _handle_connect(self):
         self._install_compatibility("klippy:connect")
 
     def _install_compatibility(self, stage):
-        if self.installed:
-            return
-
         cartographer = self.printer.lookup_object("cartographer", None)
         self.configfile = self.printer.lookup_object("configfile", None)
         if cartographer is None or self.configfile is None:
@@ -64,13 +68,18 @@ class K2PRTouchVersionCompat:
             return
 
         native_object = self.printer.lookup_object(SYNTHETIC_SECTION, None)
-        self.native_section = (
-            SYNTHETIC_SECTION in raw_config or SYNTHETIC_SECTION in settings
-        )
         if native_object is self:
+            # Configfile rebuilds these dictionaries after extras are loaded.
+            # Restore the synthetic section at connect time without attempting
+            # to register the already-present status object a second time.
+            raw_config.setdefault(SYNTHETIC_SECTION, {})
+            settings.setdefault(SYNTHETIC_SECTION, {})
             self.object_registered = True
             self.installed = True
             return
+        self.native_section = (
+            SYNTHETIC_SECTION in raw_config or SYNTHETIC_SECTION in settings
+        )
         if self.native_section or native_object is not None:
             logging.warning(
                 "%s inactive during %s; a real %s section or object is already reported",

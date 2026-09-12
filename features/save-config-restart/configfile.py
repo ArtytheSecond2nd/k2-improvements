@@ -358,6 +358,9 @@ class PrinterConfig:
             res['section'] = section
             res['option'] = option
             self.status_warnings.append(res)
+        # Allow compatibility extras to augment the final status dictionaries
+        # before Klipper exposes them to Moonraker or other host services.
+        self.printer.send_event("configfile:status_built", self)
     def get_status(self, eventtime):
         return {'config': self.status_raw_config,
                 'settings': self.status_settings,

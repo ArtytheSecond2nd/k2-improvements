@@ -32,6 +32,14 @@ class SaveConfigRestartContractTests(unittest.TestCase):
         self.assertIn("k2_save_config_restart.sh", source)
         self.assertIn("ln -sfn ${SCRIPT_DIR}/k2_save_config_restart.sh", source)
 
+    def test_status_build_notifies_compatibility_extras(self):
+        source = CONFIGFILE.read_text(encoding="utf-8")
+        settings = source.index("self.status_settings = {}")
+        notification = source.index(
+            'self.printer.send_event("configfile:status_built", self)'
+        )
+        self.assertLess(settings, notification)
+
 
 if __name__ == "__main__":
     unittest.main()
