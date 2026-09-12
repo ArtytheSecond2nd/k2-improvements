@@ -1,5 +1,11 @@
 # K2 Plus Improvements — Menu Installer
 
+> [!TIP]
+> **Community and video guides**
+>
+> - 💬 [Join the official Rcpilot33 K2 Improvements Discord](https://discord.gg/696Updwwbn)
+> - ▶️ [Watch Rcpilot33 K2 Improvements on YouTube](https://www.youtube.com/@Rcpilot33)
+
 > [!IMPORTANT]
 > **This project supports the Creality K2 Plus only.** Do not install it on a
 > K2 Pro or any other K2-series printer. The scripts, Klipper patches, service
