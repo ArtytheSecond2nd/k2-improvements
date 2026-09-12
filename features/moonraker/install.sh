@@ -17,10 +17,10 @@ fi
 
 # handle entware being installed in the current login
 if [ -f /etc/profile.d/entware.sh ]; then
-    echo ${PATH} | grep -q /opt || source /etc/profile.d/entware.sh
+    echo ${PATH} | grep -q /opt || . /etc/profile.d/entware.sh
 fi
 
-if ! type -p git > /dev/null; then
+if ! command -v git > /dev/null; then
     opkg install git
 fi
 
@@ -30,7 +30,7 @@ progress() {
 
 install_virtualenv() {
     progress "Installing virtualenv ..."
-    type -p virtualenv > /dev/null || pip install virtualenv
+    command -v virtualenv > /dev/null || pip install virtualenv
 
     # update pip to pull pre-built wheels
     if ! grep -qE '^extra-index-url=https://www.piwheels.org/simple$' /etc/pip.conf; then

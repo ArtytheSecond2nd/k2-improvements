@@ -1,7 +1,7 @@
 #!/bin/sh
 # Shared helpers for the K2 Plus installer. Sourced by menu.sh.
 
-INSTALLER_DIR="${INSTALLER_DIR:-/mnt/UDISK/k2-improvements}"
+INSTALLER_DIR="${INSTALLER_DIR:-/mnt/UDISK/root/k2-improvements}"
 PRINTER_CFG_DIR="${PRINTER_CFG_DIR:-/mnt/UDISK/printer_data/config}"
 KLIPPER_DIR="${KLIPPER_DIR:-/usr/share/klipper}"
 

@@ -37,9 +37,9 @@ EOF
         ln -sf ${SCRIPT_DIR}/patches/mcu.py ~/klipper/klippy/mcu.py
         ln -sf ${SCRIPT_DIR}/patches/serialhdl.py ~/klipper/klippy/serialhdl.py
         ln -sf ${SCRIPT_DIR}/patches/clocksync.py ~/klipper/klippy/clocksync.py
-        sh ~/k2-improvements/features/save-config-restart/install.sh --no-restart
+        sh "${SCRIPT_DIR}/../save-config-restart/install.sh" --no-restart
         K2_DEFER_FIRMWARE_RESTART=1 \
-            sh ~/k2-improvements/features/virtual-sdcard-guard/install.sh
+            sh "${SCRIPT_DIR}/../virtual-sdcard-guard/install.sh"
         ln -sf ${SCRIPT_DIR}/patches/homing.py ~/klipper/klippy/extras/homing.py
         ln -sf ${SCRIPT_DIR}/patches/temperature_mcu.py ~/klipper/klippy/extras/temperature_mcu.py
         rm -f ~/klipper/klippy/extras/bed_mesh.py*
@@ -77,7 +77,7 @@ EOF
         rm -f ${KLIPPER_OVERLAY}/klippy/mcu.py
         rm -f ${KLIPPER_OVERLAY}/klippy/serialhdl.py
         rm -f ${KLIPPER_OVERLAY}/klippy/clocksync.py
-        sh ~/k2-improvements/features/save-config-restart/install.sh --no-restart
+        sh "${SCRIPT_DIR}/../save-config-restart/install.sh" --no-restart
         /etc/init.d/cartographer stop 2>/dev/null || true
         rm -f /overlay/upper/etc/init.d/cartographer
         rm -f /overlay/upper/opt/etc/init.d/S50cartographer

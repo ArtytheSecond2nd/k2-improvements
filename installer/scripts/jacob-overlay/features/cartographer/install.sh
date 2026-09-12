@@ -102,7 +102,7 @@ if [ -f ~/printer_data/config/moonraker.conf ]; then
     echo "I: registering cartographer update manager"
     mkdir -p ~/printer_data/config/updates
     cp ${SCRIPT_DIR}/update-manager.cfg ~/printer_data/config/updates/cartographer.cfg
-    python3 ~/k2-improvements/scripts/moonraker_include.py updates/cartographer.cfg
+    python3 "${SCRIPT_DIR}/../../scripts/moonraker_include.py" updates/cartographer.cfg
 else
     echo "W: moonraker not found, skipping update manager registration"
 fi

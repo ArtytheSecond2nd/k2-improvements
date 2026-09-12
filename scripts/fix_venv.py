@@ -30,7 +30,10 @@ def update_so_files(venv_path):
                     continue
 
                 # Get the base module name (strip off .cpython-*-*.so)
-                base_name = filename.split('.cpython-')[0]
+                if '.cpython-' in filename:
+                    base_name = filename.split('.cpython-', 1)[0]
+                else:
+                    base_name = filename[:-len('.so')]
                 new_name = base_name + expected_suffix
                 new_path = filepath.parent / new_name
 

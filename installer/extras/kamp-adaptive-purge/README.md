@@ -25,7 +25,7 @@ explicitly enable the preserved stock-style purge fallback described below.
 
 ## Install
 
-Use **Extras -> KAMP adaptive purge**. The installer adds:
+Use **Optional extras -> KAMP adaptive purge**. The installer adds:
 
 - the KAMP repository under `/mnt/UDISK/root`;
 - a validated K2-compatible regular-file copy of upstream `Line_Purge.cfg`
@@ -39,7 +39,7 @@ During an interactive install, the installer displays the K2 Plus KAMP
 settings and lets you keep or change them. User selections are written to the
 later-loaded `custom/overrides.cfg`; reinstalling or updating KAMP refreshes
 the maintained defaults without replacing those selections. Reopen
-**Optional Extras -> KAMP adaptive purge -> Review/change settings** to adjust
+**Optional extras -> KAMP adaptive purge -> Review/change settings** to adjust
 them later without reinstalling KAMP.
 
 It intentionally does not install KAMP Smart Park or Adaptive Meshing. The
@@ -183,7 +183,7 @@ safety decisions.
 
 ## Tuning
 
-Use **Optional Extras -> KAMP adaptive purge -> Review/change settings**.
+Use **Optional extras -> KAMP adaptive purge -> Review/change settings**.
 Maintained defaults remain in `custom/kamp_settings.cfg`; effective user
 selections are stored in `custom/overrides.cfg` so they survive reinstalls.
 
