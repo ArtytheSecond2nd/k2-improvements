@@ -78,6 +78,7 @@ case "${1:-}" in
                 -video_size "${WIDTH}x${HEIGHT}" -framerate "$FPS" \
                 -i "$DEVICE" -c:v copy -f mpjpeg \
                 -content_type 'multipart/x-mixed-replace;boundary=ffmpeg' \
+                -headers 'Access-Control-Allow-Origin: *' \
                 -listen 1 "http://0.0.0.0:$PORT" \
                 >"$LOGFILE" 2>&1 &
             pid=$!

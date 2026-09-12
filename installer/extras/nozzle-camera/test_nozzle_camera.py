@@ -32,6 +32,9 @@ class NozzleCameraTests(unittest.TestCase):
         self.assertIn("PIDFILE=/var/run/k2-nozzle-camera.pid", self.control)
         self.assertIn('while [ "$attempt" -le 3 ]', self.control)
 
+    def test_stream_allows_fluidd_cross_origin_access(self):
+        self.assertIn("Access-Control-Allow-Origin: *", self.control)
+
     def test_has_manual_controls_and_ten_minute_shutdown(self):
         for command in ("NOZZLE_CAM_ON", "NOZZLE_CAM_OFF", "NOZZLE_CAM_STATUS"):
             self.assertIn("[gcode_macro %s]" % command, self.config)
