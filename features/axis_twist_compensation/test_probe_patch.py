@@ -64,6 +64,46 @@ class ProbePatchTests(unittest.TestCase):
         )
         self.assertIn("self.y_end_point[1]", source)
 
+    def test_safe_range_uses_active_probe_offset(self):
+        compensation_tree = ast.parse(
+            COMPENSATION_PATCH.read_text(encoding="utf-8")
+        )
+        function = next(
+            node for node in compensation_tree.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "calculate_safe_bed_range"
+        )
+        constant = next(
+            node for node in compensation_tree.body
+            if isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Name)
+                and target.id == "CALIBRATION_BOUNDARY_MARGIN"
+                for target in node.targets
+            )
+        )
+        namespace = {}
+        module = ast.Module(body=[constant, function], type_ignores=[])
+        exec(compile(module, str(COMPENSATION_PATCH), "exec"), namespace)
+        safe_range = namespace["calculate_safe_bed_range"]
+
+        self.assertEqual(safe_range(5., 345., 0., 350., 0.), (5., 345.))
+        self.assertEqual(
+            safe_range(5., 345., 0., 350., -15.), (5., 334.5)
+        )
+        self.assertEqual(
+            safe_range(5., 345., 0., 350., 36.), (36.5, 345.)
+        )
+
+    def test_auto_calibration_preflights_all_probe_targets(self):
+        source = COMPENSATION_PATCH.read_text(encoding="utf-8")
+        self.assertIn("x_range, y_range = self._safe_calibration_ranges()", source)
+        self.assertIn("self._validate_points(probe_targets)", source)
+        self.assertLess(
+            source.index("self._validate_points(probe_targets)"),
+            source.index("self.compensation.clear_compensations()"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

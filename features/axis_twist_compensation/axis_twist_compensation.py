@@ -11,6 +11,31 @@ from . import manual_probe, bed_mesh, probe
 DEFAULT_SAMPLE_COUNT = 3
 DEFAULT_SPEED = 50.
 DEFAULT_HORIZONTAL_MOVE_Z = 5.
+CALIBRATION_BOUNDARY_MARGIN = .5
+
+
+def calculate_safe_bed_range(requested_start, requested_end,
+                             axis_minimum, axis_maximum, probe_offset,
+                             margin=CALIBRATION_BOUNDARY_MARGIN):
+    """Return bed coordinates reachable by both the nozzle and probe."""
+    if requested_start is None or requested_end is None:
+        raise ValueError("calibration range is not fully configured")
+    if requested_start >= requested_end:
+        raise ValueError("calibration start must be less than calibration end")
+    if axis_minimum >= axis_maximum:
+        raise ValueError("axis minimum must be less than axis maximum")
+    if margin < 0.:
+        raise ValueError("calibration boundary margin cannot be negative")
+
+    safe_start = max(requested_start,
+                     axis_minimum + margin,
+                     axis_minimum + probe_offset + margin)
+    safe_end = min(requested_end,
+                   axis_maximum - margin,
+                   axis_maximum + probe_offset - margin)
+    if safe_start >= safe_end:
+        raise ValueError("active probe has no reachable calibration range")
+    return safe_start, safe_end
 
 
 class AxisTwistCompensation:
@@ -117,8 +142,12 @@ class Calibrater:
                             compensation.calibrate_end_y)
         self.results = None
         self.current_point_index = None
+        self.current_start = None
+        self.current_end = None
         self.gcmd = None
         self.configname = config.get_name()
+        self.axis_minimum = None
+        self.axis_maximum = None
 
         # register gcode handlers
         self._register_gcode_handlers()
@@ -132,6 +161,67 @@ class Calibrater:
         self.lift_speed = self.probe.get_probe_params()['lift_speed']
         self.probe_x_offset, self.probe_y_offset, _ = \
             self.probe.get_offsets()
+
+    @staticmethod
+    def _coord_value(coord, index, name):
+        try:
+            return float(coord[index])
+        except (IndexError, KeyError, TypeError):
+            return float(getattr(coord, name))
+
+    def _safe_calibration_ranges(self):
+        toolhead = self.printer.lookup_object('toolhead')
+        eventtime = self.printer.get_reactor().monotonic()
+        status = toolhead.get_status(eventtime)
+        minimum = status['axis_minimum']
+        maximum = status['axis_maximum']
+        self.axis_minimum = (
+            self._coord_value(minimum, 0, 'x'),
+            self._coord_value(minimum, 1, 'y'))
+        self.axis_maximum = (
+            self._coord_value(maximum, 0, 'x'),
+            self._coord_value(maximum, 1, 'y'))
+
+        try:
+            x_range = calculate_safe_bed_range(
+                self.x_start_point[0], self.x_end_point[0],
+                self.axis_minimum[0], self.axis_maximum[0],
+                self.probe_x_offset)
+            y_range = calculate_safe_bed_range(
+                self.y_start_point[1], self.y_end_point[1],
+                self.axis_minimum[1], self.axis_maximum[1],
+                self.probe_y_offset)
+        except ValueError as err:
+            raise self.gcmd.error(
+                "AXIS_TWIST_COMPENSATION_CALIBRATE: %s" % (err,))
+
+        self.gcmd.respond_info(
+            "AXIS_TWIST_COMPENSATION_CALIBRATE: active probe offsets "
+            "X=%.3f Y=%.3f; safe bed area X=%.3f..%.3f "
+            "Y=%.3f..%.3f" % (
+                self.probe_x_offset, self.probe_y_offset,
+                x_range[0], x_range[1], y_range[0], y_range[1]))
+        return x_range, y_range
+
+    def _validate_toolhead_target(self, target_coordinates):
+        if self.axis_minimum is None or self.axis_maximum is None:
+            return
+        labels = ('X', 'Y')
+        for index in range(2):
+            value = target_coordinates[index]
+            if value is None:
+                continue
+            if not (self.axis_minimum[index] <= value <=
+                    self.axis_maximum[index]):
+                raise self.gcmd.error(
+                    "AXIS_TWIST_COMPENSATION_CALIBRATE: calculated %s "
+                    "toolhead target %.3f is outside %.3f..%.3f" % (
+                        labels[index], value,
+                        self.axis_minimum[index], self.axis_maximum[index]))
+
+    def _validate_points(self, points):
+        for point in points:
+            self._validate_toolhead_target(point)
 
     def _register_gcode_handlers(self):
         # register gcode handlers
@@ -172,11 +262,9 @@ class Calibrater:
 
         # calculate the points to put the probe at, returned as a list of tuples
         nozzle_points = []
+        x_range, y_range = self._safe_calibration_ranges()
 
         if axis == 'X':
-
-            self.compensation.clear_compensations('X')
-
             if any(value is None for value in (
                 self.x_start_point[0],
                 self.x_end_point[0],
@@ -189,8 +277,10 @@ class Calibrater:
                     """
                     )
 
-            start_point = self.x_start_point
-            end_point = self.x_end_point
+            calibration_y = min(max(self.x_start_point[1], y_range[0]),
+                                y_range[1])
+            start_point = (x_range[0], calibration_y)
+            end_point = (x_range[1], calibration_y)
 
             x_axis_range = end_point[0] - start_point[0]
             interval_dist = x_axis_range / (sample_count - 1)
@@ -201,9 +291,6 @@ class Calibrater:
                 nozzle_points.append((x, y))
 
         elif axis == 'Y':
-
-            self.compensation.clear_compensations('Y')
-
             if any(value is None for value in (
                 self.y_start_point[0],
                 self.y_start_point[1],
@@ -216,8 +303,10 @@ class Calibrater:
                     """
                     )
 
-            start_point = self.y_start_point
-            end_point = self.y_end_point
+            calibration_x = min(max(self.y_start_point[0], x_range[0]),
+                                x_range[1])
+            start_point = (calibration_x, y_range[0])
+            end_point = (calibration_x, y_range[1])
 
             y_axis_range = end_point[1] - start_point[1]
             interval_dist = y_axis_range / (sample_count - 1)
@@ -234,14 +323,19 @@ class Calibrater:
 
         probe_points = self._calculate_probe_points(
             nozzle_points, self.probe_x_offset, self.probe_y_offset)
+        self._validate_points(nozzle_points)
+        self._validate_points(probe_points)
 
         # verify no other manual probe is in progress
         manual_probe.verify_no_manual_probe(self.printer)
 
         # begin calibration
+        self.compensation.clear_compensations(axis)
         self.current_point_index = 0
         self.results = []
         self.current_axis = axis
+        self.current_start = start_point
+        self.current_end = end_point
         self._calibration(probe_points, nozzle_points, interval_dist)
 
     def _calculate_corrections(self, coordinates):
@@ -305,14 +399,9 @@ class Calibrater:
 
         # verify no other manual probe is in progress
         manual_probe.verify_no_manual_probe(self.printer)
-
-        # clear the current config
-        self.compensation.clear_compensations()
-
-        min_x = self.x_start_point[0]
-        max_x = self.x_end_point[0]
-        min_y = self.y_start_point[1]
-        max_y = self.y_end_point[1]
+        x_range, y_range = self._safe_calibration_ranges()
+        min_x, max_x = x_range
+        min_y, max_y = y_range
 
         # calculate x positions
         interval_x = (max_x - min_x) / (sample_count - 1)
@@ -333,16 +422,25 @@ class Calibrater:
             flip = not flip
 
 
-        # calculate the points to put the nozzle at, and probe
-        probe_points = []
+        # Calculate and validate every toolhead target before moving. Config
+        # points describe physical bed coordinates; the active probe offsets
+        # convert them to toolhead coordinates for stock, Cartographer, or any
+        # custom mount.
+        probe_targets = self._calculate_probe_points(
+            points, self.probe_x_offset, self.probe_y_offset)
+        self._validate_points(probe_targets)
 
-        for i in range(len(points)):
-            x = points[i][0] - self.probe_x_offset
-            y = points[i][1] - self.probe_y_offset
-            probe_points.append([x, y, self._auto_calibration((x,y))[2]])
+        # Clear compensation only after every target passes preflight.
+        self.compensation.clear_compensations()
+
+        measured_points = []
+        for bed_point, probe_target in zip(points, probe_targets):
+            measured_z = self._auto_calibration(probe_target)[2]
+            measured_points.append(
+                [bed_point[0], bed_point[1], measured_z])
 
         # calculate corrections
-        x_corr, y_corr = self._calculate_corrections(probe_points)
+        x_corr, y_corr = self._calculate_corrections(measured_points)
 
         x_corr_str = ', '.join(["{:.6f}".format(x)
                                     for x in x_corr])
@@ -354,16 +452,16 @@ class Calibrater:
         configfile = self.printer.lookup_object('configfile')
         configfile.set(self.configname, 'z_compensations', x_corr_str)
         configfile.set(self.configname, 'compensation_start_x',
-                    self.x_start_point[0])
+                    min_x)
         configfile.set(self.configname, 'compensation_end_x',
-                    self.x_end_point[0])
+                    max_x)
 
 
         configfile.set(self.configname, 'zy_compensations', y_corr_str)
         configfile.set(self.configname, 'compensation_start_y',
-                    self.y_start_point[1])
+                    min_y)
         configfile.set(self.configname, 'compensation_end_y',
-                    self.y_end_point[1])
+                    max_y)
 
         self.gcode.respond_info(
             "AXIS_TWIST_COMPENSATION state has been saved "
@@ -407,6 +505,7 @@ class Calibrater:
         target_coordinates = \
             (target_coordinates[0], target_coordinates[1], None) \
             if len(target_coordinates) == 2 else target_coordinates
+        self._validate_toolhead_target(target_coordinates)
         toolhead = self.printer.lookup_object('toolhead')
         speed = self.speed if target_coordinates[2] == None else self.lift_speed
         speed = override_speed if override_speed is not None else speed
@@ -481,25 +580,25 @@ class Calibrater:
 
             configfile.set(self.configname, 'z_compensations', values_as_str)
             configfile.set(self.configname, 'compensation_start_x',
-                        self.x_start_point[0])
+                        self.current_start[0])
             configfile.set(self.configname, 'compensation_end_x',
-                        self.x_end_point[0])
+                        self.current_end[0])
 
             self.compensation.z_compensations = self.results
-            self.compensation.compensation_start_x = self.x_start_point[0]
-            self.compensation.compensation_end_x = self.x_end_point[0]
+            self.compensation.compensation_start_x = self.current_start[0]
+            self.compensation.compensation_end_x = self.current_end[0]
 
         elif(self.current_axis == 'Y'):
 
             configfile.set(self.configname, 'zy_compensations', values_as_str)
             configfile.set(self.configname, 'compensation_start_y',
-                        self.y_start_point[1])
+                        self.current_start[1])
             configfile.set(self.configname, 'compensation_end_y',
-                        self.y_end_point[1])
+                        self.current_end[1])
 
             self.compensation.zy_compensations = self.results
-            self.compensation.compensation_start_y = self.y_start_point[1]
-            self.compensation.compensation_end_y = self.y_end_point[1]
+            self.compensation.compensation_start_y = self.current_start[1]
+            self.compensation.compensation_end_y = self.current_end[1]
 
         self.gcode.respond_info(
             "AXIS_TWIST_COMPENSATION state has been saved "
