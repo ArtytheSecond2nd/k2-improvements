@@ -19,7 +19,7 @@ are missing but does not overwrite existing values.
 | `bed_assist_degrees_above_commanded` | `0.0` | `0` to `120` C | When above zero, calculates the assist target by adding this value to the slicer's commanded bed temperature. |
 | `bed_assist_z_height` | `195.0` | `30` to `330` mm | Bed position used to circulate warm air below the chamber heater. |
 | `circulation_fan_speed` | `25.0` | `0` to `100` percent | Model and side/auxiliary fan speed during assistance. |
-| `chamber_fan_margin` | `2.0` | `0` to `10` C | Amount added to the requested chamber temperature for the cooling-fan target. |
+| `chamber_fan_margin` | `2.0` | `0` to `10` C | Amount added to passive chamber targets through 35 C; active chamber heating disables the cooling fan. |
 | `bed_restore_tolerance` | `5.0` | above `0` to `20` C | Allowed difference around the original bed target before M191 returns. |
 | `chamber_wait_max_delta` | `5.0` | above `0` to `20` C | Upper allowance used while waiting for the chamber target. |
 

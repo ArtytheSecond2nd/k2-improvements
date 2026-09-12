@@ -40,6 +40,21 @@ class M191WorkflowTests(unittest.TestCase):
     def test_active_heating_boundary_remains_fixed(self):
         self.assertIn("{% set WAIT_FOR_CHAMBER = S > 35.0 %}", MACRO)
 
+    def test_active_heating_disables_chamber_cooling_fan(self):
+        wait = MACRO.index("{% set WAIT_FOR_CHAMBER = S > 35.0 %}")
+        target = MACRO.index(
+            "{% set FAN_TARGET = 0.0 if WAIT_FOR_CHAMBER else "
+            "S + CHAMBER_FAN_MARGIN %}",
+            wait,
+        )
+        apply_target = MACRO.index(
+            "SET_TEMPERATURE_FAN_TARGET TEMPERATURE_FAN=chamber_fan "
+            "TARGET={FAN_TARGET}",
+            target,
+        )
+        self.assertLess(wait, target)
+        self.assertLess(target, apply_target)
+
     def test_fixed_target_is_used_when_degrees_above_is_zero(self):
         relative = MACRO.index("{% if DEGREES_ABOVE_COMMANDED > 0.0 %}")
         relative_target = MACRO.index(

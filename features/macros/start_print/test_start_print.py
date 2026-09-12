@@ -39,12 +39,12 @@ class StartPrintConfigTests(unittest.TestCase):
         self.assertIn("DIRECT_CASE_FAN > 0.0", section)
         self.assertNotIn("DIRECT_CASE_FAN >= 0.999", section)
 
-    def test_case_fan_release_preserves_active_chamber_cooling(self):
+    def test_case_fan_release_is_not_blocked_by_temporary_chamber_cooling(self):
         section = self.config.split(
             "[gcode_macro BOX_NOZZLE_CLEAN]", 1
         )[1].split("[gcode_macro START_PRINT]", 1)[0]
-        self.assertIn('printer["temperature_fan chamber_fan"].speed', section)
-        self.assertIn("CHAMBER_COOLING <= 0.0", section)
+        self.assertNotIn('printer["temperature_fan chamber_fan"].speed', section)
+        self.assertNotIn("CHAMBER_COOLING", section)
 
     def test_case_fan_release_is_runtime_state_gated(self):
         section = self.config.split(
@@ -65,9 +65,13 @@ class StartPrintConfigTests(unittest.TestCase):
         self.assertIn("{% if CHAMBER_TEMP > 35 %}", self.config)
         self.assertNotIn("{% if CHAMBER_TEMP > 40 %}", self.config)
 
-    def test_preheat_uses_shared_m191_fan_margin_for_existing_mesh_path(self):
+    def test_preheat_restores_chamber_fan_policy_after_creality_preparation(self):
         self.assertIn(
             'printer["gcode_macro _M191_VARS"].chamber_fan_margin',
+            self.config,
+        )
+        self.assertIn(
+            "SET_TEMPERATURE_FAN_TARGET TEMPERATURE_FAN=chamber_fan TARGET=35",
             self.config,
         )
         self.assertIn(
@@ -75,6 +79,16 @@ class StartPrintConfigTests(unittest.TestCase):
             "TARGET={CHAMBER_TEMP + CHAMBER_FAN_MARGIN}",
             self.config,
         )
+        active = self.config.index("{% if CHAMBER_TEMP > 35 %}")
+        fan_off = self.config.index(
+            "SET_TEMPERATURE_FAN_TARGET TEMPERATURE_FAN=chamber_fan TARGET=0",
+            active,
+        )
+        passive = self.config.index("{% elif CHAMBER_TEMP > 0 %}", fan_off)
+        baseline = self.config.index("{% else %}", passive)
+        self.assertLess(active, fan_off)
+        self.assertLess(fan_off, passive)
+        self.assertLess(passive, baseline)
         self.assertNotIn("M141 S{CHAMBER_TEMP}", self.config)
 
     def test_shared_fan_margin_is_validated(self):
