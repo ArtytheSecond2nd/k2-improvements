@@ -69,7 +69,6 @@ class CompatibilityTests(unittest.TestCase):
     def test_reports_section_without_loading_driver(self):
         printer = FakePrinter()
         compat = MODULE.K2PRTouchVersionCompat(FakeConfig(printer))
-        printer.handlers["klippy:connect"]()
 
         config_status = printer.objects["configfile"].get_status(0)
         self.assertEqual(config_status["config"]["prtouch_v3"], {})
@@ -118,9 +117,30 @@ class CompatibilityTests(unittest.TestCase):
 
     def test_reports_before_klippy_ready(self):
         printer = FakePrinter()
-        MODULE.K2PRTouchVersionCompat(FakeConfig(printer))
+        compat = MODULE.K2PRTouchVersionCompat(FakeConfig(printer))
         self.assertIn("klippy:connect", printer.handlers)
         self.assertNotIn("klippy:ready", printer.handlers)
+        self.assertIs(printer.objects["prtouch_v3"], compat)
+
+    def test_connect_fallback_handles_late_cartographer(self):
+        printer = FakePrinter(include_cartographer=False)
+        compat = MODULE.K2PRTouchVersionCompat(FakeConfig(printer))
+        self.assertFalse(compat.get_status(0)["reported"])
+
+        printer.objects["cartographer"] = object()
+        printer.handlers["klippy:connect"]()
+
+        self.assertIs(printer.objects["prtouch_v3"], compat)
+        self.assertTrue(compat.get_status(0)["installed"])
+
+    def test_connect_is_idempotent_after_early_registration(self):
+        printer = FakePrinter()
+        compat = MODULE.K2PRTouchVersionCompat(FakeConfig(printer))
+
+        printer.handlers["klippy:connect"]()
+
+        self.assertIs(printer.objects["prtouch_v3"], compat)
+        self.assertTrue(compat.get_status(0)["installed"])
 
 
 if __name__ == "__main__":

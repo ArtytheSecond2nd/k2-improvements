@@ -79,5 +79,6 @@ case-fan-any-direct-request-v3|macros|is_macros|Pre-print now releases any nonze
 cartographer-default-controls-core-v1|cartographer|is_cartographer|Cartographer now installs default calibration controls while named plate selectors remain optional
 m191-configurable-settings-v1|macros|is_macros|M191 bed assistance and chamber waiting settings are now configurable
 m191-bed-assist-editor-v2|macros|is_macros|M191 settings can now be edited from the Fluidd Bed Assist control
+cartographer-prtouch-cold-boot-registration-v1|cartographer|is_cartographer|Cartographer now reports PR Touch preparation compatibility before Creality checks it during a cold boot
 EOF
 }
