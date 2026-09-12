@@ -19,6 +19,7 @@ class NozzleCameraTests(unittest.TestCase):
             encoding="utf-8"
         )
         cls.menu = (ROOT / "installer/menus/extras.sh").read_text(encoding="utf-8")
+        cls.update = (ROOT / "installer/menus/update.sh").read_text(encoding="utf-8")
 
     def test_targets_only_the_factory_camera(self):
         self.assertIn("/usr/bin/nozzle_cam_power.sh", self.install)
@@ -45,6 +46,11 @@ class NozzleCameraTests(unittest.TestCase):
         self.assertIn("nozzle-camera|is_nozzle_camera", self.menu)
         self.assertIn("Stock nozzle camera stream", self.menu)
         self.assertIn("2) run_extra_name nozzle-camera", self.menu)
+
+    def test_updater_recognizes_the_new_component(self):
+        self.assertIn("nozzle-camera) echo 'Stock nozzle camera stream'", self.update)
+        self.assertIn("nozzle-camera) is_nozzle_camera", self.update)
+        self.assertIn("plate-aware-mesh nozzle-camera; do", self.update)
 
 
 if __name__ == "__main__":

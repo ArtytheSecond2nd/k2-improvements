@@ -22,6 +22,7 @@ migration_component_label() {
         global-touch-offsets) echo 'Global Carto Touch Z Offsets' ;;
         material-z-offsets) echo 'Material Z Offsets' ;;
         plate-aware-mesh) echo 'Plate-aware saved meshes' ;;
+        nozzle-camera) echo 'Stock nozzle camera stream' ;;
         *) echo "$1" ;;
     esac
 }
@@ -41,6 +42,7 @@ migration_component_installed() {
         global-touch-offsets) is_global_touch_offsets ;;
         material-z-offsets) is_material_z_offsets ;;
         plate-aware-mesh) is_plate_aware_mesh ;;
+        nozzle-camera) is_nozzle_camera ;;
         *) return 1 ;;
     esac
 }
@@ -105,6 +107,10 @@ migration_component_present() {
         plate-aware-mesh)
             [ -e "$custom/plate_aware_mesh.cfg" ]
             ;;
+        nozzle-camera)
+            [ -e "$custom/nozzle_camera.cfg" ] ||
+                [ -e /mnt/UDISK/bin/nozzle-camera.sh ]
+            ;;
         *) return 1 ;;
     esac
 }
@@ -116,7 +122,7 @@ migration_capture_installed_components() {
     : > "$temporary"
     for component in cartographer save-config-restart virtual-sdcard-guard abort_homing \
         screws_tilt_adjust macros r3men-bed kamp-adaptive-purge \
-        axis_twist_compensation cartographer-plate-workflow global-touch-offsets material-z-offsets plate-aware-mesh; do
+        axis_twist_compensation cartographer-plate-workflow global-touch-offsets material-z-offsets plate-aware-mesh nozzle-camera; do
         if migration_component_installed "$component" 2>/dev/null ||
            migration_component_present "$component" 2>/dev/null; then
             printf '%s\n' "$component" >> "$temporary"
@@ -144,7 +150,7 @@ migration_pending_components() {
     entries=$(migration_pending_entries)
     for component in cartographer save-config-restart virtual-sdcard-guard abort_homing \
         screws_tilt_adjust macros r3men-bed kamp-adaptive-purge \
-        axis_twist_compensation cartographer-plate-workflow global-touch-offsets material-z-offsets plate-aware-mesh; do
+        axis_twist_compensation cartographer-plate-workflow global-touch-offsets material-z-offsets plate-aware-mesh nozzle-camera; do
         if printf '%s\n' "$entries" | grep -q "^[^|]*|$component|"; then
             printf '%s\n' "$component"
         fi
