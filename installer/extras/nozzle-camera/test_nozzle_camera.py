@@ -15,6 +15,7 @@ class NozzleCameraTests(unittest.TestCase):
         cls.install = (HERE / "install.sh").read_text(encoding="utf-8")
         cls.control = (HERE / "nozzle-camera.sh").read_text(encoding="utf-8")
         cls.config = (HERE / "nozzle_camera.cfg").read_text(encoding="utf-8")
+        cls.readme = (HERE / "README.md").read_text(encoding="utf-8")
         cls.detect = (ROOT / "installer/detect/features.sh").read_text(
             encoding="utf-8"
         )
@@ -51,6 +52,11 @@ class NozzleCameraTests(unittest.TestCase):
         self.assertIn("nozzle-camera) echo 'Stock nozzle camera stream'", self.update)
         self.assertIn("nozzle-camera) is_nozzle_camera", self.update)
         self.assertIn("plate-aware-mesh nozzle-camera; do", self.update)
+
+    def test_fluidd_uses_continuous_stream_mode(self):
+        self.assertIn("choose **MJPEG Stream**", self.readme)
+        self.assertIn("not\nMJPEG Adaptive", self.readme)
+        self.assertIn("snapshot field", self.readme)
 
 
 if __name__ == "__main__":
