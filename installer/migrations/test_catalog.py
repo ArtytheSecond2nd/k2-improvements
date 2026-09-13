@@ -186,6 +186,7 @@ class MigrationCatalogTests(unittest.TestCase):
 
     def test_updater_can_confirm_and_recover_a_diverged_checkout(self):
         menu = UPDATE_MENU.read_text(encoding="utf-8")
+        self.assertIn('git pull --ff-only origin "$branch"', menu)
         self.assertIn("migration_replace_diverged_checkout", menu)
         self.assertIn("repository-refresh.sh", menu)
         self.assertIn("Any previous repository recovery backup will be deleted", menu)

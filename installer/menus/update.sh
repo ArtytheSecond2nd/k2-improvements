@@ -593,7 +593,10 @@ migration_pull_installer() {
     migration_capture_installed_components
 
     info "git pull in $INSTALLER_DIR"
-    if ! (cd "$INSTALLER_DIR" && git pull --ff-only); then
+    # Pull the branch shown by this menu explicitly. A checkout created with
+    # `git checkout -B` may retain stale upstream metadata, causing a plain
+    # `git pull` to succeed against a different branch without updating HEAD.
+    if ! (cd "$INSTALLER_DIR" && git pull --ff-only origin "$branch"); then
         warn 'normal git pull failed.'
         if ! migration_replace_diverged_checkout "$branch"; then
             warn 'the current menu remains loaded.'
