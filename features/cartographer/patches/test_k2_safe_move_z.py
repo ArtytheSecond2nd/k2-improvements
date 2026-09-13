@@ -34,6 +34,13 @@ class FakeToolhead:
         self.moves.append((target[:], speed))
         self.position = target[:]
 
+    def manual_move(self, coordinates, speed):
+        target = self.position[:]
+        for axis, coordinate in enumerate(coordinates):
+            if coordinate is not None:
+                target[axis] = coordinate
+        self.move(target, speed)
+
     def wait_moves(self):
         self.wait_count += 1
 

@@ -120,9 +120,9 @@ class K2SafeMoveZ:
         retreat_z = min(
             self.position_max,
             approach_z + self.ARTIFICIAL_RETREAT_DISTANCE)
-        retreat_target = toolhead.get_position()
-        retreat_target[2] = retreat_z
-        toolhead.move(retreat_target, speed)
+        # manual_move emits toolhead:manual_move so gcode_move refreshes its
+        # cached position after this exceptional safety retreat.
+        toolhead.manual_move([None, None, retreat_z, None], speed)
         toolhead.wait_moves()
         end_z = toolhead.get_position()[2]
         if abs(end_z - retreat_z) > self.COMPLETION_TOLERANCE:

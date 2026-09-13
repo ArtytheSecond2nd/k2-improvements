@@ -82,11 +82,12 @@ stops at or above the observed Z=20 clearance floor, performs the move only
 while the printer is idle, and reports completion through
 `virtual_sdcard.run_dis` as the stock PR Touch extension does. The endpoint may
 remain above Z=20 when Creality's service calculated its relative travel before
-cancellation cleanup finished. Cartographer's scan endstop guards the move. If
-Creality's artificial-Z recovery path reaches either a Cartographer trigger or
-a guarded Z=30 clearance endpoint because K2-Improvements does not use the AI
-cameras that require Creality's Z=20 inspection height. If Cartographer triggers
-before that endpoint, the bed retreats 10 mm. The artificial path acknowledges
+cancellation cleanup finished. Cartographer's scan endstop guards the move. On
+Creality's artificial-Z recovery path, the move stops at either a Cartographer
+trigger or the guarded Z=30 clearance endpoint. K2-Improvements can use Z30
+because it does not use the AI cameras that require Creality's Z20 inspection
+height. If Cartographer triggers before that endpoint, the bed retreats 10 mm.
+The artificial path acknowledges
 Creality's original requested distance while logging the shorter physical
 travel; this prevents the closed service from commanding the bed toward Z20.
 An unexpected trigger during a normal between-print move stops that command
