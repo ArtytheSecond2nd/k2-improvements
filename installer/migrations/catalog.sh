@@ -90,5 +90,6 @@ cartographer-prtouch-cold-boot-registration-v1|cartographer|is_cartographer|Cart
 cartographer-prtouch-config-finalization-v2|cartographer|is_cartographer|Cartographer now restores PR Touch preparation compatibility before Klipper exposes its finalized configuration
 case-fan-preparation-target-v4|macros|is_macros|Pre-print now releases Creality's direct case-fan request and restores the requested chamber-fan target
 chamber-fan-start-print-target-v5|macros|is_macros|START_PRINT now restores the chamber-fan ceiling as soon as the requested chamber temperature is known
+prtouch-safe-xy-clearance-v1|macros|is_macros|Stock PR Touch now establishes Z30 clearance before the post-recovery XY homing move
 EOF
 }

@@ -36,5 +36,6 @@ stock macros. It is a no-op because those macros already set the chamber-fan
 target and pin directly. The definition is disabled on all other firmware.
 
 Each macro is included from `custom/main.cfg`. The combined installer performs
-one firmware restart after all four components are installed and waits for K2
-motor initialization before returning.
+one protected restart after all four components are installed and waits for K2
+motor initialization before returning. A Klippy host-process reload is used
+when the stock PR Touch pre-XY clearance guard is installed or refreshed.

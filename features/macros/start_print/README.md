@@ -19,6 +19,13 @@ cooling, and later nozzle cleans and ordinary homing do not repeatedly change
 the fan. This state-based guard has been validated on firmware `1.1.3.13`,
 `1.1.5.2`, and `1.1.5.5`.
 
+On the stock PR Touch path, the installer also guards the XY move at the start
+of `_HOME_Z`. If Creality's artificial-Z preparation leaves the bed at a
+logical position below Z=30, the bed first retreats to Z=30 at 6 mm/s and the
+move is allowed to finish before the stock macro travels to the bed center.
+This prevents an early PR Touch contact from becoming a nozzle drag across the
+build plate. The guard is inactive when `prtouch_v3` is not loaded.
+
 When Cartographer or KAMP has installed the shared prime-tower scanner,
 `START_PRINT` waits for that selected-file preflight before preparation moves.
 Cartographer adaptive meshing includes a detected Creality Print prime tower

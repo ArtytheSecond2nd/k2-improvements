@@ -32,6 +32,10 @@ if [ "$HAD_SURFACE_WRAPPER" -eq 1 ]; then
     sh "$SCRIPT_DIR/../../installer/extras/surface-selection-wrapper/install.sh"
 fi
 
-sh "${SCRIPT_DIR}/../../scripts/firmware_restart.sh"
+if [ -f /tmp/k2-klippy-code-restart-required ]; then
+    sh "${SCRIPT_DIR}/../../scripts/klippy_code_restart.sh"
+else
+    sh "${SCRIPT_DIR}/../../scripts/firmware_restart.sh"
+fi
 
 echo "I: macros (start_print, m191, bed_mesh, overrides) installed"
