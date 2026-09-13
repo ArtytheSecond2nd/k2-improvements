@@ -20,6 +20,8 @@ class FakeToolhead:
     def __init__(self, z, recorded_z):
         self.position = [225.0, 345.0, z, 0.0]
         self.z_pos = recorded_z
+        self.moves = []
+        self.wait_count = 0
 
     def get_status(self, eventtime):
         del eventtime
@@ -27,6 +29,13 @@ class FakeToolhead:
 
     def get_position(self):
         return self.position[:]
+
+    def move(self, target, speed):
+        self.moves.append((target[:], speed))
+        self.position = target[:]
+
+    def wait_moves(self):
+        self.wait_count += 1
 
 
 class FakeVirtualSD:
@@ -139,33 +148,41 @@ class SafeMoveCommandTests(unittest.TestCase):
             return stopped_z, triggered
 
         safe_move._guarded_move = guarded_move
-        return safe_move, virtual_sd
+        return safe_move, virtual_sd, toolhead
 
     def test_normal_move_reaches_z20_and_reports_completion(self):
-        safe_move, virtual_sd = self.make_safe_move(
+        safe_move, virtual_sd, toolhead = self.make_safe_move(
             173.013, 173.013, 20.0, False)
         safe_move.cmd_SAFE_MOVE_Z(FakeGcmd(-153.013))
         self.assertAlmostEqual(virtual_sd.run_dis, -153.013)
+        self.assertEqual(toolhead.moves, [])
 
     def test_normal_move_rejects_unexpected_cartographer_trigger(self):
-        safe_move, virtual_sd = self.make_safe_move(
+        safe_move, virtual_sd, toolhead = self.make_safe_move(
             173.013, 173.013, 42.0, True)
         with self.assertRaisesRegex(RuntimeError, "unexpectedly"):
             safe_move.cmd_SAFE_MOVE_Z(FakeGcmd(-153.013))
         self.assertEqual(virtual_sd.run_dis, 0.0)
+        self.assertEqual(toolhead.moves, [])
 
     def test_artificial_move_accepts_cartographer_trigger(self):
-        safe_move, virtual_sd = self.make_safe_move(
+        safe_move, virtual_sd, toolhead = self.make_safe_move(
             360.0, 338.425, 23.1, True)
-        safe_move.cmd_SAFE_MOVE_Z(FakeGcmd(-340.0))
-        self.assertAlmostEqual(virtual_sd.run_dis, -336.9)
+        gcmd = FakeGcmd(-340.0)
+        safe_move.cmd_SAFE_MOVE_Z(gcmd)
+        self.assertEqual(toolhead.moves, [([225.0, 345.0, 33.1, 0.0], 6.0)])
+        self.assertEqual(toolhead.wait_count, 1)
+        self.assertAlmostEqual(virtual_sd.run_dis, -326.9)
+        self.assertTrue(any("retreated 10.000mm" in r for r in gcmd.responses))
+        self.assertTrue(any("10mm retreat" in r for r in gcmd.responses))
 
     def test_artificial_move_fails_closed_at_backup_endpoint(self):
-        safe_move, virtual_sd = self.make_safe_move(
+        safe_move, virtual_sd, toolhead = self.make_safe_move(
             360.0, 338.425, 22.575, False)
         with self.assertRaisesRegex(RuntimeError, "did not detect"):
             safe_move.cmd_SAFE_MOVE_Z(FakeGcmd(-340.0))
         self.assertEqual(virtual_sd.run_dis, 0.0)
+        self.assertEqual(toolhead.moves, [])
 
 
 if __name__ == "__main__":

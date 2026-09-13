@@ -20,6 +20,7 @@ class K2SafeMoveZ:
     ARTIFICIAL_TARGET_TOLERANCE = 0.5
     ARTIFICIAL_REFERENCE_GAP = 10.0
     ARTIFICIAL_BACKUP_CLEARANCE = 1.0
+    ARTIFICIAL_TRIGGER_RETREAT = 10.0
 
     def __init__(self, config):
         self.printer = config.get_printer()
@@ -111,6 +112,24 @@ class K2SafeMoveZ:
         triggered = end_z > target_z + self.COMPLETION_TOLERANCE
         return end_z, triggered
 
+    def _retreat_after_trigger(self, gcmd, toolhead, trigger_z, speed):
+        # Increasing K2 Z lowers the bed away from the nozzle.  Use a relative
+        # retreat because Creality's artificial coordinate is intentionally
+        # not a trustworthy physical absolute position.
+        retreat_z = min(
+            self.position_max,
+            trigger_z + self.ARTIFICIAL_TRIGGER_RETREAT)
+        retreat_target = toolhead.get_position()
+        retreat_target[2] = retreat_z
+        toolhead.move(retreat_target, speed)
+        toolhead.wait_moves()
+        end_z = toolhead.get_position()[2]
+        if abs(end_z - retreat_z) > self.COMPLETION_TOLERANCE:
+            raise gcmd.error(
+                '[SAFE_MOVE_Z] Cartographer-trigger retreat stopped at '
+                'Z=%.3f; expected Z=%.3f' % (end_z, retreat_z))
+        return end_z
+
     def cmd_SAFE_MOVE_Z(self, gcmd):
         state = gcmd.get_int('STA', 0)
         if state == 0:
@@ -199,6 +218,15 @@ class K2SafeMoveZ:
                 '[SAFE_MOVE_Z] Move stopped at Z=%.3f; expected Z=%.3f' %
                 (end_z, guarded_target_z))
 
+        trigger_z = end_z if triggered else None
+        if artificial_z and triggered:
+            end_z = self._retreat_after_trigger(
+                gcmd, toolhead, trigger_z, speed)
+            gcmd.respond_info(
+                '[SAFE_MOVE_Z] Cartographer stopped the artificial-Z '
+                'approach at Z=%.3f; bed retreated %.3fmm to Z=%.3f' %
+                (trigger_z, end_z - trigger_z, end_z))
+
         completed_distance = end_z - start_z
         # This is the stock prtouch_v3 completion contract.  Publishing only
         # after wait_moves() prevents master-server from continuing while the
@@ -206,13 +234,14 @@ class K2SafeMoveZ:
         virtual_sdcard.run_dis = completed_distance
         logging.info(
             '[SAFE_MOVE_Z] completed distance=%.6f start_z=%.6f end_z=%.6f '
-            'cartographer_triggered=%s artificial_z=%s recorded_z=%s',
-            completed_distance, start_z, end_z, triggered, artificial_z,
-            recorded_z)
+            'trigger_z=%s cartographer_triggered=%s artificial_z=%s '
+            'recorded_z=%s',
+            completed_distance, start_z, end_z, trigger_z, triggered,
+            artificial_z, recorded_z)
         gcmd.respond_info(
             '[SAFE_MOVE_Z] Completed Z move; run_dis=%.3f%s' %
             (completed_distance,
-             ' (Cartographer stop)' if triggered else ''))
+             ' (Cartographer stop + 10mm retreat)' if triggered else ''))
 
 
 def load_config(config):

@@ -82,8 +82,10 @@ stops at or above the observed Z=20 clearance floor, performs the move only
 while the printer is idle, and reports completion through
 `virtual_sdcard.run_dis` as the stock PR Touch extension does. The endpoint may
 remain above Z=20 when Creality's service calculated its relative travel before
-cancellation cleanup finished. Cartographer does not provide the stock
-nozzle-pressure collision sensing during this move.
+cancellation cleanup finished. Cartographer's scan endstop guards the move. If
+it triggers during Creality's artificial-Z recovery path, the bed retreats 10
+mm before completion is reported; an unexpected trigger during a normal
+between-print move stops that command without reporting completion.
 
 On a direct Cartographer install or a conversion from the stock-probe setup,
 the installer resets the PLA, PETG, ABS, ASA, DEFAULT, and PROBE offsets in
