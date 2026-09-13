@@ -1,0 +1,172 @@
+"""Regression tests for the K2 Cartographer SAFE_MOVE_Z compatibility."""
+
+import importlib.util
+import pathlib
+import unittest
+
+
+MODULE_PATH = pathlib.Path(__file__).with_name("k2_safe_move_z.py")
+SPEC = importlib.util.spec_from_file_location("k2_safe_move_z", MODULE_PATH)
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+
+
+class FakeReactor:
+    def monotonic(self):
+        return 1.0
+
+
+class FakeToolhead:
+    def __init__(self, z, recorded_z):
+        self.position = [225.0, 345.0, z, 0.0]
+        self.z_pos = recorded_z
+
+    def get_status(self, eventtime):
+        del eventtime
+        return {"homed_axes": "xyz"}
+
+    def get_position(self):
+        return self.position[:]
+
+
+class FakeVirtualSD:
+    def __init__(self):
+        self.run_dis = 99.0
+
+
+class FakePrinter:
+    def __init__(self, toolhead, virtual_sd):
+        self.toolhead = toolhead
+        self.virtual_sd = virtual_sd
+
+    def get_reactor(self):
+        return FakeReactor()
+
+    def lookup_object(self, name, default=None):
+        objects = {
+            "toolhead": self.toolhead,
+            "virtual_sdcard": self.virtual_sd,
+        }
+        return objects.get(name, default)
+
+
+class FakeGcmd:
+    def __init__(self, distance, speed=6.0):
+        self.values = {"STA": 1, "DIS": distance, "SPD": speed}
+        self.responses = []
+
+    def get_int(self, name, default=None):
+        return int(self.values.get(name, default))
+
+    def get_float(self, name, default=None):
+        return float(self.values.get(name, default))
+
+    def error(self, message):
+        return RuntimeError(message)
+
+    def respond_info(self, message):
+        self.responses.append(message)
+
+
+class SafeMoveClassificationTests(unittest.TestCase):
+    def setUp(self):
+        self.safe_move = object.__new__(MODULE.K2SafeMoveZ)
+        self.safe_move.position_max = 360.0
+
+    def test_normal_between_print_move_is_not_artificial(self):
+        self.assertFalse(self.safe_move._is_artificial_z_reference(
+            173.013, 20.0, 173.013))
+
+    def test_tall_but_genuinely_recorded_move_is_not_artificial(self):
+        self.assertFalse(self.safe_move._is_artificial_z_reference(
+            360.0, 20.0, 358.0))
+
+    def test_post_zdown_set_position_is_artificial(self):
+        self.assertTrue(self.safe_move._is_artificial_z_reference(
+            360.0, 20.0, 338.425))
+
+    def test_missing_recorded_position_is_not_assumed_artificial(self):
+        self.assertFalse(self.safe_move._is_artificial_z_reference(
+            360.0, 20.0, None))
+
+
+class GuardedMoveOutcomeTests(unittest.TestCase):
+    def setUp(self):
+        self.safe_move = object.__new__(MODULE.K2SafeMoveZ)
+        self.safe_move.position_max = 360.0
+
+    def test_artificial_backup_stops_short_of_requested_endpoint(self):
+        start_z = 360.0
+        requested_target = 20.0
+        recorded_z = 338.425
+        backup_target = max(
+            requested_target,
+            start_z - max(
+                0.0,
+                recorded_z - self.safe_move.ARTIFICIAL_BACKUP_CLEARANCE))
+        self.assertAlmostEqual(backup_target, 22.575)
+
+    def test_normal_move_keeps_requested_endpoint(self):
+        start_z = 173.013
+        requested_target = 20.0
+        recorded_z = 173.013
+        artificial = self.safe_move._is_artificial_z_reference(
+            start_z, requested_target, recorded_z)
+        guarded_target = requested_target
+        if artificial:
+            guarded_target = max(
+                requested_target,
+                start_z - max(
+                    0.0,
+                    recorded_z - self.safe_move.ARTIFICIAL_BACKUP_CLEARANCE))
+        self.assertEqual(guarded_target, requested_target)
+
+
+class SafeMoveCommandTests(unittest.TestCase):
+    def make_safe_move(self, start_z, recorded_z, stopped_z, triggered):
+        toolhead = FakeToolhead(start_z, recorded_z)
+        virtual_sd = FakeVirtualSD()
+        safe_move = object.__new__(MODULE.K2SafeMoveZ)
+        safe_move.position_min = -10.0
+        safe_move.position_max = 360.0
+        safe_move.max_z_velocity = 30.0
+        safe_move.printer = FakePrinter(toolhead, virtual_sd)
+        safe_move._require_idle = lambda gcmd: None
+
+        def guarded_move(gcmd, active_toolhead, target_z, speed):
+            del gcmd, target_z, speed
+            active_toolhead.position[2] = stopped_z
+            return stopped_z, triggered
+
+        safe_move._guarded_move = guarded_move
+        return safe_move, virtual_sd
+
+    def test_normal_move_reaches_z20_and_reports_completion(self):
+        safe_move, virtual_sd = self.make_safe_move(
+            173.013, 173.013, 20.0, False)
+        safe_move.cmd_SAFE_MOVE_Z(FakeGcmd(-153.013))
+        self.assertAlmostEqual(virtual_sd.run_dis, -153.013)
+
+    def test_normal_move_rejects_unexpected_cartographer_trigger(self):
+        safe_move, virtual_sd = self.make_safe_move(
+            173.013, 173.013, 42.0, True)
+        with self.assertRaisesRegex(RuntimeError, "unexpectedly"):
+            safe_move.cmd_SAFE_MOVE_Z(FakeGcmd(-153.013))
+        self.assertEqual(virtual_sd.run_dis, 0.0)
+
+    def test_artificial_move_accepts_cartographer_trigger(self):
+        safe_move, virtual_sd = self.make_safe_move(
+            360.0, 338.425, 23.1, True)
+        safe_move.cmd_SAFE_MOVE_Z(FakeGcmd(-340.0))
+        self.assertAlmostEqual(virtual_sd.run_dis, -336.9)
+
+    def test_artificial_move_fails_closed_at_backup_endpoint(self):
+        safe_move, virtual_sd = self.make_safe_move(
+            360.0, 338.425, 22.575, False)
+        with self.assertRaisesRegex(RuntimeError, "did not detect"):
+            safe_move.cmd_SAFE_MOVE_Z(FakeGcmd(-340.0))
+        self.assertEqual(virtual_sd.run_dis, 0.0)
+
+
+if __name__ == "__main__":
+    unittest.main()
