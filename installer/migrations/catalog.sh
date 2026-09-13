@@ -93,5 +93,6 @@ chamber-fan-start-print-target-v5|macros|is_macros|START_PRINT now restores the 
 prtouch-safe-xy-clearance-v1|macros|is_macros|Stock PR Touch now establishes Z30 clearance before the post-recovery XY homing move
 prtouch-safe-xy-one-shot-v2|macros|is_macros|Stock PR Touch Z30 clearance now runs only on the first Z home after SAFE_MOVE_Z
 prtouch-safe-xy-artificial-gate-v3|macros|is_macros|Stock PR Touch Z30 clearance now runs only after artificial-coordinate SAFE_MOVE_Z recovery
+prtouch-safe-xy-cleanup-pass-through-v4|macros|is_macros|Stock PR Touch SAFE_MOVE_Z cleanup acknowledgements now pass through without requiring motion parameters
 EOF
 }
