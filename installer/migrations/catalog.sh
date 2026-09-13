@@ -13,6 +13,7 @@ main-db05901-safe-z-ack|cartographer|is_cartographer|Cartographer SAFE_MOVE_Z ac
 main-76b3de6-safe-z-guard|cartographer|is_cartographer|Guarded Cartographer SAFE_MOVE_Z handling changed
 main-31fe963-safe-z-queue|cartographer|is_cartographer|Cartographer SAFE_MOVE_Z queuing changed
 main-ccd093f-safe-z-complete|cartographer|is_cartographer|Cartographer SAFE_MOVE_Z completion reporting changed
+main-cb798e3-safe-z-carto-endstop|cartographer|is_cartographer|Cartographer SAFE_MOVE_Z scan-endstop protection is ready for testing
 main-99f5328-save-config|save-config-restart|is_save_config_restart|SAVE_CONFIG firmware-restart behavior changed
 main-611cde3-save-config-guard|save-config-restart|is_save_config_restart|SAVE_CONFIG protection was expanded to every install path
 main-4b6aa14-abort-restart|abort_homing|is_abort_homing|Abort Homing installation restart handling changed
