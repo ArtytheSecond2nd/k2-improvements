@@ -94,5 +94,6 @@ prtouch-safe-xy-clearance-v1|macros|is_macros|Stock PR Touch now establishes Z30
 prtouch-safe-xy-one-shot-v2|macros|is_macros|Stock PR Touch Z30 clearance now runs only on the first Z home after SAFE_MOVE_Z
 prtouch-safe-xy-artificial-gate-v3|macros|is_macros|Stock PR Touch Z30 clearance now runs only after artificial-coordinate SAFE_MOVE_Z recovery
 prtouch-safe-xy-cleanup-pass-through-v4|macros|is_macros|Stock PR Touch SAFE_MOVE_Z cleanup acknowledgements now pass through without requiring motion parameters
+prtouch-safe-xy-followup-preserve-v5|macros|is_macros|Stock PR Touch safety clearance now remains armed through AI follow-up Z approaches
 EOF
 }

@@ -353,6 +353,16 @@ class MigrationCatalogTests(unittest.TestCase):
             },
         )
 
+    def test_macros_track_prtouch_safe_xy_followup_preservation(self):
+        self.assertIn(
+            "prtouch-safe-xy-followup-preserve-v5",
+            {
+                migration_id
+                for migration_id, component, _detector, _reason in entries()
+                if component == "macros"
+            },
+        )
+
     def test_axis_twist_tracks_probe_aware_calibration_range(self):
         self.assertIn(
             "axis-twist-probe-aware-range-v1",

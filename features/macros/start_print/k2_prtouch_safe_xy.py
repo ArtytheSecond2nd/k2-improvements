@@ -100,11 +100,12 @@ class PRTouchSafeXY:
         artificial_z = self._is_artificial_z_reference(
             start_z, target_z, recorded_z)
 
-        # Arm only after an artificial SAFE_MOVE_Z succeeds. The next _HOME_Z
-        # consumes the arm so later Z-home passes cannot repeat it.
-        self.guard_pending = False
+        # Arm after an artificial SAFE_MOVE_Z succeeds. Once armed, preserve
+        # that state through any smaller AI follow-up approaches; the next
+        # _HOME_Z consumes it so later Z-home passes cannot repeat it.
         result = self.original_safe_move_z(gcmd)
-        self.guard_pending = artificial_z
+        if artificial_z:
+            self.guard_pending = True
         return result
 
     def cmd_HOME_Z(self, gcmd):

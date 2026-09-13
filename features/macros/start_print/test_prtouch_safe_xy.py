@@ -217,6 +217,19 @@ class PRTouchSafeXYTests(unittest.TestCase):
         self.assertEqual(
             events, ["safe_move_z", "safe_move_z", "retreat", "wait", "original"])
 
+    def test_ai_followup_approach_preserves_pending_guard(self):
+        guard, toolhead, gcode, events = self.make_guard()
+        self.arm_guard(gcode)
+        toolhead.z = 21.0125
+        toolhead.z_pos = 21.0125
+        self.arm_guard(gcode, distance=-1.0125)
+        toolhead.z = 20.935
+        gcode.handlers["_HOME_Z"](FakeCommand())
+        self.assertEqual(
+            toolhead.moves, [([None, None, 30.0, None], 6.0)])
+        self.assertEqual(
+            events, ["safe_move_z", "safe_move_z", "retreat", "wait", "original"])
+
     def test_clear_position_does_not_move(self):
         guard, toolhead, gcode, events = self.make_guard()
         self.arm_guard(gcode)
