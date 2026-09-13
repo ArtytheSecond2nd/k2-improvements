@@ -42,8 +42,11 @@ class FakeToolhead:
 
 
 class FakeGcode:
-    def __init__(self, original):
-        self.handlers = {"_HOME_Z": original}
+    def __init__(self, original_home_z, original_safe_move_z):
+        self.handlers = {
+            "_HOME_Z": original_home_z,
+            "SAFE_MOVE_Z": original_safe_move_z,
+        }
 
     def register_command(self, name, handler, desc=None):
         if handler is None:
@@ -100,38 +103,76 @@ class PRTouchSafeXYTests(unittest.TestCase):
         def original(gcmd):
             events.append("original")
 
+        def original_safe_move_z(gcmd):
+            events.append("safe_move_z")
+
         toolhead = FakeToolhead(z=z, homed=homed, events=events)
-        gcode = FakeGcode(original)
+        gcode = FakeGcode(original, original_safe_move_z)
         printer = FakePrinter(toolhead, gcode, prtouch=prtouch)
         guard = MODULE.PRTouchSafeXY(FakeConfig(printer))
         guard._handle_ready()
         return guard, toolhead, gcode, events
 
+    def arm_guard(self, gcode):
+        gcode.handlers["SAFE_MOVE_Z"](FakeCommand())
+
     def test_retreat_completes_before_original_home_z(self):
         guard, toolhead, gcode, events = self.make_guard(z=21.08)
         command = FakeCommand()
+        self.arm_guard(gcode)
         gcode.handlers["_HOME_Z"](command)
         self.assertEqual(
             toolhead.moves, [([None, None, 30.0, None], 6.0)])
-        self.assertEqual(events, ["retreat", "wait", "original"])
+        self.assertEqual(
+            events, ["safe_move_z", "retreat", "wait", "original"])
         self.assertIn("21.080 -> 30.000", command.messages[0])
 
     def test_normal_z20_path_also_receives_clearance(self):
         guard, toolhead, gcode, events = self.make_guard(z=20.0)
+        self.arm_guard(gcode)
         gcode.handlers["_HOME_Z"](FakeCommand())
         self.assertEqual(toolhead.z, 30.0)
 
-    def test_clear_position_does_not_move(self):
-        guard, toolhead, gcode, events = self.make_guard(z=30.0)
+    def test_home_z_before_safe_move_does_not_use_guard(self):
+        guard, toolhead, gcode, events = self.make_guard(z=20.0)
         gcode.handlers["_HOME_Z"](FakeCommand())
         self.assertEqual(toolhead.moves, [])
         self.assertEqual(events, ["original"])
 
-    def test_unhomed_z_is_left_to_stock_homing(self):
-        guard, toolhead, gcode, events = self.make_guard(z=0.0, homed="xy")
+    def test_only_first_home_z_after_safe_move_can_use_guard(self):
+        guard, toolhead, gcode, events = self.make_guard(z=20.5)
+        self.arm_guard(gcode)
+        gcode.handlers["_HOME_Z"](FakeCommand())
+        toolhead.z = 5.0
+        gcode.handlers["_HOME_Z"](FakeCommand())
+        gcode.handlers["_HOME_Z"](FakeCommand())
+        self.assertEqual(
+            toolhead.moves, [([None, None, 30.0, None], 6.0)])
+        self.assertEqual(events.count("retreat"), 1)
+        self.assertEqual(events.count("original"), 3)
+
+    def test_next_safe_move_rearms_guard(self):
+        guard, toolhead, gcode, events = self.make_guard(z=20.0)
+        self.arm_guard(gcode)
+        gcode.handlers["_HOME_Z"](FakeCommand())
+        toolhead.z = 21.0
+        self.arm_guard(gcode)
+        gcode.handlers["_HOME_Z"](FakeCommand())
+        self.assertEqual(len(toolhead.moves), 2)
+
+    def test_clear_position_does_not_move(self):
+        guard, toolhead, gcode, events = self.make_guard(z=30.0)
+        self.arm_guard(gcode)
         gcode.handlers["_HOME_Z"](FakeCommand())
         self.assertEqual(toolhead.moves, [])
-        self.assertEqual(events, ["original"])
+        self.assertEqual(events, ["safe_move_z", "original"])
+
+    def test_unhomed_z_is_left_to_stock_homing(self):
+        guard, toolhead, gcode, events = self.make_guard(z=0.0, homed="xy")
+        self.arm_guard(gcode)
+        gcode.handlers["_HOME_Z"](FakeCommand())
+        self.assertEqual(toolhead.moves, [])
+        self.assertEqual(events, ["safe_move_z", "original"])
 
     def test_cartographer_path_does_not_wrap_home_z(self):
         guard, toolhead, gcode, events = self.make_guard(prtouch=False)
