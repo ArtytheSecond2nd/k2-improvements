@@ -5,13 +5,22 @@
 # macro, which moves XY before homing Z and can drag the nozzle across the bed.
 # This wrapper establishes clearance before allowing _HOME_Z to run.
 
+import math
+
 
 class PRTouchSafeXY:
+    MIN_SAFE_Z = 20.0
+    ARTIFICIAL_START_TOLERANCE = 0.5
+    ARTIFICIAL_TARGET_TOLERANCE = 0.5
+    ARTIFICIAL_REFERENCE_GAP = 10.0
+
     def __init__(self, config):
         self.printer = config.get_printer()
         self.gcode = self.printer.lookup_object('gcode')
         self.clearance_z = config.getfloat('clearance_z', 30.0, above=0.0)
         self.speed = config.getfloat('speed', 6.0, above=0.0)
+        self.position_max = config.getsection('stepper_z').getfloat(
+            'position_max')
         self.original_home_z = None
         self.original_safe_move_z = None
         self.guard_pending = False
@@ -51,12 +60,44 @@ class PRTouchSafeXY:
             self.original_safe_move_z = None
             raise
 
+    def _get_recorded_z(self, eventtime, toolhead):
+        recorded_z = getattr(toolhead, 'z_pos', None)
+        if recorded_z is None:
+            print_stats = self.printer.lookup_object('print_stats')
+            recorded_z = print_stats.get_status(eventtime).get('z_pos')
+        try:
+            recorded_z = float(recorded_z)
+        except (TypeError, ValueError):
+            return None
+        return recorded_z if math.isfinite(recorded_z) else None
+
+    def _is_artificial_z_reference(self, start_z, target_z, recorded_z):
+        if recorded_z is None:
+            return False
+        return (
+            abs(start_z - self.position_max)
+            <= self.ARTIFICIAL_START_TOLERANCE
+            and abs(target_z - self.MIN_SAFE_Z)
+            <= self.ARTIFICIAL_TARGET_TOLERANCE
+            and start_z - recorded_z >= self.ARTIFICIAL_REFERENCE_GAP)
+
     def cmd_SAFE_MOVE_Z(self, gcmd):
-        # Arm only after SAFE_MOVE_Z succeeds. The next _HOME_Z consumes the
-        # arm so later Z-home passes in the same preparation cannot repeat it.
+        # Classify the coordinate state before the stock command moves. The
+        # artificial recovery relabels the coarse physical Z as position_max,
+        # while toolhead.z_pos / print_stats.z_pos retains the physical record.
+        toolhead = self.printer.lookup_object('toolhead')
+        eventtime = self.printer.get_reactor().monotonic()
+        start_z = toolhead.get_position()[2]
+        target_z = start_z + gcmd.get_float('DIS')
+        recorded_z = self._get_recorded_z(eventtime, toolhead)
+        artificial_z = self._is_artificial_z_reference(
+            start_z, target_z, recorded_z)
+
+        # Arm only after an artificial SAFE_MOVE_Z succeeds. The next _HOME_Z
+        # consumes the arm so later Z-home passes cannot repeat it.
         self.guard_pending = False
         result = self.original_safe_move_z(gcmd)
-        self.guard_pending = True
+        self.guard_pending = artificial_z
         return result
 
     def cmd_HOME_Z(self, gcmd):

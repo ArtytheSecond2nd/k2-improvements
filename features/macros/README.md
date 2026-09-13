@@ -39,5 +39,6 @@ Each macro is included from `custom/main.cfg`. The combined installer performs
 one protected restart after all four components are installed and waits for K2
 motor initialization before returning. A Klippy host-process reload is used
 when the stock PR Touch pre-XY clearance guard is installed or refreshed. The
-guard is armed by `SAFE_MOVE_Z` and consumed by its first following `_HOME_Z`,
-so later Z-home passes in the same print preparation do not repeat the retreat.
+guard is armed only when `SAFE_MOVE_Z` begins from Creality's artificial Z
+reference, then consumed by its first following `_HOME_Z`, so ordinary inter-
+print moves and later Z-home passes do not repeat the retreat.

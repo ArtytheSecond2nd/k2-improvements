@@ -20,13 +20,17 @@ the fan. This state-based guard has been validated on firmware `1.1.3.13`,
 `1.1.5.2`, and `1.1.5.5`.
 
 On the stock PR Touch path, the installer also guards the first `_HOME_Z` after
-`SAFE_MOVE_Z`. If Creality's artificial-Z preparation leaves the bed at a
+an artificial-coordinate `SAFE_MOVE_Z`. The guard recognizes that recovery
+before motion from the Z=position_max relabel, its requested Z20 endpoint, and
+the separately recorded physical Z; it does not depend on the photoelectric
+home being positionally precise. If that preparation leaves the bed at a
 logical position below Z=30, the bed first retreats to Z=30 at 6 mm/s and the
 move is allowed to finish before the stock macro travels to the bed center.
 That one-shot guard is consumed by the first `_HOME_Z`, so later Z-home passes
-in the same print preparation do not repeat the retreat. This prevents an early
-PR Touch contact from becoming a nozzle drag across the build plate. The guard
-is inactive when `prtouch_v3` is not loaded.
+in the same print preparation do not repeat the retreat. Ordinary print-to-
+print `SAFE_MOVE_Z` calls retain their stock Z20 behavior. This prevents an
+early PR Touch contact from becoming a nozzle drag across the build plate. The
+guard is inactive when `prtouch_v3` is not loaded.
 
 When Cartographer or KAMP has installed the shared prime-tower scanner,
 `START_PRINT` waits for that selected-file preflight before preparation moves.
