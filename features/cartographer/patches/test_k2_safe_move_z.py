@@ -172,7 +172,7 @@ class SafeMoveCommandTests(unittest.TestCase):
         safe_move.cmd_SAFE_MOVE_Z(gcmd)
         self.assertEqual(toolhead.moves, [([225.0, 345.0, 33.1, 0.0], 6.0)])
         self.assertEqual(toolhead.wait_count, 1)
-        self.assertAlmostEqual(virtual_sd.run_dis, -326.9)
+        self.assertAlmostEqual(virtual_sd.run_dis, -340.0)
         self.assertTrue(any("retreated 10.000mm" in r for r in gcmd.responses))
         self.assertTrue(any("10mm retreat" in r for r in gcmd.responses))
 
@@ -184,9 +184,12 @@ class SafeMoveCommandTests(unittest.TestCase):
         self.assertEqual(
             toolhead.moves, [([225.0, 345.0, 32.575, 0.0], 6.0)])
         self.assertEqual(toolhead.wait_count, 1)
-        self.assertAlmostEqual(virtual_sd.run_dis, -327.425)
+        self.assertAlmostEqual(virtual_sd.run_dis, -340.0)
         self.assertTrue(any(
             "calculated backup stop; no Cartographer trigger" in response
+            for response in gcmd.responses))
+        self.assertTrue(any(
+            "actual travel=-327.425" in response
             for response in gcmd.responses))
 
 

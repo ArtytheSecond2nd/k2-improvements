@@ -231,21 +231,30 @@ class K2SafeMoveZ:
                 '(%s); bed retreated %.3fmm to Z=%.3f' %
                 (approach_z, stop_reason, end_z - approach_z, end_z))
 
-        completed_distance = end_z - start_z
+        actual_distance = end_z - start_z
+        # Creality treats run_dis as the completion acknowledgement for the
+        # requested inspection move and issues a second correction whenever
+        # an artificial-Z recovery reports only its shorter physical travel.
+        # That correction would drive the bed back toward the nozzle after we
+        # deliberately retreated it.  Report the requested distance for this
+        # one artificial-coordinate contract; log the actual travel below.
+        reported_distance = distance if artificial_z else actual_distance
         # This is the stock prtouch_v3 completion contract.  Publishing only
         # after wait_moves() prevents master-server from continuing while the
         # bed is still moving.
-        virtual_sdcard.run_dis = completed_distance
+        virtual_sdcard.run_dis = reported_distance
         logging.info(
-            '[SAFE_MOVE_Z] completed distance=%.6f start_z=%.6f end_z=%.6f '
-            'trigger_z=%s cartographer_triggered=%s artificial_z=%s '
-            'recorded_z=%s',
-            completed_distance, start_z, end_z, trigger_z, triggered,
-            artificial_z, recorded_z)
+            '[SAFE_MOVE_Z] reported distance=%.6f actual distance=%.6f '
+            'start_z=%.6f end_z=%.6f trigger_z=%s '
+            'cartographer_triggered=%s artificial_z=%s recorded_z=%s',
+            reported_distance, actual_distance, start_z, end_z, trigger_z,
+            triggered, artificial_z, recorded_z)
         gcmd.respond_info(
-            '[SAFE_MOVE_Z] Completed Z move; run_dis=%.3f%s' %
-            (completed_distance,
+            '[SAFE_MOVE_Z] Completed Z move; run_dis=%.3f%s%s' %
+            (reported_distance,
              (' (%s + 10mm retreat)' % stop_reason)
+             if artificial_z else '',
+             '; actual travel=%.3f' % actual_distance
              if artificial_z else ''))
 
 

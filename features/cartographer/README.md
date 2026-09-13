@@ -85,8 +85,11 @@ remain above Z=20 when Creality's service calculated its relative travel before
 cancellation cleanup finished. Cartographer's scan endstop guards the move. If
 Creality's artificial-Z recovery path reaches either a Cartographer trigger or
 its independently calculated mechanical backup endpoint, the bed retreats 10
-mm before completion is reported. An unexpected trigger during a normal
-between-print move stops that command without reporting completion.
+mm before completion is reported. The artificial path acknowledges Creality's
+original requested distance while logging the shorter physical travel; this
+prevents the closed service from commanding the retreated bed back toward Z20.
+An unexpected trigger during a normal between-print move stops that command
+without reporting completion.
 
 On a direct Cartographer install or a conversion from the stock-probe setup,
 the installer resets the PLA, PETG, ABS, ASA, DEFAULT, and PROBE offsets in
