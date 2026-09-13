@@ -184,6 +184,14 @@ class MigrationCatalogTests(unittest.TestCase):
         self.assertIn("Untracked files are kept", menu)
         self.assertIn("migration_restore_tracked_checkout || return 1", menu)
 
+    def test_updater_can_confirm_and_recover_a_diverged_checkout(self):
+        menu = UPDATE_MENU.read_text(encoding="utf-8")
+        self.assertIn("migration_replace_diverged_checkout", menu)
+        self.assertIn("repository-refresh.sh", menu)
+        self.assertIn("Any previous repository recovery backup will be deleted", menu)
+        self.assertIn("including Git history and local files", menu)
+        self.assertIn('migration_replace_diverged_checkout "$branch"', menu)
+
     def test_cartographer_refresh_records_shared_python_dependencies(self):
         menu = UPDATE_MENU.read_text(encoding="utf-8")
         self.assertIn("migration_record_refreshed_component", menu)

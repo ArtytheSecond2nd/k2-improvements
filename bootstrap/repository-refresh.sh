@@ -26,12 +26,13 @@ normal_update() {
 }
 
 replace_checkout() {
-    timestamp="$(date '+%Y%m%d-%H%M%S' 2>/dev/null || echo unknown-time)"
-    temporary="$RECOVERY_ROOT/.checkout-$timestamp-$$"
-    backup="$RECOVERY_ROOT/files-before-refresh-$timestamp-$$"
+    temporary="$RECOVERY_ROOT/.replacement-checkout"
+    pending_backup="$RECOVERY_ROOT/.previous-checkout-pending"
+    backup="$RECOVERY_ROOT/previous-checkout"
 
     mkdir -p "$RECOVERY_ROOT"
     rm -rf "$temporary"
+    rm -rf "$pending_backup"
 
     echo "I: cloning a clean $BRANCH checkout before replacing the existing repository."
     if ! "$GIT_BIN" clone --single-branch --branch "$BRANCH" \
@@ -41,30 +42,39 @@ replace_checkout() {
         return 1
     fi
 
-    local_changes="$("$GIT_BIN" -C "$INSTALLER_DIR" status --porcelain 2>/dev/null || echo unknown-state)"
     cd "$INSTALLER_PARENT"
-    if ! mv "$INSTALLER_DIR" "$backup"; then
+    if ! mv "$INSTALLER_DIR" "$pending_backup"; then
         rm -rf "$temporary"
         echo "E: could not move the existing checkout; nothing was replaced." >&2
         return 1
     fi
     if ! mv "$temporary" "$INSTALLER_DIR"; then
-        mv "$backup" "$INSTALLER_DIR" 2>/dev/null || true
+        mv "$pending_backup" "$INSTALLER_DIR" 2>/dev/null || true
         rm -rf "$temporary"
         echo "E: could not activate the clean checkout; the existing checkout was restored." >&2
         return 1
     fi
 
-    if [ -n "$local_changes" ]; then
-        if ! rm -rf "$backup/.git"; then
-            echo "E: clean checkout installed, but old Git metadata remains at $backup/.git" >&2
-            return 1
-        fi
-        echo "I: previous local files were preserved without Git history at $backup"
-    else
-        rm -rf "$backup"
-        echo "I: clean $BRANCH checkout installed; no local file backup was needed."
+    # Keep exactly one complete recovery checkout.  The previous backup is not
+    # removed until the replacement clone is active, and the new backup keeps
+    # its Git metadata so local commits remain recoverable.
+    if ! rm -rf "$backup"; then
+        echo "E: clean checkout installed, but the previous recovery backup could not be removed." >&2
+        echo "E: the displaced checkout remains at $pending_backup" >&2
+        return 1
     fi
+    if ! mv "$pending_backup" "$backup"; then
+        echo "E: clean checkout installed, but the new recovery backup remains at $pending_backup" >&2
+        return 1
+    fi
+    # Remove backups made by the older timestamped recovery implementation.
+    # These patterns are confined to the dedicated recovery directory.
+    for legacy_backup in "$RECOVERY_ROOT"/files-before-refresh-* \
+        "$RECOVERY_ROOT"/.previous-checkout-*; do
+        [ -e "$legacy_backup" ] || continue
+        rm -rf "$legacy_backup"
+    done
+    echo "I: previous checkout, including Git history, preserved at $backup"
 }
 
 mkdir -p "$INSTALLER_PARENT"

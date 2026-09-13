@@ -115,11 +115,13 @@ class RepositoryRefreshTests(unittest.TestCase):
 
             self.assertIn("bootstrap recovery", output)
             self.assertEqual((checkout / "tracked.txt").read_text(), "rewritten remote\n")
-            backups = [path for path in recovery.iterdir() if path.name.startswith("files-before-refresh-")]
-            self.assertEqual(len(backups), 1)
-            self.assertEqual((backups[0] / "tracked.txt").read_text(), "uncommitted edit\n")
-            self.assertEqual((backups[0] / "untracked.txt").read_text(), "keep me\n")
-            self.assertFalse((backups[0] / ".git").exists())
+            backup = recovery / "previous-checkout"
+            self.assertEqual((backup / "tracked.txt").read_text(), "uncommitted edit\n")
+            self.assertEqual((backup / "untracked.txt").read_text(), "keep me\n")
+            self.assertTrue((backup / ".git").is_dir())
+            self.assertEqual(
+                self.git_run("log", "-1", "--format=%s", cwd=backup), "local commit"
+            )
 
     def test_clean_checkout_recovers_from_rewritten_remote_history(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -132,6 +134,7 @@ class RepositoryRefreshTests(unittest.TestCase):
             self.commit_file(seed, "old remote history\n", "old remote")
             self.git_run("push", cwd=seed)
             self.git_run("pull", "--ff-only", cwd=checkout)
+            displaced = self.git_run("rev-parse", "HEAD", cwd=checkout)
             self.git_run("reset", "--hard", initial, cwd=seed)
             self.commit_file(seed, "clean rewritten history\n", "rewritten remote")
             self.git_run("push", "--force", cwd=seed)
@@ -140,7 +143,39 @@ class RepositoryRefreshTests(unittest.TestCase):
 
             self.assertIn("bootstrap recovery", output)
             self.assertEqual((checkout / "tracked.txt").read_text(), "clean rewritten history\n")
-            self.assertEqual(list(recovery.iterdir()), [])
+            backup = recovery / "previous-checkout"
+            self.assertTrue((backup / ".git").is_dir())
+            self.assertEqual(self.git_run("rev-parse", "HEAD", cwd=backup), displaced)
+
+    def test_only_the_latest_full_checkout_backup_is_retained(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            remote, seed = self.make_remote(root)
+            checkout = root / "checkout"
+            recovery = root / "recovery"
+            self.git_run("clone", "--branch", "main", str(remote), str(checkout))
+            recovery.mkdir()
+            legacy = recovery / "files-before-refresh-old"
+            legacy.mkdir()
+            (legacy / "old.txt").write_text("old backup\n", encoding="utf-8")
+
+            self.commit_file(checkout, "first local\n", "first local commit")
+            self.commit_file(seed, "first rewrite\n", "first rewrite")
+            self.git_run("push", "--force", cwd=seed)
+            self.run_refresh(remote, checkout, recovery)
+
+            self.commit_file(checkout, "second local\n", "second local commit")
+            self.commit_file(seed, "second rewrite\n", "second rewrite")
+            self.git_run("push", "--force", cwd=seed)
+            self.run_refresh(remote, checkout, recovery)
+
+            self.assertEqual(
+                [path.name for path in recovery.iterdir()], ["previous-checkout"]
+            )
+            self.assertEqual(
+                self.git_run("log", "-1", "--format=%s", cwd=recovery / "previous-checkout"),
+                "second local commit",
+            )
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ MIGRATION_COMPLETED="$MIGRATION_STATE_DIR/completed-migrations"
 MIGRATION_INITIALIZED="$MIGRATION_STATE_DIR/initialized"
 MIGRATION_LAST_PULL="$MIGRATION_STATE_DIR/last-pull"
 MIGRATION_INSTALLED_SNAPSHOT="$MIGRATION_STATE_DIR/installed-before-update"
+REPOSITORY_RECOVERY_ROOT="${REPOSITORY_RECOVERY_ROOT:-/mnt/UDISK/root/.k2-improvements/repository-recovery}"
 
 migration_component_label() {
     case "$1" in
@@ -537,6 +538,37 @@ migration_restore_tracked_checkout() {
     info "previous local edits saved at $backup"
 }
 
+migration_replace_diverged_checkout() {
+    local branch remote refresh git_bin backup
+    branch="$1"
+    if [ "$branch" = detached ]; then
+        warn 'the installer is on a detached commit and cannot select a replacement branch safely.'
+        return 1
+    fi
+
+    remote=$(git -C "$INSTALLER_DIR" remote get-url origin 2>/dev/null || true)
+    refresh="$INSTALLER_DIR/bootstrap/repository-refresh.sh"
+    git_bin=$(command -v git 2>/dev/null || true)
+    backup="$REPOSITORY_RECOVERY_ROOT/previous-checkout"
+    if [ -z "$remote" ] || [ -z "$git_bin" ] || [ ! -f "$refresh" ]; then
+        warn 'automatic repository recovery is unavailable; re-run bootstrap.sh.'
+        return 1
+    fi
+
+    printf '\n%s\n' "$(c_yellow 'The installer branch cannot be updated with a normal fast-forward.')"
+    printf 'Option 6 can replace it with a clean clone of branch: %s\n' "$branch"
+    printf 'The complete current checkout, including Git history and local files,\n'
+    printf 'will be retained at:\n  %s\n\n' "$backup"
+    printf '%s\n\n' "$(c_yellow 'WARNING: Any previous repository recovery backup will be deleted after the new clone is ready.')"
+    if ! confirm 'Replace the installer checkout and retain this one recovery backup?'; then
+        warn 'repository replacement cancelled; the current checkout was not replaced.'
+        return 1
+    fi
+
+    sh "$refresh" "$remote" "$branch" "$INSTALLER_DIR" \
+        "$REPOSITORY_RECOVERY_ROOT" "$git_bin"
+}
+
 migration_pull_installer() {
     local review_after old new branch temporary
     review_after="$1"
@@ -562,9 +594,12 @@ migration_pull_installer() {
 
     info "git pull in $INSTALLER_DIR"
     if ! (cd "$INSTALLER_DIR" && git pull --ff-only); then
-        warn 'git pull failed; the current menu remains loaded.'
-        press_enter
-        return 1
+        warn 'normal git pull failed.'
+        if ! migration_replace_diverged_checkout "$branch"; then
+            warn 'the current menu remains loaded.'
+            press_enter
+            return 1
+        fi
     fi
     new=$(git -C "$INSTALLER_DIR" rev-parse --verify HEAD 2>/dev/null || echo unknown)
     mkdir -p "$MIGRATION_STATE_DIR"
