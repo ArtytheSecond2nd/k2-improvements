@@ -84,10 +84,11 @@ while the printer is idle, and reports completion through
 remain above Z=20 when Creality's service calculated its relative travel before
 cancellation cleanup finished. Cartographer's scan endstop guards the move. If
 Creality's artificial-Z recovery path reaches either a Cartographer trigger or
-its independently calculated mechanical backup endpoint, the bed retreats 10
-mm before completion is reported. The artificial path acknowledges Creality's
-original requested distance while logging the shorter physical travel; this
-prevents the closed service from commanding the retreated bed back toward Z20.
+a guarded Z=30 clearance endpoint because K2-Improvements does not use the AI
+cameras that require Creality's Z=20 inspection height. If Cartographer triggers
+before that endpoint, the bed retreats 10 mm. The artificial path acknowledges
+Creality's original requested distance while logging the shorter physical
+travel; this prevents the closed service from commanding the bed toward Z20.
 An unexpected trigger during a normal between-print move stops that command
 without reporting completion.
 

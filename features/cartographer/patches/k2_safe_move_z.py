@@ -20,6 +20,7 @@ class K2SafeMoveZ:
     ARTIFICIAL_TARGET_TOLERANCE = 0.5
     ARTIFICIAL_REFERENCE_GAP = 10.0
     ARTIFICIAL_BACKUP_CLEARANCE = 1.0
+    ARTIFICIAL_CLEARANCE_TARGET = 30.0
     ARTIFICIAL_RETREAT_DISTANCE = 10.0
 
     def __init__(self, config):
@@ -183,12 +184,15 @@ class K2SafeMoveZ:
         guarded_target_z = target_z
         if artificial_z:
             # ZDOWN records the coarse physical reference before c440x
-            # relabels that same location as Z=position_max.  Retain a final
-            # mechanical fallback just below Cartographer's normal 2 mm scan
-            # trigger.  If scan detection fails, stop here and report a fault
-            # instead of completing the unsafe requested travel.
+            # relabels that same location as Z=position_max.  Stop at Z=30
+            # instead of Creality's requested Z=20 because K2-Improvements
+            # does not use the AI cameras that require the inspection height.
+            # Also retain the independently calculated mechanical backup if
+            # it would stop the bed even earlier.  Cartographer remains armed
+            # throughout as protection for an unexpectedly high or bound bed.
             guarded_target_z = max(
                 target_z,
+                self.ARTIFICIAL_CLEARANCE_TARGET,
                 start_z - max(
                     0.0, recorded_z - self.ARTIFICIAL_BACKUP_CLEARANCE))
 
@@ -216,20 +220,21 @@ class K2SafeMoveZ:
         approach_z = end_z
         trigger_z = approach_z if triggered else None
         if artificial_z:
-            end_z = self._retreat_after_approach(
-                gcmd, toolhead, approach_z, speed)
             if triggered:
                 stop_reason = 'Cartographer stop'
+                end_z = self._retreat_after_approach(
+                    gcmd, toolhead, approach_z, speed)
+                gcmd.respond_info(
+                    '[SAFE_MOVE_Z] Artificial-Z approach ended at Z=%.3f '
+                    '(%s); bed retreated %.3fmm to Z=%.3f' %
+                    (approach_z, stop_reason, end_z - approach_z, end_z))
+                completion_note = '%s + 10mm retreat' % stop_reason
             else:
-                stop_reason = 'calculated backup stop; no Cartographer trigger'
-                logging.warning(
-                    '[SAFE_MOVE_Z] Cartographer did not trigger during the '
-                    'artificial-Z approach; safely reached backup Z=%.3f',
-                    approach_z)
-            gcmd.respond_info(
-                '[SAFE_MOVE_Z] Artificial-Z approach ended at Z=%.3f '
-                '(%s); bed retreated %.3fmm to Z=%.3f' %
-                (approach_z, stop_reason, end_z - approach_z, end_z))
+                stop_reason = 'guarded clearance stop; no Cartographer trigger'
+                gcmd.respond_info(
+                    '[SAFE_MOVE_Z] Artificial-Z approach ended safely at '
+                    'Z=%.3f (%s)' % (approach_z, stop_reason))
+                completion_note = stop_reason
 
         actual_distance = end_z - start_z
         # Creality treats run_dis as the completion acknowledgement for the
@@ -252,7 +257,7 @@ class K2SafeMoveZ:
         gcmd.respond_info(
             '[SAFE_MOVE_Z] Completed Z move; run_dis=%.3f%s%s' %
             (reported_distance,
-             (' (%s + 10mm retreat)' % stop_reason)
+             (' (%s)' % completion_note)
              if artificial_z else '',
              '; actual travel=%.3f' % actual_distance
              if artificial_z else ''))

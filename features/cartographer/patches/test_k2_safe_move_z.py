@@ -104,16 +104,17 @@ class GuardedMoveOutcomeTests(unittest.TestCase):
         self.safe_move = object.__new__(MODULE.K2SafeMoveZ)
         self.safe_move.position_max = 360.0
 
-    def test_artificial_backup_stops_short_of_requested_endpoint(self):
+    def test_artificial_move_stops_at_clearance_target(self):
         start_z = 360.0
         requested_target = 20.0
         recorded_z = 338.425
         backup_target = max(
             requested_target,
+            self.safe_move.ARTIFICIAL_CLEARANCE_TARGET,
             start_z - max(
                 0.0,
                 recorded_z - self.safe_move.ARTIFICIAL_BACKUP_CLEARANCE))
-        self.assertAlmostEqual(backup_target, 22.575)
+        self.assertAlmostEqual(backup_target, 30.0)
 
     def test_normal_move_keeps_requested_endpoint(self):
         start_z = 173.013
@@ -125,6 +126,7 @@ class GuardedMoveOutcomeTests(unittest.TestCase):
         if artificial:
             guarded_target = max(
                 requested_target,
+                self.safe_move.ARTIFICIAL_CLEARANCE_TARGET,
                 start_z - max(
                     0.0,
                     recorded_z - self.safe_move.ARTIFICIAL_BACKUP_CLEARANCE))
@@ -167,29 +169,28 @@ class SafeMoveCommandTests(unittest.TestCase):
 
     def test_artificial_move_accepts_cartographer_trigger(self):
         safe_move, virtual_sd, toolhead = self.make_safe_move(
-            360.0, 338.425, 23.1, True)
+            360.0, 338.425, 42.0, True)
         gcmd = FakeGcmd(-340.0)
         safe_move.cmd_SAFE_MOVE_Z(gcmd)
-        self.assertEqual(toolhead.moves, [([225.0, 345.0, 33.1, 0.0], 6.0)])
+        self.assertEqual(toolhead.moves, [([225.0, 345.0, 52.0, 0.0], 6.0)])
         self.assertEqual(toolhead.wait_count, 1)
         self.assertAlmostEqual(virtual_sd.run_dis, -340.0)
         self.assertTrue(any("retreated 10.000mm" in r for r in gcmd.responses))
         self.assertTrue(any("10mm retreat" in r for r in gcmd.responses))
 
-    def test_artificial_move_reaches_backup_then_retreats_without_trigger(self):
+    def test_artificial_move_stops_at_z30_without_unneeded_retreat(self):
         safe_move, virtual_sd, toolhead = self.make_safe_move(
-            360.0, 338.425, 22.575, False)
+            360.0, 338.425, 30.0, False)
         gcmd = FakeGcmd(-340.0)
         safe_move.cmd_SAFE_MOVE_Z(gcmd)
-        self.assertEqual(
-            toolhead.moves, [([225.0, 345.0, 32.575, 0.0], 6.0)])
-        self.assertEqual(toolhead.wait_count, 1)
+        self.assertEqual(toolhead.moves, [])
+        self.assertEqual(toolhead.wait_count, 0)
         self.assertAlmostEqual(virtual_sd.run_dis, -340.0)
         self.assertTrue(any(
-            "calculated backup stop; no Cartographer trigger" in response
+            "guarded clearance stop; no Cartographer trigger" in response
             for response in gcmd.responses))
         self.assertTrue(any(
-            "actual travel=-327.425" in response
+            "actual travel=-330.000" in response
             for response in gcmd.responses))
 
 
