@@ -110,9 +110,10 @@ class FakePrintStats:
 
 
 class FakeCommand:
-    def __init__(self, distance=-340.0):
+    def __init__(self, distance=-340.0, state=1):
         self.messages = []
         self.distance = distance
+        self.state = state
 
     def respond_info(self, message):
         self.messages.append(message)
@@ -120,7 +121,14 @@ class FakeCommand:
     def get_float(self, name):
         if name != "DIS":
             raise KeyError(name)
+        if self.distance is None:
+            raise AssertionError("DIS must not be read from a bare STA=0 command")
         return self.distance
+
+    def get_int(self, name, default=None):
+        if name != "STA":
+            raise KeyError(name)
+        return self.state
 
 
 class PRTouchSafeXYTests(unittest.TestCase):
@@ -196,6 +204,18 @@ class PRTouchSafeXYTests(unittest.TestCase):
         toolhead.z = 21.0
         gcode.handlers["_HOME_Z"](FakeCommand())
         self.assertEqual(len(toolhead.moves), 2)
+
+    def test_bare_cleanup_passes_through_and_preserves_pending_guard(self):
+        guard, toolhead, gcode, events = self.make_guard()
+        self.arm_guard(gcode)
+        gcode.handlers["SAFE_MOVE_Z"](
+            FakeCommand(distance=None, state=0))
+        toolhead.z = 20.5
+        gcode.handlers["_HOME_Z"](FakeCommand())
+        self.assertEqual(
+            toolhead.moves, [([None, None, 30.0, None], 6.0)])
+        self.assertEqual(
+            events, ["safe_move_z", "safe_move_z", "retreat", "wait", "original"])
 
     def test_clear_position_does_not_move(self):
         guard, toolhead, gcode, events = self.make_guard()

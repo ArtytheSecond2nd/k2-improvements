@@ -175,6 +175,19 @@ class MigrationCatalogTests(unittest.TestCase):
         self.assertIn("read -r component <&3", menu)
         self.assertIn('done 3< "$components_file"', menu)
 
+    def test_macros_repairs_explicitly_require_a_code_restart(self):
+        menu = UPDATE_MENU.read_text(encoding="utf-8")
+        restart_case = re.search(
+            r"migration_component_restart_kind\(\) \{(.*?)\n\}",
+            menu,
+            re.DOTALL,
+        )
+        self.assertIsNotNone(restart_case)
+        self.assertRegex(
+            restart_case.group(1),
+            r"(?:^|\|)macros(?:\||\))[^\n]*\n\s*echo code",
+        )
+
     def test_updater_can_back_up_and_restore_tracked_local_edits(self):
         menu = UPDATE_MENU.read_text(encoding="utf-8")
         self.assertIn("migration_restore_tracked_checkout", menu)

@@ -82,6 +82,13 @@ class PRTouchSafeXY:
             and start_z - recorded_z >= self.ARTIFICIAL_REFERENCE_GAP)
 
     def cmd_SAFE_MOVE_Z(self, gcmd):
+        # Master-server also uses a bare STA=0 command as the stock handler's
+        # stop/cleanup acknowledgement. Pass it through before reading DIS,
+        # which is intentionally absent from that command. Preserve any arm
+        # established by the preceding STA=1 approach for the next _HOME_Z.
+        if gcmd.get_int('STA', 0) == 0:
+            return self.original_safe_move_z(gcmd)
+
         # Classify the coordinate state before the stock command moves. The
         # artificial recovery relabels the coarse physical Z as position_max,
         # while toolhead.z_pos / print_stats.z_pos retains the physical record.
