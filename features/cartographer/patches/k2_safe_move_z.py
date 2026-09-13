@@ -20,7 +20,7 @@ class K2SafeMoveZ:
     ARTIFICIAL_TARGET_TOLERANCE = 0.5
     ARTIFICIAL_REFERENCE_GAP = 10.0
     ARTIFICIAL_BACKUP_CLEARANCE = 1.0
-    ARTIFICIAL_TRIGGER_RETREAT = 10.0
+    ARTIFICIAL_RETREAT_DISTANCE = 10.0
 
     def __init__(self, config):
         self.printer = config.get_printer()
@@ -112,13 +112,13 @@ class K2SafeMoveZ:
         triggered = end_z > target_z + self.COMPLETION_TOLERANCE
         return end_z, triggered
 
-    def _retreat_after_trigger(self, gcmd, toolhead, trigger_z, speed):
+    def _retreat_after_approach(self, gcmd, toolhead, approach_z, speed):
         # Increasing K2 Z lowers the bed away from the nozzle.  Use a relative
         # retreat because Creality's artificial coordinate is intentionally
         # not a trustworthy physical absolute position.
         retreat_z = min(
             self.position_max,
-            trigger_z + self.ARTIFICIAL_TRIGGER_RETREAT)
+            approach_z + self.ARTIFICIAL_RETREAT_DISTANCE)
         retreat_target = toolhead.get_position()
         retreat_target[2] = retreat_z
         toolhead.move(retreat_target, speed)
@@ -126,7 +126,7 @@ class K2SafeMoveZ:
         end_z = toolhead.get_position()[2]
         if abs(end_z - retreat_z) > self.COMPLETION_TOLERANCE:
             raise gcmd.error(
-                '[SAFE_MOVE_Z] Cartographer-trigger retreat stopped at '
+                '[SAFE_MOVE_Z] Artificial-Z retreat stopped at '
                 'Z=%.3f; expected Z=%.3f' % (end_z, retreat_z))
         return end_z
 
@@ -204,11 +204,6 @@ class K2SafeMoveZ:
         end_z, triggered = self._guarded_move(
             gcmd, toolhead, guarded_target_z, speed)
 
-        if artificial_z and not triggered:
-            raise gcmd.error(
-                '[SAFE_MOVE_Z] Cartographer did not detect the bed during '
-                'the artificial-Z approach; stopped at backup Z=%.3f' %
-                (end_z,))
         if triggered and not artificial_z:
             raise gcmd.error(
                 '[SAFE_MOVE_Z] Cartographer detected the bed unexpectedly '
@@ -218,14 +213,23 @@ class K2SafeMoveZ:
                 '[SAFE_MOVE_Z] Move stopped at Z=%.3f; expected Z=%.3f' %
                 (end_z, guarded_target_z))
 
-        trigger_z = end_z if triggered else None
-        if artificial_z and triggered:
-            end_z = self._retreat_after_trigger(
-                gcmd, toolhead, trigger_z, speed)
+        approach_z = end_z
+        trigger_z = approach_z if triggered else None
+        if artificial_z:
+            end_z = self._retreat_after_approach(
+                gcmd, toolhead, approach_z, speed)
+            if triggered:
+                stop_reason = 'Cartographer stop'
+            else:
+                stop_reason = 'calculated backup stop; no Cartographer trigger'
+                logging.warning(
+                    '[SAFE_MOVE_Z] Cartographer did not trigger during the '
+                    'artificial-Z approach; safely reached backup Z=%.3f',
+                    approach_z)
             gcmd.respond_info(
-                '[SAFE_MOVE_Z] Cartographer stopped the artificial-Z '
-                'approach at Z=%.3f; bed retreated %.3fmm to Z=%.3f' %
-                (trigger_z, end_z - trigger_z, end_z))
+                '[SAFE_MOVE_Z] Artificial-Z approach ended at Z=%.3f '
+                '(%s); bed retreated %.3fmm to Z=%.3f' %
+                (approach_z, stop_reason, end_z - approach_z, end_z))
 
         completed_distance = end_z - start_z
         # This is the stock prtouch_v3 completion contract.  Publishing only
@@ -241,7 +245,8 @@ class K2SafeMoveZ:
         gcmd.respond_info(
             '[SAFE_MOVE_Z] Completed Z move; run_dis=%.3f%s' %
             (completed_distance,
-             ' (Cartographer stop + 10mm retreat)' if triggered else ''))
+             (' (%s + 10mm retreat)' % stop_reason)
+             if artificial_z else ''))
 
 
 def load_config(config):

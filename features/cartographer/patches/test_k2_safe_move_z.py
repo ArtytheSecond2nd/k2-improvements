@@ -176,13 +176,18 @@ class SafeMoveCommandTests(unittest.TestCase):
         self.assertTrue(any("retreated 10.000mm" in r for r in gcmd.responses))
         self.assertTrue(any("10mm retreat" in r for r in gcmd.responses))
 
-    def test_artificial_move_fails_closed_at_backup_endpoint(self):
+    def test_artificial_move_reaches_backup_then_retreats_without_trigger(self):
         safe_move, virtual_sd, toolhead = self.make_safe_move(
             360.0, 338.425, 22.575, False)
-        with self.assertRaisesRegex(RuntimeError, "did not detect"):
-            safe_move.cmd_SAFE_MOVE_Z(FakeGcmd(-340.0))
-        self.assertEqual(virtual_sd.run_dis, 0.0)
-        self.assertEqual(toolhead.moves, [])
+        gcmd = FakeGcmd(-340.0)
+        safe_move.cmd_SAFE_MOVE_Z(gcmd)
+        self.assertEqual(
+            toolhead.moves, [([225.0, 345.0, 32.575, 0.0], 6.0)])
+        self.assertEqual(toolhead.wait_count, 1)
+        self.assertAlmostEqual(virtual_sd.run_dis, -327.425)
+        self.assertTrue(any(
+            "calculated backup stop; no Cartographer trigger" in response
+            for response in gcmd.responses))
 
 
 if __name__ == "__main__":
