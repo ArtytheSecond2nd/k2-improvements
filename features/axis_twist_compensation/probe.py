@@ -112,6 +112,36 @@ class PrinterProbe:
         if gcmd is not None:
             return gcmd.get_float("LIFT_SPEED", self.lift_speed, above=0.)
         return self.lift_speed
+    def get_probe_params(self, gcmd=None):
+        # Compatibility with newer Klipper consumers such as the bundled
+        # Axis Twist module.  Creality's legacy PrinterProbe keeps these
+        # values directly on the object instead of exposing this accessor.
+        if gcmd is None:
+            return {
+                'probe_speed': self.speed,
+                'lift_speed': self.lift_speed,
+                'samples': self.sample_count,
+                'sample_retract_dist': self.sample_retract_dist,
+                'samples_tolerance': self.samples_tolerance,
+                'samples_tolerance_retries': self.samples_retries,
+                'samples_result': self.samples_result,
+            }
+        return {
+            'probe_speed': gcmd.get_float(
+                "PROBE_SPEED", self.speed, above=0.),
+            'lift_speed': self.get_lift_speed(gcmd),
+            'samples': gcmd.get_int(
+                "SAMPLES", self.sample_count, minval=1),
+            'sample_retract_dist': gcmd.get_float(
+                "SAMPLE_RETRACT_DIST", self.sample_retract_dist, above=0.),
+            'samples_tolerance': gcmd.get_float(
+                "SAMPLES_TOLERANCE", self.samples_tolerance, minval=0.),
+            'samples_tolerance_retries': gcmd.get_int(
+                "SAMPLES_TOLERANCE_RETRIES", self.samples_retries,
+                minval=0),
+            'samples_result': gcmd.get(
+                "SAMPLES_RESULT", self.samples_result),
+        }
     def get_offsets(self):
         return self.x_offset, self.y_offset, self.z_offset
     def _probe(self, speed):

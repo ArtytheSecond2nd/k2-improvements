@@ -55,6 +55,33 @@ class ProbePatchTests(unittest.TestCase):
         self.assertNotIn("start_probe_session", wrapper_methods)
         self.assertNotIn("end_probe_session", wrapper_methods)
 
+    def test_legacy_printer_probe_exposes_modern_parameter_bridge(self):
+        printer_probe = self.classes["PrinterProbe"]
+        method = next(
+            node for node in printer_probe.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "get_probe_params"
+        )
+        returned_keys = {
+            key.value
+            for node in ast.walk(method)
+            if isinstance(node, ast.Dict)
+            for key in node.keys
+            if isinstance(key, ast.Constant) and isinstance(key.value, str)
+        }
+        self.assertEqual(
+            returned_keys,
+            {
+                "probe_speed",
+                "lift_speed",
+                "samples",
+                "sample_retract_dist",
+                "samples_tolerance",
+                "samples_tolerance_retries",
+                "samples_result",
+            },
+        )
+
     def test_zero_is_accepted_as_a_calibration_boundary(self):
         source = COMPENSATION_PATCH.read_text(encoding="utf-8")
         self.assertNotIn("if not all([", source)

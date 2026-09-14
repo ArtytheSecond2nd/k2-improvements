@@ -17,6 +17,10 @@ The installer releases that alias so the full Axis Twist module can load while
 leaving PR Touch itself active. The original `prtouch_v3.py` is retained beside
 the installed file with a `.k2-axis-twist.bak` suffix.
 
+The installed legacy probe bridge also exposes Klipper's current probe-parameter
+accessor so Axis Twist can read the stock probe's lift speed and sampling
+settings during Klippy startup.
+
 ## Calibration
 
 The installer replaces loaded Klippy Python modules, then performs the
