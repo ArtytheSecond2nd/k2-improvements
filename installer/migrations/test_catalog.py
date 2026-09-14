@@ -373,6 +373,16 @@ class MigrationCatalogTests(unittest.TestCase):
             },
         )
 
+    def test_axis_twist_tracks_prtouch_registration_release(self):
+        self.assertIn(
+            "axis-twist-prtouch-registration-v2",
+            {
+                migration_id
+                for migration_id, component, _detector, _reason in entries()
+                if component == "axis_twist_compensation"
+            },
+        )
+
     def test_screws_tilt_tracks_probe_aware_points(self):
         self.assertIn(
             "screws-tilt-probe-aware-points-v1",

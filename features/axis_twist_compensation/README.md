@@ -11,6 +11,12 @@ probe with zero offsets keeps the configured area. Front- or rear-mounted
 Cartographer probes, including custom offsets, automatically shift the safe
 calibration boundary in the corresponding direction.
 
+On the stock-probe path, Creality's `prtouch_v3` normally reserves the
+`axis_twist_compensation` object name for its internal probe correction shim.
+The installer releases that alias so the full Axis Twist module can load while
+leaving PR Touch itself active. The original `prtouch_v3.py` is retained beside
+the installed file with a `.k2-axis-twist.bak` suffix.
+
 ## Calibration
 
 The installer replaces loaded Klippy Python modules, then performs the
