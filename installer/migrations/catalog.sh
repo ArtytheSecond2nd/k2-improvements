@@ -98,5 +98,6 @@ prtouch-safe-xy-artificial-gate-v3|macros|is_macros|Stock PR Touch Z30 clearance
 prtouch-safe-xy-cleanup-pass-through-v4|macros|is_macros|Stock PR Touch SAFE_MOVE_Z cleanup acknowledgements now pass through without requiring motion parameters
 prtouch-safe-xy-followup-preserve-v5|macros|is_macros|Stock PR Touch safety clearance now remains armed through AI follow-up Z approaches
 m141-print-target-preserve-v1|macros|is_macros|Layer-time chamber commands now preserve the configured chamber-fan ceiling during active prints
+m141-command-interceptor-v2|macros|is_macros|The chamber-fan target guard now wraps Creality's macro through a compatible Klippy command interceptor
 EOF
 }

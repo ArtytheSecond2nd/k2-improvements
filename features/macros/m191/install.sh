@@ -29,10 +29,22 @@ ln -sfn "$SCRIPT_DIR/k2_m191_settings_editor.py" \
 "$PYTHON" ${SCRIPT_DIR}/../../../scripts/ensure_included.py \
     "$CUSTOM/main.cfg" m191_settings.cfg
 
+# Creality's M141 is itself a gcode_macro, so Klipper cannot wrap it with a
+# second macro's rename_existing option. Install a small command interceptor
+# that retains and delegates to the original handler instead.
+ln -sfn "$SCRIPT_DIR/k2_m141_guard.py" \
+    "$KLIPPER_EXTRAS/k2_m141_guard.py"
+ln -sfn "$SCRIPT_DIR/k2_m141_guard.cfg" "$CUSTOM/k2_m141_guard.cfg"
+rm -f "$KLIPPER_EXTRAS/k2_m141_guard.pyc" \
+    "$KLIPPER_EXTRAS"/__pycache__/k2_m141_guard.*.pyc
+"$PYTHON" ${SCRIPT_DIR}/../../../scripts/ensure_included.py \
+    "$CUSTOM/main.cfg" k2_m141_guard.cfg
+touch /tmp/k2-klippy-code-restart-required
+
 if ! "$PYTHON" "$SCRIPT_DIR/configure_fluidd_layout.py"; then
     echo "W: Bed_Assist installed, but its Fluidd category metadata could not be configured"
 fi
 
 if [ "${1:-}" != "--no-restart" ]; then
-    sh "${SCRIPT_DIR}/../../../scripts/firmware_restart.sh"
+    sh "${SCRIPT_DIR}/../../../scripts/klippy_code_restart.sh"
 fi

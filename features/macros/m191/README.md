@@ -34,11 +34,12 @@ activation layer. For actively heated chambers, the stock macro disables the
 temperature-controlled exhaust target and can overwrite the ceiling established
 by `START_PRINT` and `M191`.
 
-The installed `M141` wrapper delegates every command to Creality's original
-handler. During an active print only, an `M141` heating request above 40 C then
-restores the target to the requested chamber temperature plus
-`chamber_fan_margin`. Shutdown commands such as the end-of-print `M141 S0` are
-not altered, so the stock 35 C cooldown target remains intact.
+The installed `k2_m141_guard` command interceptor delegates every command to
+Creality's original macro handler. During an active print only, an `M141`
+heating request above 40 C then restores the target to the requested chamber
+temperature plus `chamber_fan_margin`. Shutdown commands such as the
+end-of-print `M141 S0` are not altered, so the stock 35 C cooldown target
+remains intact.
 
 ## Fluidd editor
 
