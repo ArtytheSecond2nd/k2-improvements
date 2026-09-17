@@ -27,6 +27,19 @@ Invalid settings stop the macro before Klipper executes its heater, fan, or
 movement commands. `M191 S0` always retains its immediate heater-off and fan-off
 behavior.
 
+## Layer-time chamber commands
+
+Creality Print may repeat `M141` when it reaches the configured chamber
+activation layer. For actively heated chambers, the stock macro disables the
+temperature-controlled exhaust target and can overwrite the ceiling established
+by `START_PRINT` and `M191`.
+
+The installed `M141` wrapper delegates every command to Creality's original
+handler. During an active print only, an `M141` heating request above 40 C then
+restores the target to the requested chamber temperature plus
+`chamber_fan_margin`. Shutdown commands such as the end-of-print `M141 S0` are
+not altered, so the stock 35 C cooldown target remains intact.
+
 ## Fluidd editor
 
 The **Bed_Assist** macro appears in Fluidd's **Chamber Heating** category. It

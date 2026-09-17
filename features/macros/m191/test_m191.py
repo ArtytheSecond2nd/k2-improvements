@@ -40,6 +40,33 @@ class M191WorkflowTests(unittest.TestCase):
     def test_active_heating_boundary_remains_fixed(self):
         self.assertIn("{% set WAIT_FOR_CHAMBER = S > 35.0 %}", MACRO)
 
+    def test_m141_runs_creality_handler_before_print_target_restore(self):
+        wrapper = MACRO.split("[gcode_macro M141]", 1)[1].split(
+            "[gcode_macro M191]", 1
+        )[0]
+        self.assertIn("rename_existing: _K2_ORIGINAL_M141", wrapper)
+        original = wrapper.index("_K2_ORIGINAL_M141 {rawparams}")
+        restore = wrapper.index(
+            "SET_TEMPERATURE_FAN_TARGET TEMPERATURE_FAN=chamber_fan "
+            "TARGET={S + CHAMBER_FAN_MARGIN}"
+        )
+        self.assertLess(original, restore)
+
+    def test_m141_restore_is_limited_to_active_print_heating_commands(self):
+        wrapper = MACRO.split("[gcode_macro M141]", 1)[1].split(
+            "[gcode_macro M191]", 1
+        )[0]
+        self.assertIn('PRINT_STATE == "printing" and S > 40.0', wrapper)
+        self.assertIn("{% if params.S is defined %}", wrapper)
+
+    def test_m141_s_zero_remains_stock_pass_through(self):
+        wrapper = MACRO.split("[gcode_macro M141]", 1)[1].split(
+            "[gcode_macro M191]", 1
+        )[0]
+        self.assertIn("_K2_ORIGINAL_M141 {rawparams}", wrapper)
+        self.assertNotIn("S == 0", wrapper)
+        self.assertNotIn("TARGET=35", wrapper)
+
     def test_nonzero_target_restores_configured_chamber_fan_margin(self):
         wait = MACRO.index("{% set WAIT_FOR_CHAMBER = S > 35.0 %}")
         target = MACRO.index(

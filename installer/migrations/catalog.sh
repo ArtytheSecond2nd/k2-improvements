@@ -97,5 +97,6 @@ prtouch-safe-xy-one-shot-v2|macros|is_macros|Stock PR Touch Z30 clearance now ru
 prtouch-safe-xy-artificial-gate-v3|macros|is_macros|Stock PR Touch Z30 clearance now runs only after artificial-coordinate SAFE_MOVE_Z recovery
 prtouch-safe-xy-cleanup-pass-through-v4|macros|is_macros|Stock PR Touch SAFE_MOVE_Z cleanup acknowledgements now pass through without requiring motion parameters
 prtouch-safe-xy-followup-preserve-v5|macros|is_macros|Stock PR Touch safety clearance now remains armed through AI follow-up Z approaches
+m141-print-target-preserve-v1|macros|is_macros|Layer-time chamber commands now preserve the configured chamber-fan ceiling during active prints
 EOF
 }
