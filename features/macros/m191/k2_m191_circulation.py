@@ -24,6 +24,14 @@ class K2M191Circulation:
             return heaters.heaters[sensor_name]
         return self.printer.lookup_object(sensor_name)
 
+    def _report_temperatures(self, eventtime, report_id, temperature, target):
+        heaters = self.printer.lookup_object("heaters")
+        standard_report = heaters._get_temp(eventtime)
+        chamber_report = "%s:%.1f /%.1f" % (
+            report_id, temperature, target
+        )
+        self.gcode.respond_raw("%s %s" % (standard_report, chamber_report))
+
     def cmd_wait(self, gcmd):
         sensor_name = gcmd.get("SENSOR")
         minimum = gcmd.get_float("MINIMUM", float("-inf"))
@@ -37,6 +45,9 @@ class K2M191Circulation:
         high_pwm = gcmd.get_int("HIGH_PWM", minval=low_pwm, maxval=255)
         low_seconds = gcmd.get_float("LOW_SECONDS", above=0.0, maxval=600.0)
         high_seconds = gcmd.get_float("HIGH_SECONDS", above=0.0, maxval=600.0)
+        cycle_fans = gcmd.get_int("CYCLE_FANS", minval=0, maxval=1)
+        report_id = gcmd.get("REPORT_ID")
+        report_target = gcmd.get_float("REPORT_TARGET")
 
         if self.printer.get_start_args().get("debugoutput") is not None:
             return
@@ -46,7 +57,8 @@ class K2M191Circulation:
         eventtime = self.reactor.monotonic()
         low_phase = True
         next_transition = eventtime + low_seconds
-        self._set_fans(low_pwm)
+        if cycle_fans:
+            self._set_fans(low_pwm)
 
         try:
             while not self.printer.is_shutdown():
@@ -54,7 +66,11 @@ class K2M191Circulation:
                 if minimum <= temperature <= maximum:
                     return
 
-                if eventtime >= next_transition:
+                self._report_temperatures(
+                    eventtime, report_id, temperature, report_target
+                )
+
+                if cycle_fans and eventtime >= next_transition:
                     low_phase = not low_phase
                     if low_phase:
                         self._set_fans(low_pwm)
@@ -74,9 +90,11 @@ class K2M191Circulation:
                 toolhead.get_last_move_time()
                 eventtime = self.reactor.pause(
                     min(eventtime + 1.0, next_transition)
+                    if cycle_fans else eventtime + 1.0
                 )
         finally:
-            self._set_fans(0)
+            if cycle_fans:
+                self._set_fans(0)
 
 
 def load_config(config):

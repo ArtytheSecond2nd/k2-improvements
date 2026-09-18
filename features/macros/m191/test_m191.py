@@ -133,7 +133,22 @@ class M191WorkflowTests(unittest.TestCase):
         )
         self.assertIn("LOW_SECONDS={CIRCULATION_FAN_LOW_SECONDS}", MACRO)
         self.assertIn("HIGH_SECONDS={CIRCULATION_FAN_HIGH_SECONDS}", MACRO)
+        self.assertIn("CYCLE_FANS=1 REPORT_ID=C REPORT_TARGET={S}", MACRO)
         self.assertNotIn("[delayed_gcode", MACRO)
+
+    def test_all_chamber_waits_report_the_exact_sensor_as_c(self):
+        waits = [
+            line.strip()
+            for line in MACRO.splitlines()
+            if 'SENSOR="temperature_sensor chamber_temp"' in line
+        ]
+        self.assertEqual(len(waits), 3)
+        for wait in waits:
+            self.assertTrue(wait.startswith("K2_M191_CIRCULATION_WAIT"))
+            self.assertIn("REPORT_ID=C", wait)
+            self.assertIn("REPORT_TARGET={S}", wait)
+        self.assertEqual(sum("CYCLE_FANS=1" in wait for wait in waits), 1)
+        self.assertEqual(sum("CYCLE_FANS=0" in wait for wait in waits), 2)
 
     def test_bed_return_uses_side_fan_only_while_waiting(self):
         restore = MACRO.index(
@@ -144,7 +159,7 @@ class M191WorkflowTests(unittest.TestCase):
         wait = MACRO.index("TEMPERATURE_WAIT SENSOR=heater_bed", side_on)
         side_off = MACRO.index("M106 P2 S0", wait)
         chamber_recheck = MACRO.index(
-            'TEMPERATURE_WAIT SENSOR="temperature_sensor chamber_temp"',
+            'K2_M191_CIRCULATION_WAIT SENSOR="temperature_sensor chamber_temp"',
             side_off,
         )
         self.assertLess(restore, move)

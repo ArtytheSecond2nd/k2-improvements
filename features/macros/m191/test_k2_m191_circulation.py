@@ -15,12 +15,16 @@ class FakeGcode:
     def __init__(self):
         self.commands = {}
         self.scripts = []
+        self.responses = []
 
     def register_command(self, name, callback, desc=None):
         self.commands[name] = callback
 
     def run_script_from_command(self, script):
         self.scripts.append(script)
+
+    def respond_raw(self, message):
+        self.responses.append(message)
 
 
 class FakeSensor:
@@ -41,6 +45,9 @@ class FakeToolhead:
 
 class FakeHeaters:
     heaters = {}
+
+    def _get_temp(self, eventtime):
+        return "B:105.0 /105.0 T0:140.0 /140.0"
 
 
 class FakeReactor:
@@ -127,6 +134,9 @@ class CirculationWaitTests(unittest.TestCase):
             HIGH_PWM=255,
             LOW_SECONDS=2,
             HIGH_SECONDS=1,
+            CYCLE_FANS=1,
+            REPORT_ID="C",
+            REPORT_TARGET=50,
         )
 
         controller.cmd_wait(command)
@@ -147,6 +157,10 @@ class CirculationWaitTests(unittest.TestCase):
                 "Bed assist circulation changed to low fan speed",
             ],
         )
+        self.assertEqual(
+            printer.gcode.responses,
+            ["B:105.0 /105.0 T0:140.0 /140.0 C:20.0 /50.0"] * 4,
+        )
 
     def test_immediate_target_still_leaves_both_fans_off(self):
         sensor = FakeSensor([50.0])
@@ -160,6 +174,9 @@ class CirculationWaitTests(unittest.TestCase):
             HIGH_PWM=255,
             LOW_SECONDS=45,
             HIGH_SECONDS=20,
+            CYCLE_FANS=1,
+            REPORT_ID="C",
+            REPORT_TARGET=50,
         )
 
         controller.cmd_wait(command)
@@ -167,6 +184,32 @@ class CirculationWaitTests(unittest.TestCase):
         self.assertEqual(
             printer.gcode.scripts,
             ["M106 S38\nM106 P2 S38", "M106 S0\nM106 P2 S0"],
+        )
+        self.assertEqual(printer.gcode.responses, [])
+
+    def test_wait_without_circulation_reports_chamber_and_leaves_fans_unchanged(self):
+        sensor = FakeSensor([36.3, 55.0])
+        printer = FakePrinter(sensor)
+        controller = module.K2M191Circulation(FakeConfig(printer))
+        command = FakeCommand(
+            SENSOR="temperature_sensor chamber_temp",
+            MINIMUM=55,
+            MAXIMUM=60,
+            LOW_PWM=38,
+            HIGH_PWM=255,
+            LOW_SECONDS=45,
+            HIGH_SECONDS=20,
+            CYCLE_FANS=0,
+            REPORT_ID="C",
+            REPORT_TARGET=55,
+        )
+
+        controller.cmd_wait(command)
+
+        self.assertEqual(printer.gcode.scripts, [])
+        self.assertEqual(
+            printer.gcode.responses,
+            ["B:105.0 /105.0 T0:140.0 /140.0 C:36.3 /55.0"],
         )
 
 
