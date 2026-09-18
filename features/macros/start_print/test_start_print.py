@@ -104,6 +104,24 @@ class StartPrintConfigTests(unittest.TestCase):
             self.config,
         )
 
+    def test_machine_heat_soak_is_configurable_and_validated(self):
+        self.assertIn(
+            'printer["gcode_macro _START_PRINT_VARS"].heat_soak',
+            self.config,
+        )
+        self.assertIn("SOAK_TIME < 0.0 or SOAK_TIME > 120.0", self.config)
+
+    def test_machine_heat_soak_runs_after_active_chamber_wait(self):
+        bed_wait = self.config.index(
+            "TEMPERATURE_WAIT SENSOR=heater_bed MINIMUM={BED_TEMP - 0.5}"
+        )
+        chamber_wait = self.config.index("M191 S{CHAMBER_TEMP}", bed_wait)
+        soak = self.config.index("Machine heat soaking:", chamber_wait)
+        rehome = self.config.index("G28 Z", soak)
+        self.assertLess(bed_wait, chamber_wait)
+        self.assertLess(chamber_wait, soak)
+        self.assertLess(soak, rehome)
+
     def test_preheat_keeps_passive_chamber_heater_off(self):
         active_guard = self.config.index("{% if CHAMBER_TEMP > 35 %}")
         active_heater = self.config.index(

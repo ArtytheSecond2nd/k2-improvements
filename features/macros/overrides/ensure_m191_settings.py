@@ -13,13 +13,23 @@ import time
 SECTION_NAME = "gcode_macro _M191_VARS"
 SECTION_RE = re.compile(r"^[ \t]*\[([^]]+)\][ \t]*(?:#.*)?(?:\r?\n)?$")
 VARIABLE_RE = re.compile(r"^[ \t]*variable_([A-Za-z0-9_]+)[ \t]*:", re.I)
+LEGACY_CIRCULATION_DEFAULT_RE = re.compile(
+    r"^([ \t]*variable_circulation_fan_speed[ \t]*:[ \t]*)"
+    r"25(?:\.0+)?([ \t]*(?:\r?\n)?)$",
+    re.I,
+)
 DEFAULTS = (
     ("bed_assist_enabled", "1"),
     ("bed_assist_trigger_delta", "3.0"),
     ("bed_assist_bed_target", "105.0"),
     ("bed_assist_degrees_above_commanded", "0.0"),
     ("bed_assist_z_height", "195.0"),
-    ("circulation_fan_speed", "25.0"),
+    ("circulation_fan_speed", "15.0"),
+    ("circulation_fan_high_speed", "100.0"),
+    ("circulation_fan_low_seconds", "45.0"),
+    ("circulation_fan_high_seconds", "20.0"),
+    ("bed_restore_z_height", "30.0"),
+    ("bed_restore_side_fan_speed", "100.0"),
     ("chamber_fan_margin", "2.0"),
     ("bed_restore_tolerance", "5.0"),
     ("chamber_wait_max_delta", "5.0"),
@@ -65,6 +75,9 @@ def update(contents):
     existing = set()
     gcode_index = None
     for index in range(start + 1, end):
+        legacy_default = LEGACY_CIRCULATION_DEFAULT_RE.match(lines[index])
+        if legacy_default:
+            lines[index] = legacy_default.group(1) + "15.0" + legacy_default.group(2)
         body = lines[index].strip()
         match = VARIABLE_RE.match(lines[index])
         if match:
@@ -78,7 +91,7 @@ def update(contents):
 
     missing = [item for item in DEFAULTS if item[0].casefold() not in existing]
     if not missing:
-        return contents
+        return "".join(lines)
 
     additions = [
         "variable_%s: %s%s" % (name, value, newline)

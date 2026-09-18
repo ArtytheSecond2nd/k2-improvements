@@ -13,7 +13,7 @@ SPEC.loader.exec_module(MODULE)
 
 
 def sample_text():
-    return """# user values\n[gcode_macro _M191_VARS]\nvariable_bed_assist_enabled: 1\nvariable_bed_assist_trigger_delta: 3.0\nvariable_bed_assist_bed_target: 105.0\nvariable_bed_assist_degrees_above_commanded: 0.0\nvariable_bed_assist_z_height: 195.0\nvariable_circulation_fan_speed: 25.0\nvariable_chamber_fan_margin: 2.0\nvariable_bed_restore_tolerance: 5.0\nvariable_chamber_wait_max_delta: 5.0\ngcode:\n\n[other]\nvalue: keep\n"""
+    return """# user values\n[gcode_macro _START_PRINT_VARS]\nvariable_heat_soak: 4\ngcode:\n\n[gcode_macro _M191_VARS]\nvariable_bed_assist_enabled: 1\nvariable_bed_assist_trigger_delta: 3.0\nvariable_bed_assist_bed_target: 105.0\nvariable_bed_assist_degrees_above_commanded: 0.0\nvariable_bed_assist_z_height: 195.0\nvariable_circulation_fan_speed: 15.0\nvariable_circulation_fan_high_speed: 100.0\nvariable_circulation_fan_low_seconds: 45.0\nvariable_circulation_fan_high_seconds: 20.0\nvariable_bed_restore_z_height: 30.0\nvariable_bed_restore_side_fan_speed: 100.0\nvariable_chamber_fan_margin: 2.0\nvariable_bed_restore_tolerance: 5.0\nvariable_chamber_wait_max_delta: 5.0\ngcode:\n\n[other]\nvalue: keep\n"""
 
 
 class ParseAndRewriteTests(unittest.TestCase):
@@ -21,17 +21,21 @@ class ParseAndRewriteTests(unittest.TestCase):
         values = MODULE.parse_settings(sample_text())
         self.assertEqual(values["bed_assist_enabled"], 1.0)
         self.assertEqual(values["bed_assist_z_height"], 195.0)
-        self.assertEqual(values["circulation_fan_speed"], 25.0)
+        self.assertEqual(values["circulation_fan_speed"], 15.0)
+        self.assertEqual(values["circulation_fan_high_seconds"], 20.0)
+        self.assertEqual(values["heat_soak"], 4.0)
 
     def test_rewrites_only_m191_values(self):
         values = MODULE.parse_settings(sample_text())
         values["bed_assist_enabled"] = 0
         values["bed_assist_z_height"] = 220
         values["circulation_fan_speed"] = 40
+        values["heat_soak"] = 10
         updated = MODULE.rewrite_settings(sample_text(), values)
         self.assertIn("variable_bed_assist_enabled: 0\n", updated)
         self.assertIn("variable_bed_assist_z_height: 220.0\n", updated)
         self.assertIn("variable_circulation_fan_speed: 40.0\n", updated)
+        self.assertIn("variable_heat_soak: 10.0\n", updated)
         self.assertIn("[other]\nvalue: keep\n", updated)
 
     def test_enforces_exclusive_and_inclusive_ranges(self):
@@ -42,6 +46,24 @@ class ParseAndRewriteTests(unittest.TestCase):
             MODULE.validate_value("bed_assist_z_height", 331)
         with self.assertRaises(ValueError):
             MODULE.validate_value("bed_assist_enabled", 0.5)
+        with self.assertRaises(ValueError):
+            MODULE.validate_value("circulation_fan_low_seconds", 0)
+        with self.assertRaises(ValueError):
+            MODULE.validate_value("heat_soak", 121)
+
+    def test_heat_soak_is_only_read_from_start_print_section(self):
+        duplicate = sample_text().replace(
+            "variable_chamber_wait_max_delta: 5.0\n",
+            "variable_chamber_wait_max_delta: 5.0\nvariable_heat_soak: 99\n",
+        )
+        values = MODULE.parse_settings(duplicate)
+        self.assertEqual(values["heat_soak"], 4.0)
+
+    def test_high_circulation_speed_cannot_be_below_low_speed(self):
+        values = MODULE.parse_settings(sample_text())
+        values["circulation_fan_high_speed"] = 10
+        with self.assertRaisesRegex(ValueError, "must be at least"):
+            MODULE.rewrite_settings(sample_text(), values)
 
     def test_formats_integer_and_fractional_values(self):
         self.assertEqual(MODULE.format_value("bed_assist_z_height", 195), "195.0")

@@ -343,6 +343,16 @@ class MigrationCatalogTests(unittest.TestCase):
             },
         )
 
+    def test_macros_track_m191_circulation_cycle(self):
+        self.assertIn(
+            "m191-circulation-cycle-v3",
+            {
+                migration_id
+                for migration_id, component, _detector, _reason in entries()
+                if component == "macros"
+            },
+        )
+
     def test_macros_track_prtouch_safe_xy_cleanup_pass_through(self):
         self.assertIn(
             "prtouch-safe-xy-cleanup-pass-through-v4",

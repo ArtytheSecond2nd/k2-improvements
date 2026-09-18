@@ -7,6 +7,7 @@ import tempfile
 
 
 SECTION_NAME = "gcode_macro _M191_VARS"
+START_PRINT_SECTION_NAME = "gcode_macro _START_PRINT_VARS"
 SECTION_RE = re.compile(r"^[ \t]*\[([^]]+)\][ \t]*(?:#.*)?(?:\r?\n)?$")
 NUMBER = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)"
 
@@ -17,12 +18,24 @@ SETTINGS = (
     ("bed_assist_bed_target", "Fixed Bed Target", 0.0, 120.0, "C", "number", True),
     ("bed_assist_degrees_above_commanded", "Bed Target Increase", 0.0, 120.0, "C", "number", False),
     ("bed_assist_z_height", "Bed Z Height", 30.0, 330.0, "mm", "number", False),
-    ("circulation_fan_speed", "Circulation Fan Speed", 0.0, 100.0, "%", "number", False),
+    ("circulation_fan_speed", "Low Circulation Fan Speed", 0.0, 100.0, "%", "number", False),
+    ("circulation_fan_high_speed", "High Circulation Fan Speed", 0.0, 100.0, "%", "number", False),
+    ("circulation_fan_low_seconds", "Low Fan Duration", 0.0, 600.0, "sec", "number", True),
+    ("circulation_fan_high_seconds", "High Fan Duration", 0.0, 600.0, "sec", "number", True),
+    ("bed_restore_z_height", "Bed Return Z Height", 30.0, 330.0, "mm", "number", False),
+    ("bed_restore_side_fan_speed", "Bed Return Side Fan Speed", 0.0, 100.0, "%", "number", False),
     ("chamber_fan_margin", "Chamber Fan Margin", 0.0, 10.0, "C", "number", False),
     ("bed_restore_tolerance", "Bed Restore Tolerance", 0.0, 20.0, "C", "number", True),
     ("chamber_wait_max_delta", "Chamber Wait Maximum Delta", 0.0, 20.0, "C", "number", True),
+    ("heat_soak", "Machine Heat Soak", 0.0, 120.0, "min", "number", False),
 )
 SETTING_BY_KEY = {setting[0]: setting for setting in SETTINGS}
+
+
+def section_for_key(key):
+    if key == "heat_soak":
+        return START_PRINT_SECTION_NAME
+    return SECTION_NAME
 
 
 def _variable_re(key):
@@ -34,6 +47,16 @@ def _variable_re(key):
 
 
 VARIABLE_PATTERNS = {key: _variable_re(key) for key in SETTING_BY_KEY}
+
+
+def validate_settings(values):
+    for key in SETTING_BY_KEY:
+        validate_value(key, values[key])
+    if values["circulation_fan_high_speed"] < values["circulation_fan_speed"]:
+        raise ValueError(
+            "circulation_fan_high_speed must be at least circulation_fan_speed"
+        )
+    return values
 
 
 def format_value(key, value):
@@ -61,44 +84,53 @@ def validate_value(key, value):
 
 def parse_settings(text):
     values = {}
-    in_section = False
-    found_section = False
+    current_section = None
+    found_sections = set()
     for line in text.splitlines(True):
         section = SECTION_RE.match(line)
         if section:
-            in_section = section.group(1).strip().casefold() == SECTION_NAME.casefold()
-            found_section = found_section or in_section
+            current_section = section.group(1).strip().casefold()
+            if current_section in (
+                SECTION_NAME.casefold(), START_PRINT_SECTION_NAME.casefold()
+            ):
+                found_sections.add(current_section)
             continue
-        if not in_section:
+        if current_section not in found_sections:
             continue
         for key, pattern in VARIABLE_PATTERNS.items():
+            if current_section != section_for_key(key).casefold():
+                continue
             match = pattern.match(line)
             if match and key not in values:
                 values[key] = validate_value(key, match.group(2))
                 break
-    if not found_section:
-        raise ValueError("[%s] was not found" % SECTION_NAME)
+    for required_section in (SECTION_NAME, START_PRINT_SECTION_NAME):
+        if required_section.casefold() not in found_sections:
+            raise ValueError("[%s] was not found" % required_section)
     missing = [key for key in SETTING_BY_KEY if key not in values]
     if missing:
         raise ValueError("missing M191 settings: %s" % ", ".join(missing))
-    return values
+    return validate_settings(values)
 
 
 def rewrite_settings(text, values):
-    for key in SETTING_BY_KEY:
-        validate_value(key, values[key])
+    validate_settings(values)
     lines = text.splitlines(True)
-    in_section = False
+    current_section = None
     replaced = set()
     output = []
     for line in lines:
         section = SECTION_RE.match(line)
         if section:
-            in_section = section.group(1).strip().casefold() == SECTION_NAME.casefold()
+            current_section = section.group(1).strip().casefold()
             output.append(line)
             continue
-        if in_section:
+        if current_section in (
+            SECTION_NAME.casefold(), START_PRINT_SECTION_NAME.casefold()
+        ):
             for key, pattern in VARIABLE_PATTERNS.items():
+                if current_section != section_for_key(key).casefold():
+                    continue
                 match = pattern.match(line)
                 if match:
                     if key in replaced:

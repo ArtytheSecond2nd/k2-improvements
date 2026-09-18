@@ -45,6 +45,27 @@ class EnsureM191SettingsTests(unittest.TestCase):
         self.assertNotIn("variable_bed_assist_bed_target: 105.0", updated)
         self.assertIn("variable_bed_assist_z_height: 195.0", updated)
 
+    def test_updates_unmodified_legacy_low_fan_default(self):
+        original = (
+            "[gcode_macro _M191_VARS]\n"
+            "variable_circulation_fan_speed: 25.0\n"
+            "gcode:\n"
+        )
+        updated = MODULE.update(original)
+        self.assertIn("variable_circulation_fan_speed: 15.0\n", updated)
+        self.assertNotIn("variable_circulation_fan_speed: 25.0\n", updated)
+
+    def test_preserves_commented_legacy_fan_selection(self):
+        original = (
+            "[gcode_macro _M191_VARS]\n"
+            "variable_circulation_fan_speed: 25.0 # chosen by user\n"
+            "gcode:\n"
+        )
+        updated = MODULE.update(original)
+        self.assertIn(
+            "variable_circulation_fan_speed: 25.0 # chosen by user", updated
+        )
+
     def test_second_update_is_idempotent(self):
         once = MODULE.update("[virtual_sdcard]\nforced_leveling: false\n")
         self.assertEqual(MODULE.update(once), once)

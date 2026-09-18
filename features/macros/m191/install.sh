@@ -26,6 +26,10 @@ sh "$INSTALLER_BASE/installer/extras/fluidd-ui-overlay/install.sh"
 ln -sfn "$SCRIPT_DIR/m191_settings.cfg" "$CUSTOM/m191_settings.cfg"
 ln -sfn "$SCRIPT_DIR/k2_m191_settings_editor.py" \
     "$KLIPPER_EXTRAS/k2_m191_settings_editor.py"
+ln -sfn "$SCRIPT_DIR/k2_m191_circulation.py" \
+    "$KLIPPER_EXTRAS/k2_m191_circulation.py"
+rm -f "$KLIPPER_EXTRAS/k2_m191_circulation.pyc" \
+    "$KLIPPER_EXTRAS"/__pycache__/k2_m191_circulation.*.pyc
 "$PYTHON" ${SCRIPT_DIR}/../../../scripts/ensure_included.py \
     "$CUSTOM/main.cfg" m191_settings.cfg
 
