@@ -600,7 +600,7 @@ def scan_flash_for_version(flasher, mcu_type: str = ""):
     
     Offsets are ordered by MCU type for faster detection:
     - V3 (stm32f042x6): 0x4C50 first
-    - V4 (stm32g431xx): 0x5B98 (6.2.0) first, then 0x5B38 (5.1)
+    - V4 (stm32g431xx): 0x5B98 (6.0.0) first, then 0x5B38 (5.1)
     """
     import zlib
     import json
@@ -609,7 +609,7 @@ def scan_flash_for_version(flasher, mcu_type: str = ""):
     if mcu_type == "stm32f042x6":  # V3
         offsets = [0x4C50, 0x5B98, 0x5B38]
     elif mcu_type == "stm32g431xx":  # V4
-        offsets = [0x5B98, 0x5B38, 0x4C50]  # Try 6.2.0 first, then 5.1
+        offsets = [0x5B98, 0x5B38, 0x4C50]  # Try 6.0.0 first, then 5.1
     else:
         offsets = [0x5B98, 0x5B38, 0x4C50]  # Default: newest first
     
