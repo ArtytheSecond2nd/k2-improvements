@@ -2,7 +2,8 @@
 
 Replaces the stock start macro with a temperature-aware workflow that:
 
-- heats and optionally soaks the bed;
+- heats the bed and optionally soaks the complete machine after its requested
+  bed and active chamber temperatures have been established;
 - waits for chamber targets above Creality's 35 C active-heating threshold
   through `M191`, while lower nonzero targets are applied without blocking;
 - restores the chamber cooling-fan target after Creality preparation: 35 C when
@@ -42,6 +43,13 @@ changes; a large G-code file can therefore add a visible preflight delay.
 Leave Creality Print's **Print Calibration** option disabled. Its separate
 Creality-controlled heat-soak and mesh sequence runs before `START_PRINT` and
 is not compatible with this workflow.
+
+`variable_heat_soak` is expressed in minutes. It runs after `M191` has reached
+an active chamber target and restored any temporary bed-assist temperature, so
+the delay stabilizes the machine at printing conditions rather than soaking the
+bed before chamber heating. For passive chamber requests at or below 35 C, it
+begins after the bed reaches its requested temperature. `SOAK_TIME=<minutes>`
+on `START_PRINT` overrides the configured value for one print.
 
 ## Slicer setup
 
