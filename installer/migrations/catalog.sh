@@ -4,6 +4,9 @@
 
 migration_catalog() {
     cat <<'EOF'
+kamp-mesh-bounds-report-carto-v1|cartographer|is_cartographer|Reload scanner support for console mesh-boundary reports
+kamp-mesh-bounds-report-kamp-v1|kamp-adaptive-purge|is_kamp|Reload scanner support for console mesh-boundary reports
+kamp-mesh-bounds-report-macros-v1|macros|is_macros|Report combined geometry and requested mesh bounds with scan duration before Cartographer meshing
 prime-tower-scan-timer-carto-v1|cartographer|is_cartographer|Reload prime-tower scanner to report completed scan duration in the console
 prime-tower-scan-timer-kamp-v1|kamp-adaptive-purge|is_kamp|Reload prime-tower scanner to report completed scan duration in the console
 cartographer-slicer-colors-v1|cartographer-plate-workflow|is_carto_plate_workflow|Refresh Fluidd plate colors: green for Creality Print and Default, purple for Orca

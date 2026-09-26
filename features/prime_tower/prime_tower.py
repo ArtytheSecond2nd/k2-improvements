@@ -391,6 +391,9 @@ class PrimeTower:
         self.gcode.register_command(
             "PRIME_TOWER_WAIT", self.cmd_PRIME_TOWER_WAIT,
             desc="Wait cooperatively for prime-tower footprint discovery")
+        self.gcode.register_command(
+            "KAMP_REPORT_MESH_BOUNDS", self.cmd_KAMP_REPORT_MESH_BOUNDS,
+            desc="Report scan time and requested adaptive mesh bounds")
         register_event_handler = getattr(
             self.printer, "register_event_handler", None)
         if register_event_handler is not None:
@@ -455,6 +458,7 @@ class PrimeTower:
             "ready": ready,
             "blocked": blocked,
             "block_reason": block_reason,
+            "mesh_bounds_reporting": True,
         }
 
     def _selected_path(self, eventtime):
@@ -502,8 +506,10 @@ class PrimeTower:
         status["ready"] = True
         status["blocked"] = False
         status["block_reason"] = None
+        status["mesh_bounds_reporting"] = True
         self._status = status
         elapsed = max(0.0, eventtime - job.started_at)
+        status["scan_duration"] = elapsed
         file_size = job.cache_key[1]
         # Publish on the reactor, once per completed job (not cached reads).
         # This measures scan startup through result publication, including
@@ -679,6 +685,37 @@ class PrimeTower:
             eventtime = self.reactor.pause(waketime)
             status = self.get_status(eventtime)
         return status
+
+    def cmd_KAMP_REPORT_MESH_BOUNDS(self, gcmd):
+        self.cmd_PRIME_TOWER_WAIT(gcmd)
+        status = self._status
+        exclude = self.printer.lookup_object("exclude_object", None)
+        objects = exclude.get_status(self.reactor.monotonic()).get("objects", []) \
+            if exclude is not None else []
+        points = [point for obj in objects for point in obj.get("polygon", [])]
+        # Match the Cartographer adapter hook: a detected tower is included
+        # even when no exclude-object polygons were supplied.
+        if status.get("detected"):
+            points.extend(status.get("polygon", []))
+        margin = gcmd.get_float("ADAPTIVE_MARGIN", minval=0.0)
+        mesh_min = [float(v) for v in gcmd.get("MESH_MIN").split(",")]
+        mesh_max = [float(v) for v in gcmd.get("MESH_MAX").split(",")]
+        duration = status.get("scan_duration")
+        timing = "%.3f seconds" % duration if duration is not None else "unavailable"
+        if points:
+            low = [min(p[i] for p in points) for i in (0, 1)]
+            high = [max(p[i] for p in points) for i in (0, 1)]
+            combined = "X[%.3f, %.3f] Y[%.3f, %.3f]" % (
+                low[0], high[0], low[1], high[1])
+            mesh_min = [max(mesh_min[i], low[i] - margin) for i in (0, 1)]
+            mesh_max = [min(mesh_max[i], high[i] + margin) for i in (0, 1)]
+        else:
+            combined = "none; full configured mesh"
+        gcmd.respond_info(
+            "Prime-tower/KAMP safety: file scan time %s; combined object/tower "
+            "bounds %s; margin %.3f mm; requested mesh X[%.3f, %.3f] "
+            "Y[%.3f, %.3f]." % (timing, combined, margin,
+                mesh_min[0], mesh_max[0], mesh_min[1], mesh_max[1]))
 
     def cmd_PRIME_TOWER_WAIT(self, gcmd):
         eventtime = self.reactor.monotonic()

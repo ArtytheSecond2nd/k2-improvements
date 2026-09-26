@@ -337,6 +337,37 @@ class _FailingThread(_DeferredThread):
 
 
 class PrimeTowerStatusTests(unittest.TestCase):
+    def test_mesh_report_combines_tower_clips_margin_and_retains_timer(self):
+        scanner = PRIME_TOWER.PrimeTower(_FakeConfig("unused.gcode"))
+        scanner._status = dict(scanner._empty_status(), scan_duration=0.733,
+                               detected=True, polygon=[[5, 20], [30, 40]])
+        exclude = mock.Mock()
+        exclude.get_status.return_value = {"objects": [{"polygon": [[100, 100], [330, 325]]}]}
+        original_lookup = scanner.printer.lookup_object
+        scanner.printer.lookup_object = lambda name, default=None: (
+            exclude if name == "exclude_object" else original_lookup(name, default))
+        cmd = mock.Mock()
+        cmd.get_float.return_value = 11.5
+        cmd.get.side_effect = {"MESH_MIN": "10,5", "MESH_MAX": "340,330"}.__getitem__
+        with mock.patch.object(scanner, "cmd_PRIME_TOWER_WAIT"):
+            scanner.cmd_KAMP_REPORT_MESH_BOUNDS(cmd)
+        message = cmd.respond_info.call_args[0][0]
+        self.assertIn("0.733 seconds", message)
+        self.assertIn("bounds X[5.000, 330.000] Y[20.000, 325.000]", message)
+        self.assertIn("requested mesh X[10.000, 340.000] Y[8.500, 330.000]", message)
+
+    def test_mesh_report_no_geometry_uses_full_mesh_and_unknown_time(self):
+        scanner = PRIME_TOWER.PrimeTower(_FakeConfig("unused.gcode"))
+        cmd = mock.Mock()
+        cmd.get_float.return_value = 11.5
+        cmd.get.side_effect = {"MESH_MIN": "10,5", "MESH_MAX": "340,330"}.__getitem__
+        with mock.patch.object(scanner, "cmd_PRIME_TOWER_WAIT"):
+            scanner.cmd_KAMP_REPORT_MESH_BOUNDS(cmd)
+        message = cmd.respond_info.call_args[0][0]
+        self.assertIn("time unavailable", message)
+        self.assertIn("none; full configured mesh", message)
+        self.assertIn("X[10.000, 340.000] Y[5.000, 330.000]", message)
+
     def test_completion_reports_elapsed_once_with_or_without_tower(self):
         for detected in (False, True):
             with self.subTest(detected=detected):
