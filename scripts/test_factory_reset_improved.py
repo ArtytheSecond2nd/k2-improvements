@@ -36,7 +36,7 @@ class FactoryResetImprovedTests(unittest.TestCase):
             )
         script = script.replace(
             'if ! echo "all" | /usr/bin/nc -U /var/run/wipe.sock; then',
-            "if ! true; then",
+            f'if ! touch "{shell_root}/reset-requested"; then',
             1,
         )
         fixture = root.parent / "factory-reset-improved-fixture.sh"
@@ -56,7 +56,7 @@ class FactoryResetImprovedTests(unittest.TestCase):
             env=env,
         )
 
-    def test_dry_run_defers_live_creality_tree(self):
+    def test_dry_run_includes_creality_tree_without_deleting(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp) / "UDISK"
             for name in ("root", "bin", "creality", "printer_data"):
@@ -68,11 +68,12 @@ class FactoryResetImprovedTests(unittest.TestCase):
             result = self._run(fixture, "--dry-run")
 
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn(f"DEFER:  {root.as_posix()}/creality", result.stdout)
+            self.assertIn(f"REMOVE: {root.as_posix()}/creality", result.stdout)
             self.assertIn(f"REMOVE: {root.as_posix()}/printer_data", result.stdout)
             self.assertTrue((root / "creality/userdata/log/app-server.log").is_file())
+            self.assertFalse((root / "reset-requested").exists())
 
-    def test_run_preserves_stock_paths_and_removes_third_party_paths(self):
+    def test_run_preserves_root_bin_and_removes_creality_and_third_party_paths(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp) / "UDISK"
             for name in ("root", "bin", "creality", "printer_data", "ai_image"):
@@ -84,12 +85,13 @@ class FactoryResetImprovedTests(unittest.TestCase):
             result = self._run(fixture, "--run")
 
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn(f"Deferring: {root.as_posix()}/creality", result.stdout)
+            self.assertIn(f"Removing: {root.as_posix()}/creality", result.stdout)
             self.assertTrue((root / "root").is_dir())
             self.assertTrue((root / "bin").is_dir())
-            self.assertTrue((root / "creality/userdata/log/web-server.log").is_file())
+            self.assertFalse((root / "creality").exists())
             self.assertFalse((root / "printer_data").exists())
             self.assertFalse((root / "ai_image").exists())
+            self.assertTrue((root / "reset-requested").exists())
 
     def test_delete_failure_falls_back_to_creality_reset(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -106,6 +108,28 @@ class FactoryResetImprovedTests(unittest.TestCase):
             self.assertIn("Begin factory reset", result.stdout)
             self.assertTrue((root / "stubborn").is_dir())
             self.assertFalse((root / "printer_data").exists())
+            self.assertTrue((root / "reset-requested").exists())
+
+    def test_creality_log_removal_failure_warns_and_still_requests_reset(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "UDISK"
+            for name in ("root", "bin", "printer_data", "creality/userdata/log"):
+                (root / name).mkdir(parents=True)
+            log = root / "creality/userdata/log/app-server.log"
+            log.write_text("active")
+            fixture = self._fixture_script(root, fail_name="creality")
+
+            result = self._run(fixture, "--run")
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(f"Removing: {root.as_posix()}/creality", result.stdout)
+            self.assertIn("IMPROVED CLEANUP INCOMPLETE", result.stderr)
+            self.assertIn("Continuing with the confirmed Creality factory reset", result.stderr)
+            self.assertTrue(log.is_file())
+            self.assertTrue((root / "root").is_dir())
+            self.assertTrue((root / "bin").is_dir())
+            self.assertFalse((root / "printer_data").exists())
+            self.assertTrue((root / "reset-requested").exists())
 
 
 if __name__ == "__main__":

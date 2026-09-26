@@ -72,9 +72,10 @@ factory_reset_run() {
 
     printf '%s\n' "$(c_red 'This is destructive.')"
     printf '\n'
-    printf 'This will remove third-party and user top-level directories under /mnt/UDISK,\n'
+    printf 'This will attempt to remove all top-level directories under /mnt/UDISK,\n'
     printf 'preserve /mnt/UDISK/root and /mnt/UDISK/bin, then trigger Creality factory reset.\n'
-    printf 'The active stock /mnt/UDISK/creality tree is left to the Creality reset itself.\n\n'
+    printf 'This includes the entire /mnt/UDISK/creality tree.\n'
+    printf 'Removal errors (including recreated logs) are warned about; the reset continues.\n\n'
     printf 'This WILL remove /mnt/UDISK/printer_data.\n'
     printf 'That includes Klipper config, custom macros, saved meshes, logs, and backups stored there.\n\n'
     printf 'This may also remove downloaded firmware, timelapse/image folders,\n'
