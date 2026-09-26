@@ -64,6 +64,17 @@ def recommended(installed, completed=frozenset()):
 
 
 class MigrationCatalogTests(unittest.TestCase):
+    def test_first_layer_footprint_upgrade_is_offered_exactly_once(self):
+        ids = {entry[0] for entry in entries()}
+        updates = {"kamp-first-layer-footprint-carto-v1",
+                   "kamp-first-layer-footprint-kamp-v1"}
+        self.assertTrue(updates <= ids)
+        completed = ids - updates
+        for component in ("cartographer", "kamp-adaptive-purge"):
+            self.assertEqual(recommended({component}, completed), {component})
+            self.assertEqual(recommended({component}, ids), set())
+        self.assertEqual(recommended({"macros"}, completed), set())
+
     def test_mesh_bounds_report_is_offered_exactly_once(self):
         ids = {entry[0] for entry in entries()}
         updates = {"kamp-mesh-bounds-report-carto-v1",

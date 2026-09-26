@@ -21,7 +21,7 @@ python3 "${SCRIPT_DIR}/../../scripts/ensure_included.py" \
 python3 "${SCRIPT_DIR}/../../scripts/ensure_included.py" \
     "${HOME}/printer_data/config/custom/main.cfg" prime_tower.cfg
 
-echo "I: installed automatic prime-tower footprint detection"
+echo "I: installed automatic first-layer print-footprint detection"
 
 # Record that a fresh Klippy process is needed without restarting in the middle
 # of a multi-component operation. The calling Cartographer, KAMP, or full setup

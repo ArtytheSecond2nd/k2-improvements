@@ -48,8 +48,8 @@ class LinePurgePatchTests(unittest.TestCase):
         self.assertIn("boundary_inset = 0.5", result)
         self.assertIn("purge_margin > 0", result)
         self.assertIn("printer.prime_tower.polygon", result)
-        self.assertIn("object_points + tower_points", result)
-        self.assertIn("object_points | length > 0", result)
+        self.assertIn("object_points + footprint_points", result)
+        self.assertNotIn("object_points | length > 0 and", result)
         self.assertNotIn("G0 X1", result)
 
     def test_selector_checks_all_four_sides_and_has_safe_skip(self):
@@ -72,7 +72,7 @@ class LinePurgePatchTests(unittest.TestCase):
         self.assertIn("G1 X0 Y0 E9 F2400", result)
         self.assertIn("G1 X150 Y0 E9 F2400", result)
         self.assertIn(
-            "tower_points = printer.prime_tower.polygon if object_points | length > 0",
+            "footprint_points = printer.prime_tower.polygon if printer.prime_tower is defined",
             result,
         )
         self.assertLess(
