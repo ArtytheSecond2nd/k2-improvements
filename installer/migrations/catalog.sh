@@ -4,6 +4,8 @@
 
 migration_catalog() {
     cat <<'EOF'
+prime-tower-scan-timer-carto-v1|cartographer|is_cartographer|Reload prime-tower scanner to report completed scan duration in the console
+prime-tower-scan-timer-kamp-v1|kamp-adaptive-purge|is_kamp|Reload prime-tower scanner to report completed scan duration in the console
 cartographer-slicer-colors-v1|cartographer-plate-workflow|is_carto_plate_workflow|Refresh Fluidd plate colors: green for Creality Print and Default, purple for Orca
 cartographer-dual-slicer-plates-v1|cartographer-plate-workflow|is_carto_plate_workflow|Add persistent Creality Print, OrcaSlicer, or Both plate selectors while preserving existing calibration models
 macro-user-comment-spacing-v1|macros|is_macros|Keep START_PRINT setting comments separated from their values so configuration editors expose every setting

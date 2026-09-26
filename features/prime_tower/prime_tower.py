@@ -505,6 +505,16 @@ class PrimeTower:
         self._status = status
         elapsed = max(0.0, eventtime - job.started_at)
         file_size = job.cache_key[1]
+        # Publish on the reactor, once per completed job (not cached reads).
+        # This measures scan startup through result publication, including
+        # worker scheduling and callback/poll latency.
+        try:
+            self.gcode.respond_info(
+                "Prime-tower/KAMP safety: scan complete in %.3f seconds; %s."
+                % (elapsed, "prime tower detected" if status["detected"]
+                   else "no prime tower detected"))
+        except Exception:
+            logging.exception("prime_tower: unable to report scan completion")
         if status["detected"]:
             logging.info(
                 "prime_tower: detected %d blocks at "

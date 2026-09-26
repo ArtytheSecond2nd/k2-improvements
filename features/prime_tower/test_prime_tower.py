@@ -337,6 +337,40 @@ class _FailingThread(_DeferredThread):
 
 
 class PrimeTowerStatusTests(unittest.TestCase):
+    def test_completion_reports_elapsed_once_with_or_without_tower(self):
+        for detected in (False, True):
+            with self.subTest(detected=detected):
+                scanner = PRIME_TOWER.PrimeTower(_FakeConfig("unused.gcode"))
+                job = PRIME_TOWER._ScanJob(
+                    ("unused.gcode", 1024, 1), "unused.gcode", 10.0, 120.0)
+                job.status = {"detected": detected, "polygon": [],
+                              "bounds": [10, 20, 30, 40] if detected else [],
+                              "blocks": 1 if detected else 0}
+                scanner._active_job = job
+                job.done_event.set()
+                scanner._finish_scan(14.125, job)
+                scanner._finish_scan(15.0, job)
+                self.assertEqual(len(scanner.gcode.messages), 1)
+                self.assertIn("scan complete in 4.125 seconds", scanner.gcode.messages[0])
+                outcome = "prime tower detected" if detected else "no prime tower detected"
+                self.assertTrue(scanner.gcode.messages[0].endswith(outcome + "."))
+
+    def test_cancelled_or_failed_scan_does_not_report_successful_completion(self):
+        for outcome in ("cancel", "error", "blocked"):
+            scanner = PRIME_TOWER.PrimeTower(_FakeConfig("unused.gcode"))
+            job = PRIME_TOWER._ScanJob(
+                ("unused.gcode", 1024, 1), "unused.gcode", 10.0, 120.0)
+            scanner._active_job = job
+            if outcome == "cancel":
+                job.cancel_event.set()
+            elif outcome == "error":
+                job.error = "test error"
+            else:
+                job.block_reason = "unsafe tower"
+            job.done_event.set()
+            scanner._finish_scan(14.0, job)
+            self.assertEqual(scanner.gcode.messages, [])
+
     def test_small_file_uses_minimum_scan_timeout(self):
         scanner = PRIME_TOWER.PrimeTower(_FakeConfig(
             "unused.gcode", scan_timeout=120.0,
