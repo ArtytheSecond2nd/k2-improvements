@@ -21,4 +21,42 @@ ln -sf ${SCRIPT_DIR}/bin/systemctl /mnt/UDISK/bin/
 # update the path
 echo 'export PATH=/mnt/UDISK/bin:$PATH' > /etc/profile.d/better-init.sh
 
-sh "${SCRIPT_DIR}/../../scripts/klippy_code_restart.sh"
+# Moonraker builds its recurring provider command from the first successful
+# service discovery. Reload it after replacing supervisorctl so an older empty
+# or stale command cannot survive an Improved Init refresh.
+if [ -x /etc/init.d/moonraker ]; then
+    old_moonraker_pid=
+    if [ -r /var/run/moonraker.pid ]; then
+        IFS= read -r old_moonraker_pid < /var/run/moonraker.pid || old_moonraker_pid=
+    fi
+    /etc/init.d/moonraker restart
+
+    # The init action returns before the replacement process binds its API.
+    # Require a new live PID as well as port 7125 so a final restart cannot
+    # accidentally observe the old process just before it exits.
+    echo "I: waiting for replacement Moonraker process"
+    count=0
+    while :; do
+        new_moonraker_pid=
+        if [ -r /var/run/moonraker.pid ]; then
+            IFS= read -r new_moonraker_pid < /var/run/moonraker.pid || new_moonraker_pid=
+        fi
+        if [ -n "$new_moonraker_pid" ] && \
+           [ "$new_moonraker_pid" != "$old_moonraker_pid" ] && \
+           [ -d "/proc/$new_moonraker_pid" ] && \
+           nc -z 127.0.0.1 7125; then
+            echo "I: replacement Moonraker is accepting connections"
+            break
+        fi
+        if [ "$count" -ge 60 ]; then
+            echo "E: replacement Moonraker did not become ready" >&2
+            exit 1
+        fi
+        count=$((count + 1))
+        sleep 1
+    done
+fi
+
+if [ "${K2_DEFER_FIRMWARE_RESTART:-0}" != 1 ]; then
+    sh "${SCRIPT_DIR}/../../scripts/klippy_code_restart.sh"
+fi

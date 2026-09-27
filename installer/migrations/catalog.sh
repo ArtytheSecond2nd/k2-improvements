@@ -4,6 +4,7 @@
 
 migration_catalog() {
     cat <<'EOF'
+better-init-provider-polling-v1|better-init|is_better_init|Refresh Improved Init service discovery to prevent empty Moonraker polling loops and reduce recurring status overhead
 kamp-first-layer-footprint-carto-v1|cartographer|is_cartographer|Replace whole-file prime-tower scanning with complete first-layer extrusion bounds for adaptive meshes
 kamp-first-layer-footprint-kamp-v1|kamp-adaptive-purge|is_kamp|Replace whole-file prime-tower scanning with complete first-layer extrusion bounds for KAMP mesh and purge placement
 kamp-mesh-bounds-report-carto-v1|cartographer|is_cartographer|Reload scanner support for console mesh-boundary reports

@@ -1,51 +1,63 @@
 #!/bin/ash
 
+INIT_DIR="${SUPERVISORCTL_INIT_DIR:-/etc/init.d}"
+RUN_DIR="${SUPERVISORCTL_RUN_DIR:-/var/run}"
+PROC_DIR="${SUPERVISORCTL_PROC_DIR:-/proc}"
+running_processes_cached=0
+
 if [ -t 1 ]; then
   GREEN='\033[32m'
   RED='\033[31m'
   ENDCOLOR='\033[0m'
 fi
 
-get_services() {
-  moonraker_pid="$(cat /var/run/moonraker.pid)"
-  if [ -f /var/run/moonraker.pid ] && [ -d /proc/"$moonraker_pid" ] ; then
-    cmdline="$(tr '\0' '\n' < /proc/"$moonraker_pid"/cmdline)"
-    moonraker_dir="$(echo $cmdline | awk -F'-d ' '{print $2}' | awk '{print $1}')"
-    moonraker_conf="$moonraker_dir/config/moonraker.conf"
-    services=$(ls -1 /etc/init.d/ | sed 's/_service$//')
-    echo $services
-  else
-    echo "Error: Invalid or missing PID file /var/run/moonraker.pid" >&2
-    exit 1
-  fi
+cache_running_processes() {
+  running_processes=' '
+  for comm_file in "$PROC_DIR"/[0-9]*/comm; do
+    [ -r "$comm_file" ] || continue
+    IFS= read -r cached_name < "$comm_file" || cached_name=
+    [ -n "$cached_name" ] || continue
+    case "$running_processes" in
+      *" $cached_name "*) ;;
+      *) running_processes="$running_processes$cached_name " ;;
+    esac
+  done
+  running_processes_cached=1
 }
 
-get_pid_file() {
-  service="$1"
-  [ $service == "klipper" ] && service="klippy"
-  pid_file="/var/run/$service.pid"
-  echo $pid_file
+set_process_name() {
+  case "$1" in
+    klipper) process_name=klippy ;;
+    *) process_name="$1" ;;
+  esac
 }
 
 is_running() {
-  service="$1"
-  pid_file="$(get_pid_file "$service")"
+  set_process_name "$1"
+  pid_file="$RUN_DIR/$process_name.pid"
+  pid=
 
-  if [ -f "$pid_file" ] && [ -d "/proc/$(cat $pid_file)" ]; then
-      return 0
+  if [ -r "$pid_file" ]; then
+    IFS= read -r pid < "$pid_file" || pid=
+    case "$pid" in
+      ''|*[!0-9]*) ;;
+      *) [ -d "$PROC_DIR/$pid" ] && return 0 ;;
+    esac
   fi
 
-  if pidof "$service" &>/dev/null; then
-      return 0
-  fi
+  [ "$running_processes_cached" -eq 1 ] || cache_running_processes
+  case "$running_processes" in
+    *" $process_name "*) return 0 ;;
+  esac
   return 1
 }
 
 print_process_status() {
+  service="$1"
   if is_running "$service"; then
-    printf "%-33s$GREEN""RUNNING$ENDCOLOR\n" "$service"
+    printf "%-33s${GREEN}RUNNING${ENDCOLOR}\n" "$service"
   else
-    printf "%-33s$RED""STOPPED$ENDCOLOR\n" "$service"
+    printf "%-33s${RED}STOPPED${ENDCOLOR}\n" "$service"
   fi
 }
 
@@ -54,62 +66,63 @@ print_usage() {
   echo "commands include status stop start restart"
 }
 
-get_script_path() {
-  service="$1"
-  script_path="$(ls -1 /etc/init.d/${service} /etc/init.d/${service}* 2>/dev/null|head -1)"
-  echo "$script_path"
+find_script_path() {
+  requested_service="$1"
+  script_path=
+  for candidate in "$INIT_DIR/$requested_service" "$INIT_DIR/$requested_service"*; do
+    [ -f "$candidate" ] || continue
+    script_path="$candidate"
+    return 0
+  done
+  return 1
 }
 
-stop() {
-  service="$1"
-  script_path="$(get_script_path $service)"
-  if [[ -f "$script_path" ]]; then
-    "$script_path" stop
+run_service_action() {
+  action="$1"
+  requested_service="$2"
+  if find_script_path "$requested_service"; then
+    "$script_path" "$action"
   fi
 }
 
-start() {
-  service="$1"
-  script_path="$(get_script_path $service)"
-  if [[ -f "$script_path" ]]; then
-    "$script_path" start
-  fi
-}
-
-restart() {
-  service="$1"
-  script_path="$(get_script_path $service)"
-  if [[ -f "$script_path" ]]; then
-    "$script_path" restart
-  fi
+print_all_service_statuses() {
+  seen_services=' '
+  for script_path in "$INIT_DIR"/*; do
+    [ -f "$script_path" ] || continue
+    service="${script_path##*/}"
+    service="${service%_service}"
+    case "$seen_services" in
+      *" $service "*) continue ;;
+    esac
+    seen_services="$seen_services$service "
+    print_process_status "$service"
+  done
 }
 
 main() {
-  action="$1"; shift
+  action="$1"
+  [ "$#" -gt 0 ] && shift
   case "$action" in
     status)
       if [ "$#" -lt 1 ]; then
-        for service in $(get_services); do
-          print_process_status $service
-        done
+        print_all_service_statuses
       else
         for service in "$@"; do
-          print_process_status $service
+          print_process_status "$service"
         done
       fi
       ;;
-    start)
-      start "$1"
-      ;;
-    stop)
-      stop "$1"
-      ;;
-    restart)
-      restart "$1"
+    start|stop|restart)
+      [ "$#" -eq 1 ] || {
+        print_usage
+        exit 1
+      }
+      run_service_action "$action" "$1"
       ;;
     *)
       print_usage
       exit 1
+      ;;
   esac
 }
 

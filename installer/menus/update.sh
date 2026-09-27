@@ -25,6 +25,7 @@ migration_component_label() {
         material-z-offsets) echo 'Material Z Offsets' ;;
         plate-aware-mesh) echo 'Plate-aware saved meshes' ;;
         nozzle-camera) echo 'Stock nozzle camera stream' ;;
+        better-init) echo 'Improved Init service management' ;;
         *) echo "$1" ;;
     esac
 }
@@ -46,6 +47,7 @@ migration_component_installed() {
         material-z-offsets) is_material_z_offsets ;;
         plate-aware-mesh) is_plate_aware_mesh ;;
         nozzle-camera) is_nozzle_camera ;;
+        better-init) is_better_init ;;
         *) return 1 ;;
     esac
 }
@@ -114,6 +116,10 @@ migration_component_present() {
             [ -e "$custom/nozzle_camera.cfg" ] ||
                 [ -e /mnt/UDISK/bin/nozzle-camera.sh ]
             ;;
+        better-init)
+            [ -e /etc/profile.d/better-init.sh ] ||
+                [ -e /mnt/UDISK/bin/supervisorctl ]
+            ;;
         *) return 1 ;;
     esac
 }
@@ -125,7 +131,7 @@ migration_capture_installed_components() {
     : > "$temporary"
     for component in cartographer save-config-restart virtual-sdcard-guard abort_homing \
         screws_tilt_adjust macros r3men-bed kamp-adaptive-purge \
-        axis_twist_compensation cartographer-plate-workflow global-touch-offsets material-z-offsets plate-aware-mesh nozzle-camera; do
+        axis_twist_compensation cartographer-plate-workflow global-touch-offsets material-z-offsets plate-aware-mesh nozzle-camera better-init; do
         if migration_component_installed "$component" 2>/dev/null ||
            migration_component_present "$component" 2>/dev/null; then
             printf '%s\n' "$component" >> "$temporary"
@@ -153,7 +159,7 @@ migration_pending_components() {
     entries=$(migration_pending_entries)
     for component in cartographer save-config-restart virtual-sdcard-guard abort_homing \
         screws_tilt_adjust macros r3men-bed kamp-adaptive-purge \
-        axis_twist_compensation cartographer-plate-workflow global-touch-offsets material-z-offsets plate-aware-mesh nozzle-camera; do
+        axis_twist_compensation cartographer-plate-workflow global-touch-offsets material-z-offsets plate-aware-mesh nozzle-camera better-init; do
         if printf '%s\n' "$entries" | grep -q "^[^|]*|$component|"; then
             printf '%s\n' "$component"
         fi
@@ -368,6 +374,10 @@ migration_repair_component() {
         plate-aware-mesh)
             HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
                 sh "$INSTALLER_DIR/installer/extras/plate-aware-mesh/install.sh" --no-restart
+            ;;
+        better-init)
+            HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
+                sh "$INSTALLER_DIR/features/better-init/install.sh"
             ;;
         *)
             warn "no repair action is registered for $component"
