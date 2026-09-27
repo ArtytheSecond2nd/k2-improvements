@@ -32,6 +32,14 @@ class K2M191Circulation:
         )
         self.gcode.respond_raw("%s %s" % (standard_report, chamber_report))
 
+    def _fast_stop_requested(self):
+        # This object is installed only after the firmware-version and API
+        # checks in install_fast_stop.sh succeed.  Older firmware therefore
+        # retains the original M191 behavior.
+        helper = self.printer.lookup_object("k2_start_print_fast_stop", None)
+        check_cancel = getattr(helper, "is_cancel_pending", None)
+        return check_cancel is not None and check_cancel()
+
     def cmd_wait(self, gcmd):
         sensor_name = gcmd.get("SENSOR")
         minimum = gcmd.get_float("MINIMUM", float("-inf"))
@@ -64,6 +72,10 @@ class K2M191Circulation:
 
         try:
             while not self.printer.is_shutdown():
+                if self._fast_stop_requested():
+                    gcmd.respond_info("Chamber wait stopped by print cancellation")
+                    return
+
                 temperature, _target = sensor.get_temp(eventtime)
                 if minimum <= temperature <= maximum:
                     return

@@ -10,8 +10,10 @@ firmware 1.1.5.5 or newer and the expected Creality cancellation API is present.
 The helper changes only the managed `START_PRINT` template. When Cancel is
 requested, the command currently executing is allowed to finish; the remaining
 START_PRINT commands are then skipped and Creality's normal cancel/end-print
-sequence continues. Other macros retain their stock behavior. Older or unknown
-firmware versions do not load the helper.
+sequence continues. The managed M191 chamber-wait loop checks the same gated
+cancel state once per second so it can stop its circulation fans and return
+without waiting for the chamber target. Other macros retain their stock
+behavior. Older or unknown firmware versions do not load the helper.
 
 Replaces the stock start macro with a temperature-aware workflow that:
 

@@ -69,14 +69,18 @@ def recommended(installed, completed=frozenset()):
 
 class MigrationCatalogTests(unittest.TestCase):
     def test_start_print_fast_stop_is_offered_exactly_once(self):
-        update_id = "start-print-fast-stop-1155-v1"
+        update_ids = {
+            "start-print-fast-stop-1155-v1",
+            "start-print-fast-stop-waits-v1",
+        }
         catalog_ids = {entry[0] for entry in entries()}
-        self.assertIn(update_id, catalog_ids)
-        previously_completed = catalog_ids - {update_id}
-        self.assertEqual(
-            recommended({"start-print-fast-stop"}, previously_completed),
-            {"start-print-fast-stop"},
-        )
+        self.assertTrue(update_ids <= catalog_ids)
+        for update_id in update_ids:
+            previously_completed = catalog_ids - {update_id}
+            self.assertEqual(
+                recommended({"start-print-fast-stop"}, previously_completed),
+                {"start-print-fast-stop"},
+            )
         self.assertEqual(
             recommended({"start-print-fast-stop"}, catalog_ids), set()
         )

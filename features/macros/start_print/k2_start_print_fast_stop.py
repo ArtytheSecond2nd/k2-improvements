@@ -54,6 +54,10 @@ class K2StartPrintFastStop:
     def get_status(self, eventtime):
         return {"active": self.active}
 
+    def is_cancel_pending(self):
+        """Report Creality Fast Stop only while this gated helper is active."""
+        return self.active and bool(getattr(self.gcode, "cancel_pending", False))
+
 
 def load_config(config):
     return K2StartPrintFastStop(config)

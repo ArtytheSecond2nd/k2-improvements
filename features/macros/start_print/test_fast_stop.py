@@ -105,6 +105,15 @@ class StartPrintFastStopTests(unittest.TestCase):
 
         self.assertIs(macro.template.run_gcode_from_command, installed)
 
+    def test_cancel_state_is_exposed_only_after_firmware_gate_activates(self):
+        gcode = SupportedGCode()
+        gcode.cancel_pending = True
+        helper, printer, _macro = self.make_helper(gcode)
+
+        self.assertFalse(helper.is_cancel_pending())
+        printer.handlers["klippy:ready"]()
+        self.assertTrue(helper.is_cancel_pending())
+
 
 if __name__ == "__main__":
     unittest.main()
