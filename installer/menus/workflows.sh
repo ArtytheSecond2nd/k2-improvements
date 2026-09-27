@@ -27,7 +27,7 @@ menu_install_paths() {
         fi
 
         printf '\n  0. Back\n\nSelect [0-2]: '
-        read -r c
+        read_prompt c
         case "$c" in
             1)
                 if is_cartographer; then
@@ -98,7 +98,7 @@ menu_cartographer_tools() {
         ui_menu_item 5 'Firmware and DFU notes' "$(state_available)"
 
         printf '\n  0. Back\n\nSelect [0-5]: '
-        read -r c
+        read_prompt c
         case "$c" in
             1) carto_fw_launch ;;
             2) carto_fw_dfu_launch ;;
@@ -118,7 +118,7 @@ menu_carto_fw_notes() {
         printf '\n  1. Normal USB / Katapult flashing notes\n'
         printf '  2. DFU recovery notes\n'
         printf '  0. Back\n\nSelect [0-2]: '
-        read -r c
+        read_prompt c
         case "$c" in
             1) carto_fw_show_katapult_notes ;;
             2) carto_fw_show_dfu_notes ;;
@@ -298,7 +298,7 @@ menu_maintenance() {
             ui_menu_item 5 'Factory reset and cleanup tools' "$(state_destructive)"
             printf '\n  0. Back\n\nSelect [0-5]: '
         fi
-        read -r c
+        read_prompt c
         case "$c" in
             1) menu_features ;;
             2) run_protected_firmware_restart ;;

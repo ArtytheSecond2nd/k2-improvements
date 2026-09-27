@@ -38,7 +38,7 @@ menu_features() {
         done
         IFS="$OLDIFS"
         printf '\n   0. Back\n\nSelect [0-%s]: ' "$n"
-        read -r c
+        read_prompt c
         case "$c" in
             0|b|B|q|Q) return ;;
             ''|*[!0-9]*) ;;

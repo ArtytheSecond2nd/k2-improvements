@@ -116,7 +116,7 @@ main_menu() {
         ui_menu_item 5 'Maintenance and recovery'
         ui_menu_item 6 'Update installer / apply updates' "$update_state"
         printf '\n  0. Exit\n\nSelect [0-6]: '
-        read -r c
+        read_prompt c
         case "$c" in
             1) show_status ;;
             2) menu_install_paths ;;

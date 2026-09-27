@@ -57,7 +57,7 @@ menu_printer_fw() {
         printf '  d. Where to download the missing .img files\n'
         printf '  b. Back\n\n'
         printf 'Choose: '
-        read -r c
+        read_prompt c
         case "$c" in
             1) prep_stick "1.1.3.13" "$stick" ;;
             2) prep_stick "1.1.5.2"  "$stick" ;;

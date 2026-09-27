@@ -557,7 +557,7 @@ menu_update_results() {
         ui_menu_item "$all_choice" 'Apply all recommended updates'
         ui_menu_item "$details_choice" 'Explain why each update is needed'
         printf '\n  0. Finish later / Back\n\nSelect [0-%s]: ' "$details_choice"
-        read -r choice
+        read_prompt choice
         case "$choice" in
             0|b|B|q|Q)
                 rm -f "$pending_file"
@@ -724,7 +724,7 @@ menu_update_installer() {
         ui_menu_item 2 'Review pending update actions'
         ui_menu_item 3 'Update installer files only'
         printf '\n  0. Back\n\nSelect [0-3]: '
-        read -r choice
+        read_prompt choice
         case "$choice" in
             1) migration_pull_installer yes ;;
             2) menu_update_results ;;
