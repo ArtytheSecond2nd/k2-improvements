@@ -1,0 +1,148 @@
+#!/usr/bin/env python3
+"""Regression tests for the firmware-gated START_PRINT Fast Stop helper."""
+
+import importlib.util
+import pathlib
+import unittest
+
+
+MODULE_PATH = pathlib.Path(__file__).with_name("k2_start_print_fast_stop.py")
+SPEC = importlib.util.spec_from_file_location("k2_start_print_fast_stop", MODULE_PATH)
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+
+
+class FakeTemplate:
+    def __init__(self):
+        self.original_calls = []
+
+    def render(self, context=None):
+        return "FIRST\nSECOND\n"
+
+    def run_gcode_from_command(self, context=None):
+        self.original_calls.append(context)
+
+
+class SupportedGCode:
+    def __init__(self):
+        self.cancel_pending = False
+        self.calls = []
+
+    def _process_commands(self, commands, need_ack=True, check_cancel=False):
+        self.calls.append((commands, need_ack, check_cancel))
+
+
+class UnsupportedGCode:
+    def _process_commands(self, commands, need_ack=True):
+        raise AssertionError("unsupported command loop must not be used")
+
+
+class FakePrinter:
+    def __init__(self, gcode, start_print, m191=None):
+        self.objects = {
+            "gcode": gcode,
+            "gcode_macro START_PRINT": start_print,
+        }
+        if m191 is not None:
+            self.objects["gcode_macro M191"] = m191
+        self.handlers = {}
+
+    def lookup_object(self, name, default=None):
+        return self.objects.get(name, default)
+
+    def register_event_handler(self, event, handler):
+        self.handlers[event] = handler
+
+    def config_error(self, message):
+        return RuntimeError(message)
+
+
+class FakeConfig:
+    def __init__(self, printer):
+        self.printer = printer
+
+    def get_printer(self):
+        return self.printer
+
+
+class StartPrintFastStopTests(unittest.TestCase):
+    def make_helper(self, gcode):
+        start_print = type("Macro", (), {"template": FakeTemplate()})()
+        m191 = type("Macro", (), {"template": FakeTemplate()})()
+        printer = FakePrinter(gcode, start_print, m191)
+        helper = MODULE.K2StartPrintFastStop(FakeConfig(printer))
+        return helper, printer, start_print, m191
+
+    def test_supported_api_makes_start_print_and_nested_m191_cancel_aware(self):
+        helper, printer, start_print, m191 = self.make_helper(SupportedGCode())
+        other_template = FakeTemplate()
+
+        printer.handlers["klippy:ready"]()
+        start_print.template.run_gcode_from_command({"params": {}})
+        m191.template.run_gcode_from_command({"params": {"S": "45"}})
+
+        self.assertTrue(helper.active)
+        self.assertEqual(
+            printer.objects["gcode"].calls,
+            [
+                (["FIRST", "SECOND", ""], False, True),
+                (["FIRST", "SECOND", ""], False, True),
+            ],
+        )
+        other_template.run_gcode_from_command({"other": True})
+        self.assertEqual(other_template.original_calls, [{"other": True}])
+
+    def test_missing_creality_cancel_api_leaves_start_print_unchanged(self):
+        helper, printer, start_print, m191 = self.make_helper(UnsupportedGCode())
+        original_start = start_print.template.run_gcode_from_command
+        original_m191 = m191.template.run_gcode_from_command
+
+        printer.handlers["klippy:ready"]()
+
+        self.assertFalse(helper.active)
+        self.assertEqual(
+            start_print.template.run_gcode_from_command.__func__,
+            original_start.__func__,
+        )
+        self.assertEqual(
+            m191.template.run_gcode_from_command.__func__, original_m191.__func__
+        )
+
+    def test_ready_handler_is_idempotent(self):
+        helper, printer, start_print, m191 = self.make_helper(SupportedGCode())
+        printer.handlers["klippy:ready"]()
+        installed_start = start_print.template.run_gcode_from_command
+        installed_m191 = m191.template.run_gcode_from_command
+
+        printer.handlers["klippy:ready"]()
+
+        self.assertIs(start_print.template.run_gcode_from_command, installed_start)
+        self.assertIs(m191.template.run_gcode_from_command, installed_m191)
+
+    def test_missing_m191_still_enables_start_print(self):
+        gcode = SupportedGCode()
+        start_print = type("Macro", (), {"template": FakeTemplate()})()
+        printer = FakePrinter(gcode, start_print)
+        helper = MODULE.K2StartPrintFastStop(FakeConfig(printer))
+
+        printer.handlers["klippy:ready"]()
+        start_print.template.run_gcode_from_command({"params": {}})
+
+        self.assertTrue(helper.active)
+        self.assertEqual(
+            gcode.calls,
+            [(["FIRST", "SECOND", ""], False, True)],
+        )
+
+    def test_cancel_state_is_exposed_only_after_firmware_gate_activates(self):
+        gcode = SupportedGCode()
+        gcode.cancel_pending = True
+        helper, printer, _start_print, _m191 = self.make_helper(gcode)
+
+        self.assertFalse(helper.is_cancel_pending())
+        printer.handlers["klippy:ready"]()
+        self.assertTrue(helper.is_cancel_pending())
+
+
+if __name__ == "__main__":
+    unittest.main()

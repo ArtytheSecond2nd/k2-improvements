@@ -54,7 +54,10 @@ class NozzleCameraTests(unittest.TestCase):
     def test_updater_recognizes_the_new_component(self):
         self.assertIn("nozzle-camera) echo 'Stock nozzle camera stream'", self.update)
         self.assertIn("nozzle-camera) is_nozzle_camera", self.update)
-        self.assertIn("plate-aware-mesh nozzle-camera; do", self.update)
+        self.assertRegex(
+            self.update,
+            r"plate-aware-mesh nozzle-camera(?: [a-z0-9-]+)*; do",
+        )
 
     def test_fluidd_uses_continuous_stream_mode(self):
         self.assertIn("choose **MJPEG Stream**", self.readme)

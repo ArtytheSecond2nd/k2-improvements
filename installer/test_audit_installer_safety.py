@@ -91,13 +91,24 @@ printf 'unreachable\\n'
         self.assertIn("skip && /^#\\*# \\[/ { skip=0 }", source)
         self.assertIn("skip && /^#\\*#/ { next }", source)
 
-    def test_material_editor_backs_up_regular_start_print(self):
+    def test_material_editor_preserves_unmanaged_start_print(self):
         source = (
             ROOT / "installer/extras/material-z-offsets/install.sh"
         ).read_text(encoding="utf-8")
-        backup = source.index("start_print.cfg.before-material-z-offsets")
+        backup = source.index("backup_unmanaged_start_print")
         replace = source.index('ln -sfn "$START_PRINT_SOURCE"')
         self.assertLess(backup, replace)
+
+    def test_start_print_backups_preserve_only_unmanaged_files(self):
+        source = (
+            ROOT / "installer/lib/start_print_backups.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn('[ -L "$candidate" ] && return 0', source)
+        self.assertIn('cmp -s "$candidate" "$source_file"', source)
+        self.assertIn("BEGIN surface-selection wrapper", source)
+        self.assertIn("END surface-selection wrapper", source)
+        self.assertIn('cmp -s "$candidate" "$target"', source)
+        self.assertIn('rm -f "$candidate"', source)
 
     def test_plate_aware_installer_requires_python3(self):
         source = (

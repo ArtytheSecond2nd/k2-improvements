@@ -99,7 +99,7 @@ menu_install_all() {
         if HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 sh "$script"; then
             installed=$((installed+1))
             case "$name" in
-                screws_tilt_adjust|cartographer|abort_homing|save-config-restart|macros)
+                better-init|screws_tilt_adjust|cartographer|abort_homing|save-config-restart|macros)
                     printf '%s\n' "$name" >> "$migration_installed_file"
                     ;;
             esac

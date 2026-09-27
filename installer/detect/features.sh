@@ -31,6 +31,21 @@ is_macros() {
     grep -q '^\[include bed_mesh\.cfg\]$' "$main" 2>/dev/null &&
     grep -q '^\[include overrides\.cfg\]$' "$main" 2>/dev/null
 }
+is_start_print_fast_stop_eligible() {
+    command -v detect_printer_fw >/dev/null 2>&1 &&
+    command -v printer_fw_at_least >/dev/null 2>&1 &&
+    is_macros &&
+    printer_fw_at_least "$(detect_printer_fw)" 1.1.5.5
+}
+is_start_print_fast_stop() {
+    local custom="$PRINTER_CFG_DIR/custom"
+    local klipper_dir="${KLIPPER_DIR:-/usr/share/klipper}"
+    is_start_print_fast_stop_eligible &&
+    [ -e "$custom/k2_start_print_fast_stop.cfg" ] &&
+    [ -e "$klipper_dir/klippy/extras/k2_start_print_fast_stop.py" ] &&
+    grep -q '^\[include k2_start_print_fast_stop\.cfg\]$' \
+        "$custom/main.cfg" 2>/dev/null
+}
 is_kamp() {
     local custom="$PRINTER_CFG_DIR/custom"
     local main="$custom/main.cfg"

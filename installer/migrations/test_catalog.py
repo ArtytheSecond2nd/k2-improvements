@@ -26,6 +26,7 @@ KNOWN_COMPONENTS = {
     "plate-aware-mesh",
     "memory-diagnostics",
     "better-init",
+    "start-print-fast-stop",
 }
 
 EXPECTED_DETECTORS = {
@@ -44,6 +45,7 @@ EXPECTED_DETECTORS = {
     "plate-aware-mesh": "is_plate_aware_mesh",
     "memory-diagnostics": "is_memory_diagnostics",
     "better-init": "is_better_init",
+    "start-print-fast-stop": "is_start_print_fast_stop",
 }
 
 
@@ -66,6 +68,40 @@ def recommended(installed, completed=frozenset()):
 
 
 class MigrationCatalogTests(unittest.TestCase):
+    def test_save_and_managed_backup_fixes_are_offered_exactly_once(self):
+        expected = {
+            "save-config-cxsave-retention-v1": "save-config-restart",
+            "start-print-managed-backups-v1": "cartographer-plate-workflow",
+            "material-z-managed-backups-v1": "material-z-offsets",
+        }
+        catalog_ids = {entry[0] for entry in entries()}
+        self.assertTrue(set(expected) <= catalog_ids)
+        for update_id, component in expected.items():
+            with self.subTest(update_id=update_id):
+                previously_completed = catalog_ids - {update_id}
+                self.assertEqual(
+                    recommended({component}, previously_completed), {component}
+                )
+                self.assertEqual(recommended({component}, catalog_ids), set())
+
+    def test_start_print_fast_stop_is_offered_exactly_once(self):
+        update_ids = {
+            "start-print-fast-stop-1155-v1",
+            "start-print-fast-stop-m191-handoff-v1",
+            "start-print-fast-stop-waits-v1",
+        }
+        catalog_ids = {entry[0] for entry in entries()}
+        self.assertTrue(update_ids <= catalog_ids)
+        for update_id in update_ids:
+            previously_completed = catalog_ids - {update_id}
+            self.assertEqual(
+                recommended({"start-print-fast-stop"}, previously_completed),
+                {"start-print-fast-stop"},
+            )
+        self.assertEqual(
+            recommended({"start-print-fast-stop"}, catalog_ids), set()
+        )
+
     def test_improved_init_polling_fix_is_offered_exactly_once(self):
         update_id = "better-init-provider-polling-v1"
         catalog_ids = {entry[0] for entry in entries()}

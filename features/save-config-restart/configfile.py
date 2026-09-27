@@ -281,6 +281,33 @@ class PrinterConfig:
         sfile = io.StringIO()
         config.fileconfig.write(sfile)
         return sfile.getvalue().strip()
+    def _clear_save_pending(self):
+        # CXSAVE_CONFIG commits changes without restarting Klippy.  Keep its
+        # runtime status in sync with the file so Fluidd does not offer to save
+        # an address table that Creality has already written automatically.
+        self.status_save_pending = {}
+        self.save_config_pending = False
+    def _prune_primary_config_backups(self, cfgname, keep=5):
+        # Only prune Klipper's timestamped backups for the active primary
+        # config.  User backups and backups of included files are out of scope.
+        dirname = os.path.dirname(cfgname)
+        basename = os.path.basename(cfgname)
+        stem, extension = os.path.splitext(basename)
+        backup_r = re.compile(
+            r'^%s-[0-9]{8}_[0-9]{6}%s$'
+            % (re.escape(stem), re.escape(extension)))
+        candidates = [
+            path for path in glob.glob(
+                os.path.join(dirname, stem + '-????????_??????' + extension))
+            if backup_r.match(os.path.basename(path))
+        ]
+        candidates.sort(reverse=True)
+        for old_backup in candidates[keep:]:
+            try:
+                os.remove(old_backup)
+            except OSError:
+                logging.exception("Unable to remove old config backup '%s'",
+                                  old_backup)
     def read_config(self, filename):
         return self._build_config_wrapper(self._read_config_file(filename),
                                           filename)
@@ -518,6 +545,7 @@ class PrinterConfig:
             msg = "Unable to write config file during SAVE_CONFIG"
             logging.exception(msg)
             raise gcode.error(msg)
+        self._prune_primary_config_backups(cfgname)
         # Preserve Klipper's stock SAVE_CONFIG restart.  A detached helper
         # observes the replacement host: whether motor discovery succeeds or
         # the known K2 startup fault occurs, it then requests exactly one
@@ -567,8 +595,9 @@ class PrinterConfig:
         # Read in and validate current config file
         cfgname = self.printer.get_start_args()['config_file']
         try:
-            data = self._read_config_file(cfgname)
-            regular_data, old_autosave_data = self._find_autosave_data(data)
+            current_data = self._read_config_file(cfgname)
+            regular_data, old_autosave_data = self._find_autosave_data(
+                current_data)
             config = self._build_config_wrapper(regular_data, cfgname)
         except error as e:
             msg = "Unable to parse existing config on SAVE_CONFIG"
@@ -578,6 +607,11 @@ class PrinterConfig:
         self._strip_include_duplicates(gcode)
         self._disallow_include_conflicts(regular_data, cfgname, gcode)
         data = regular_data.rstrip() + autosave_data
+        if data == current_data:
+            logging.info("CXSAVE_CONFIG skipped unchanged config '%s'", cfgname)
+            self._clear_save_pending()
+            self._prune_primary_config_backups(cfgname)
+            return
         # Determine filenames
         datestr = time.strftime("-%Y%m%d_%H%M%S")
         backup_name = cfgname + datestr
@@ -598,9 +632,8 @@ class PrinterConfig:
             msg = "Unable to write config file during SAVE_CONFIG"
             logging.exception(msg)
             raise gcode.error(msg)
-
-        # Request a restart
-        # gcode.request_restart('restart')
+        self._clear_save_pending()
+        self._prune_primary_config_backups(cfgname)
 
     cmd_REMOVE_CONFIG_SECTION_help = ("Remove config section from config file")
     def cmd_REMOVE_CONFIG_SECTION(self, gcmd):

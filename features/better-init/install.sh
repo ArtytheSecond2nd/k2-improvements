@@ -22,9 +22,12 @@ ln -sf ${SCRIPT_DIR}/bin/systemctl /mnt/UDISK/bin/
 echo 'export PATH=/mnt/UDISK/bin:$PATH' > /etc/profile.d/better-init.sh
 
 # Moonraker builds its recurring provider command from the first successful
-# service discovery. Reload it after replacing supervisorctl so an older empty
-# or stale command cannot survive an Improved Init refresh.
-if [ -x /etc/init.d/moonraker ]; then
+# service discovery. Reload an installed mainline Moonraker after replacing
+# supervisorctl so an older empty or stale command cannot survive a refresh.
+# During a fresh setup only Creality's legacy Moonraker exists at this point;
+# leave it alone because the mainline Moonraker installer runs later.
+if [ -f /mnt/UDISK/root/moonraker/moonraker/moonraker.py ] && \
+   [ -x /etc/init.d/moonraker ]; then
     old_moonraker_pid=
     if [ -r /var/run/moonraker.pid ]; then
         IFS= read -r old_moonraker_pid < /var/run/moonraker.pid || old_moonraker_pid=

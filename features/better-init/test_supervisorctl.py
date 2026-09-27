@@ -118,6 +118,10 @@ class SupervisorctlWrapperTests(unittest.TestCase):
 
     def test_installer_reloads_moonraker_and_honors_deferred_restart(self):
         installer = (WRAPPER.parent.parent / "install.sh").read_text(encoding="utf-8")
+        self.assertIn(
+            "[ -f /mnt/UDISK/root/moonraker/moonraker/moonraker.py ]",
+            installer,
+        )
         self.assertIn("/etc/init.d/moonraker restart", installer)
         restart_position = installer.index("/etc/init.d/moonraker restart")
         wait_position = installer.index("nc -z 127.0.0.1 7125")

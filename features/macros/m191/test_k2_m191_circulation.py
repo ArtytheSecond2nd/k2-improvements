@@ -51,11 +51,24 @@ class FakeHeaters:
 
 
 class FakeReactor:
+    def __init__(self):
+        self.on_pause = None
+
     def monotonic(self):
         return 0.0
 
     def pause(self, waketime):
+        if self.on_pause is not None:
+            self.on_pause()
         return waketime
+
+
+class FakeFastStop:
+    def __init__(self, active=False):
+        self.active = active
+
+    def is_cancel_pending(self):
+        return self.active
 
 
 class FakePrinter:
@@ -211,6 +224,67 @@ class CirculationWaitTests(unittest.TestCase):
             printer.gcode.responses,
             ["B:105.0 /105.0 T0:140.0 /140.0 C:36.3 /55.0"],
         )
+
+    def test_active_fast_stop_ends_wait_and_turns_off_circulation_fans(self):
+        sensor = FakeSensor([20.0])
+        printer = FakePrinter(sensor)
+        fast_stop = FakeFastStop()
+        printer.objects["k2_start_print_fast_stop"] = fast_stop
+        printer.reactor.on_pause = lambda: setattr(fast_stop, "active", True)
+        controller = module.K2M191Circulation(FakeConfig(printer))
+        command = FakeCommand(
+            SENSOR="temperature_sensor chamber_temp",
+            MINIMUM=50,
+            MAXIMUM=55,
+            LOW_PWM=38,
+            HIGH_PWM=255,
+            LOW_SECONDS=45,
+            HIGH_SECONDS=20,
+            CYCLE_FANS=1,
+            REPORT_ID="C",
+            REPORT_TARGET=50,
+        )
+
+        controller.cmd_wait(command)
+
+        self.assertEqual(
+            printer.gcode.scripts,
+            ["M106 S38\nM106 P2 S38", "M106 S0\nM106 P2 S0"],
+        )
+        self.assertEqual(
+            command.messages,
+            ["Chamber wait stopped by print cancellation"],
+        )
+        self.assertEqual(
+            printer.gcode.responses,
+            ["B:105.0 /105.0 T0:140.0 /140.0 C:20.0 /50.0"],
+        )
+
+    def test_cancel_flag_cannot_change_wait_without_gated_helper(self):
+        sensor = FakeSensor([20.0, 50.0])
+        printer = FakePrinter(sensor)
+        printer.gcode.cancel_pending = True
+        controller = module.K2M191Circulation(FakeConfig(printer))
+        command = FakeCommand(
+            SENSOR="temperature_sensor chamber_temp",
+            MINIMUM=50,
+            MAXIMUM=55,
+            LOW_PWM=38,
+            HIGH_PWM=255,
+            LOW_SECONDS=45,
+            HIGH_SECONDS=20,
+            CYCLE_FANS=0,
+            REPORT_ID="C",
+            REPORT_TARGET=50,
+        )
+
+        controller.cmd_wait(command)
+
+        self.assertEqual(
+            printer.gcode.responses,
+            ["B:105.0 /105.0 T0:140.0 /140.0 C:20.0 /50.0"],
+        )
+        self.assertEqual(command.messages, [])
 
 
 if __name__ == "__main__":
