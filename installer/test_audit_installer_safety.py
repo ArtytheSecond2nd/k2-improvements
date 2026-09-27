@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 
+import os
 import pathlib
+import re
+import shutil
+import subprocess
 import unittest
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+BASH = shutil.which("bash") or "C:/Program Files/Git/bin/bash.exe"
 
 
 class InstallerAuditSafetyTests(unittest.TestCase):
@@ -12,7 +17,41 @@ class InstallerAuditSafetyTests(unittest.TestCase):
         source = (ROOT / "menu.sh").read_text(encoding="utf-8")
         self.assertIn("mkdir \"$INSTALLER_LOCK\"", source)
         self.assertIn("kill -0 \"$lock_pid\"", source)
-        self.assertIn("trap release_installer_lock", source)
+        self.assertIn("trap release_installer_lock EXIT", source)
+        self.assertIn("trap 'exit 130' INT", source)
+        self.assertIn("trap 'exit 143' TERM", source)
+        self.assertIn("trap 'exit 129' HUP", source)
+
+    def test_every_direct_menu_prompt_uses_eof_safe_reader(self):
+        prompt_files = [ROOT / "installer/lib/common.sh"]
+        prompt_files.extend((ROOT / "installer/menus").glob("*.sh"))
+        direct_read = re.compile(r"^\s*read(?:\s+-r)?\s+", re.MULTILINE)
+        for path in prompt_files:
+            with self.subTest(path=path):
+                source = path.read_text(encoding="utf-8")
+                self.assertIsNone(direct_read.search(source))
+
+    @unittest.skipUnless(pathlib.Path(BASH).exists(), "bash required")
+    def test_closed_input_exits_instead_of_spinning(self):
+        script = """
+. "$COMMON"
+read_prompt choice
+printf 'unreachable\\n'
+"""
+        result = subprocess.run(
+            [BASH, "-c", script],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=2,
+            env=dict(
+                os.environ,
+                COMMON=(ROOT / "installer/lib/common.sh").as_posix(),
+            ),
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("installer input closed; exiting", result.stderr)
+        self.assertNotIn("unreachable", result.stdout)
 
     def test_bootstrap_better_root_backs_up_and_targets_only_root(self):
         source = (ROOT / "bootstrap/better-root/install.sh").read_text(

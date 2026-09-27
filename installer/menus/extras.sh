@@ -130,7 +130,7 @@ run_carto_plate_workflow() {
     local pwd_home failed plate_choice plate_slicers
     printf '\nPlate selectors: 1. Creality Print  2. OrcaSlicer  3. Both\n'
     printf 'Select [1-3], or Enter to keep the saved choice: '
-    read -r plate_choice
+    read_prompt plate_choice
     case "$plate_choice" in
         1) plate_slicers=creality ;;
         2) plate_slicers=orca ;;
@@ -197,7 +197,7 @@ menu_extras() {
             ui_menu_item 7 'Secure Auth' "$(extra_state secure-auth)"
             printf '\n  0. Back\n\nSelect [0-7]: '
         fi
-        read -r c
+        read_prompt c
         case "$c" in
             1) run_extra_name r3men-bed ;;
             2) run_extra_name nozzle-camera ;;
@@ -307,7 +307,7 @@ install_extra() {
             printf 'Confirm that key-only login works in a second terminal before continuing.\n\n'
             printf 'Type SECURE AUTH to continue: '
             local secure_auth_answer
-            read -r secure_auth_answer
+            read_prompt secure_auth_answer
             if [ "$secure_auth_answer" != "SECURE AUTH" ]; then
                 warn 'confirmation did not match; Secure Auth was not changed.'
                 press_enter
@@ -322,7 +322,7 @@ install_extra() {
                 printf '  0. Back\n\n'
                 printf 'Select [0-2]: '
                 local kamp_choice
-                read -r kamp_choice
+                read_prompt kamp_choice
                 case "$kamp_choice" in
                     1) script_arg='--configure-only' ;;
                     2) ;;

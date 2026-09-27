@@ -9,8 +9,7 @@ a large stock-probe mesh.
 - Faster bed scanning
 - Denser mesh data
 - Adaptive meshing around the current print
-- Automatic inclusion of a detected Creality Print prime tower in the
-  adaptive mesh
+- Automatic inclusion of the complete sliced first layer in the adaptive mesh
 - Separate scan and touch models for supported plate workflows
 
 ## Important differences
@@ -32,31 +31,24 @@ no-ops for the stock macros' `PRES_CHECK`, `NOZZLE_CLEAR`, and
 apply to Cartographer; physical brush cleaning continues through
 `BOX_NOZZLE_CLEAN`.
 
-The installer also adds a printer-side prime-tower scanner. Creality Print
-does not label its prime tower as an exclude object, so its actual
-`;TYPE:Prime tower` extrusion paths are read from the selected G-code file.
-When normal object polygons are available, the detected tower footprint is
-included automatically in the Cartographer adaptive mesh. Rotated, resized,
-and normally layered towers use their real sliced motion rather than slicer
-metadata. Prints without a tower retain the existing behavior.
+The installer also adds a printer-side first-layer scanner. It reads actual
+positive-extrusion motion between the first two layer-change markers, so the
+Cartographer adaptive mesh covers models, brims, skirts, supports, and a prime
+tower even when those features are absent from exclude-object polygons.
 
-The scan runs in a background worker, is cooperatively cancelable, and uses a
-timeout that scales with file size. `START_PRINT` waits for the result before
-printer preparation, so large files may show a deliberate preflight delay in
-the console. Selecting a different file cancels obsolete work and starts a new
-scan. The final detected block count, bounds, file size, and elapsed time are
-recorded in `klippy.log`.
+The scan runs in a background worker, is cooperatively cancelable, and stops at
+the second layer marker. `START_PRINT` waits for the result before preparation.
+The console reports scan time, combined bounds, margin, and requested mesh;
+`klippy.log` records move count, bounds, file size, and elapsed time.
 Implementation details and timeout behavior are documented in the shared
 [prime-tower scanner guide](../prime_tower/README.md).
 
 Creality Print's **Prime tower -> No sparse layers (beta)** option is not
 supported on the K2 Plus. A delayed tower can command the bed back to
 first-layer height after the model is already tall, creating a collision risk.
-If an actual prime-tower toolpath and that setting are both present, adaptive
-mesh preflight rejects the file and directs the user to disable the option and
-reslice. The managed `START_PRINT` macro performs the same check before any
-printer preparation moves. A profile that retains the setting does not block
-a file with no prime tower.
+If an enabled prime tower and that setting are both present, adaptive mesh
+preflight rejects the file and directs the user to disable the option and
+reslice. An explicitly disabled tower does not make a retained setting unsafe.
 
 The installer also adds a status-only compatibility layer for the stock K2
 touchscreen. Creality's live Z-offset page reads the nonstandard

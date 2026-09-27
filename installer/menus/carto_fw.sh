@@ -38,7 +38,7 @@ menu_carto_fw() {
         printf '  4. Show DFU recovery notes\n'
         printf '  0. Back\n\n'
         printf 'Select [0-4]: '
-        read -r c
+        read_prompt c
         case "$c" in
             1) carto_fw_show_katapult_notes ;;
             2) carto_fw_launch ;;

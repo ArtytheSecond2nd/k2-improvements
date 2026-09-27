@@ -23,17 +23,44 @@ class PrimeTowerParserTests(unittest.TestCase):
             path.write_text(gcode, encoding="utf-8")
             return PRIME_TOWER.parse_prime_tower(str(path), padding)
 
-    def test_no_tower_is_unchanged(self):
-        result = self.parse("G90\nG1 X10 Y20\n;TYPE:Outer wall\n")
-        self.assertFalse(result["detected"])
-        self.assertEqual(result["polygon"], [])
+    def test_first_layer_includes_brim_support_model_and_tower(self):
+        result = self.parse("""G90
+M83
+G1 X1 Y1
+G1 X5 Y5 E1 ; startup purge is outside the layer
+;LAYER_CHANGE
+;TYPE:Brim
+G1 X10 Y20
+G1 X30 Y40 E1
+;TYPE:Support
+G1 X100 Y110
+G1 X120 Y130 E1
+;TYPE:Prime tower
+G1 X200 Y210
+G1 X220 Y230 E1
+;LAYER_CHANGE
+G1 X340 Y340 E1
+; enable_prime_tower = 1
+; wipe_tower_no_sparse_layers = 0
+""", padding=0)
+        self.assertTrue(result["detected"])
+        self.assertEqual(result["bounds"], [10.0, 20.0, 220.0, 230.0])
+        self.assertEqual(result["moves"], 3)
+        self.assertEqual(result["blocks"], 1)
+        self.assertTrue(result["tower_enabled"])
 
-    def test_no_sparse_setting_without_actual_tower_is_not_blocked(self):
-        result = self.parse(
-            "G90\n;TYPE:Outer wall\nG1 X10 Y20 E1\n"
-            "; enable_prime_tower = 0\n"
-            "; wipe_tower_no_sparse_layers = 1\n")
-        self.assertFalse(result["detected"])
+    def test_explicitly_disabled_tower_does_not_make_no_sparse_unsafe(self):
+        result = self.parse("""G90
+M83
+;LAYER_CHANGE
+G1 X10 Y20
+G1 X20 Y30 E1
+;LAYER_CHANGE
+; enable_prime_tower = 0
+; wipe_tower_no_sparse_layers = 1
+""")
+        self.assertTrue(result["detected"])
+        self.assertFalse(result["tower_enabled"])
 
     def test_footer_blocks_before_searching_for_late_marker(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -48,7 +75,7 @@ class PrimeTowerParserTests(unittest.TestCase):
                 with self.assertRaises(PRIME_TOWER._UnsupportedPrimeTower):
                     PRIME_TOWER.parse_prime_tower(str(path))
 
-    def test_no_sparse_setting_with_actual_tower_is_blocked(self):
+    def test_legacy_no_sparse_with_tower_marker_is_blocked(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir, "delayed-tower.gcode")
             path.write_bytes(
@@ -60,61 +87,15 @@ class PrimeTowerParserTests(unittest.TestCase):
                 PRIME_TOWER.parse_prime_tower(str(path))
         self.assertIn("No sparse layers", str(raised.exception))
 
-    def test_normal_prime_tower_setting_still_parses(self):
-        result = self.parse(
-            "G90\nM83\nG1 X10 Y20\n;TYPE:Prime tower\n"
-            "G1 X20 Y30 E1\n; WIPE_TOWER_END\n"
-            "; enable_prime_tower = 1\n"
-            "; wipe_tower_no_sparse_layers = 0\n")
-        self.assertTrue(result["detected"])
-        self.assertEqual(result["bounds"], [9.5, 19.5, 20.5, 30.5])
-
-    def test_enabled_footer_skips_redundant_marker_pass(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            path = Path(temp_dir, "tower.gcode")
-            path.write_text(
-                "G90\nM83\nG1 X10 Y20\n;TYPE:Prime tower\n"
-                "G1 X20 Y30 E1\n; WIPE_TOWER_END\n"
-                "; enable_prime_tower = 1\n"
-                "; wipe_tower_no_sparse_layers = 0\n",
-                encoding="utf-8")
-            with mock.patch.object(
-                    PRIME_TOWER, "_file_contains_prime_tower",
-                    side_effect=AssertionError("redundant marker scan")):
-                result = PRIME_TOWER.parse_prime_tower(str(path))
-
-        self.assertTrue(result["detected"])
-        self.assertEqual(result["bounds"], [9.5, 19.5, 20.5, 30.5])
-
-    def test_binary_parser_accepts_lowercase_and_spaced_parameters(self):
+    def test_parser_accepts_lowercase_spaced_parameters_and_change_layer(self):
         result = self.parse("""g90
 m83
+; CHANGE_LAYER
 g1 x 10 y 20
-; type : prime tower
 g1 x 20 y 30 e 1
-; wipe_tower_end
+; CHANGE_LAYER
 """, padding=0)
         self.assertEqual(result["bounds"], [10.0, 20.0, 20.0, 30.0])
-
-    def test_no_tower_skips_detailed_text_scan(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            path = Path(temp_dir, "large-single-color.gcode")
-            path.write_bytes(
-                (b"G1 X10 Y20 E1\n;TYPE:Outer wall\n" * 10000)
-            )
-            real_open = open
-
-            def reject_text_scan(filename, mode="r", *args, **kwargs):
-                if "b" not in mode:
-                    raise AssertionError("entered detailed G-code parser")
-                return real_open(filename, mode, *args, **kwargs)
-
-            with mock.patch.object(PRIME_TOWER, "open", reject_text_scan,
-                                   create=True):
-                result = PRIME_TOWER.parse_prime_tower(str(path))
-
-        self.assertFalse(result["detected"])
-        self.assertEqual(result["blocks"], 0)
 
     def test_marker_split_across_scan_chunks_is_detected(self):
         prefix = b"X" * (PRIME_TOWER._MARKER_SCAN_CHUNK - 8) + b"\n"
@@ -127,7 +108,7 @@ g1 x 20 y 30 e 1
     def test_cancelled_scan_stops_before_parsing(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir, "tower.gcode")
-            path.write_text(";TYPE:Prime tower\nG1 X10 Y20 E1\n",
+            path.write_text(";LAYER_CHANGE\nG1 X10 Y20 E1\n",
                             encoding="utf-8")
             cancel_event = PRIME_TOWER.threading.Event()
             cancel_event.set()
@@ -135,73 +116,56 @@ g1 x 20 y 30 e 1
                 PRIME_TOWER.parse_prime_tower(
                     str(path), cancel_event=cancel_event)
 
-    def test_uses_actual_rotated_and_resized_motion(self):
-        result = self.parse("""G90
-G1 X125 Y132
-;TYPE:Prime tower
-G1 X83 Y90 E2.6
-G1 X86 Y87 E.2
-G1 X128 Y129 E2.6
-; WIPE_TOWER_END
-G1 X300 Y300
-""")
-        self.assertTrue(result["detected"])
-        self.assertEqual(result["blocks"], 1)
-        self.assertEqual(result["bounds"], [82.5, 86.5, 128.5, 132.5])
-
-    def test_relative_xy_and_late_tower_are_supported(self):
+    def test_relative_xy_and_relative_extrusion_are_supported(self):
         result = self.parse("""G90
 G1 X20 Y30
-;TYPE:Outer wall
-G1 X200 Y200
+;LAYER_CHANGE
 G91
 M83
-;TYPE:Prime tower
 G1 X10 Y-5 E1
 G1 X5 Y20 E1
-; WIPE_TOWER_END
+;LAYER_CHANGE
 """, padding=0)
-        self.assertEqual(result["bounds"], [200.0, 195.0, 215.0, 215.0])
-
-    def test_unions_multiple_tower_blocks(self):
-        result = self.parse("""G90
-M83
-G1 X10 Y20
-;TYPE:Prime tower
-G1 X20 Y30 E1
-; WIPE_TOWER_END
-G1 X100 Y110
-;TYPE:Prime tower
-G1 X120 Y130 E1
-; WIPE_TOWER_END
-""", padding=0)
-        self.assertEqual(result["blocks"], 2)
-        self.assertEqual(result["bounds"], [10.0, 20.0, 120.0, 130.0])
+        self.assertEqual(result["bounds"], [20.0, 25.0, 35.0, 45.0])
 
     def test_g92_updates_modal_xy(self):
         result = self.parse("""G90
 M83
 G92 X5 Y7
-;TYPE:Prime tower
+;LAYER_CHANGE
 G1 X8 E1
 G1 Y12 E1
-; WIPE_TOWER_END
+;LAYER_CHANGE
 """, padding=0)
         self.assertEqual(result["bounds"], [5.0, 7.0, 8.0, 12.0])
 
-    def test_ignores_toolchange_travel_inside_tower_block(self):
+    def test_absolute_extrusion_retraction_is_not_geometry(self):
+        result = self.parse("""G90
+M82
+G1 X10 Y20
+G92 E0
+;LAYER_CHANGE
+G1 X20 Y30 E1
+G1 X300 Y310 E0.5
+G1 X40 Y50 E1.5
+;LAYER_CHANGE
+""", padding=0)
+        self.assertEqual(result["bounds"], [10.0, 20.0, 300.0, 310.0])
+        self.assertEqual(result["moves"], 2)
+
+    def test_arc_extrema_are_included(self):
         result = self.parse("""G90
 M83
-G1 X183 Y143
-;TYPE:Prime tower
-G1 X0 Y245 F30000
-G1 X205 Y345 F20000
-G1 X183 Y143 F30000
-G1 X166 Y143 E1
-G1 Y129 E1
-; WIPE_TOWER_END
+G1 X10 Y0
+;LAYER_CHANGE
+G2 X10 Y0 I-10 J0 P1 E1
+;LAYER_CHANGE
 """, padding=0)
-        self.assertEqual(result["bounds"], [166.0, 129.0, 183.0, 143.0])
+        self.assertEqual(result["bounds"], [-10.0, -10.0, 10.0, 10.0])
+
+    def test_missing_layer_marker_fails_open(self):
+        with self.assertRaisesRegex(ValueError, "first-layer marker"):
+            self.parse("G90\nM83\nG1 X10 Y20 E1\n")
 
 
 class _FakeReactor:
@@ -337,6 +301,72 @@ class _FailingThread(_DeferredThread):
 
 
 class PrimeTowerStatusTests(unittest.TestCase):
+    def test_mesh_report_combines_tower_clips_margin_and_retains_timer(self):
+        scanner = PRIME_TOWER.PrimeTower(_FakeConfig("unused.gcode"))
+        scanner._status = dict(scanner._empty_status(), scan_duration=0.733,
+                               detected=True, polygon=[[5, 20], [30, 40]])
+        exclude = mock.Mock()
+        exclude.get_status.return_value = {"objects": [{"polygon": [[100, 100], [330, 325]]}]}
+        original_lookup = scanner.printer.lookup_object
+        scanner.printer.lookup_object = lambda name, default=None: (
+            exclude if name == "exclude_object" else original_lookup(name, default))
+        cmd = mock.Mock()
+        cmd.get_float.return_value = 11.5
+        cmd.get.side_effect = {"MESH_MIN": "10,5", "MESH_MAX": "340,330"}.__getitem__
+        with mock.patch.object(scanner, "cmd_PRIME_TOWER_WAIT"):
+            scanner.cmd_KAMP_REPORT_MESH_BOUNDS(cmd)
+        message = cmd.respond_info.call_args[0][0]
+        self.assertIn("0.733 seconds", message)
+        self.assertIn("bounds X[5.000, 330.000] Y[20.000, 325.000]", message)
+        self.assertIn("requested mesh X[10.000, 340.000] Y[8.500, 330.000]", message)
+
+    def test_mesh_report_no_geometry_uses_full_mesh_and_unknown_time(self):
+        scanner = PRIME_TOWER.PrimeTower(_FakeConfig("unused.gcode"))
+        cmd = mock.Mock()
+        cmd.get_float.return_value = 11.5
+        cmd.get.side_effect = {"MESH_MIN": "10,5", "MESH_MAX": "340,330"}.__getitem__
+        with mock.patch.object(scanner, "cmd_PRIME_TOWER_WAIT"):
+            scanner.cmd_KAMP_REPORT_MESH_BOUNDS(cmd)
+        message = cmd.respond_info.call_args[0][0]
+        self.assertIn("time unavailable", message)
+        self.assertIn("none; full configured mesh", message)
+        self.assertIn("X[10.000, 340.000] Y[5.000, 330.000]", message)
+
+    def test_completion_reports_elapsed_once_with_or_without_tower(self):
+        for detected in (False, True):
+            with self.subTest(detected=detected):
+                scanner = PRIME_TOWER.PrimeTower(_FakeConfig("unused.gcode"))
+                job = PRIME_TOWER._ScanJob(
+                    ("unused.gcode", 1024, 1), "unused.gcode", 10.0, 120.0)
+                job.status = {"detected": detected, "polygon": [],
+                              "bounds": [10, 20, 30, 40] if detected else [],
+                              "blocks": 1 if detected else 0}
+                scanner._active_job = job
+                job.done_event.set()
+                scanner._finish_scan(14.125, job)
+                scanner._finish_scan(15.0, job)
+                self.assertEqual(len(scanner.gcode.messages), 1)
+                self.assertIn("scan complete in 4.125 seconds", scanner.gcode.messages[0])
+                outcome = ("first-layer footprint detected" if detected else
+                           "no first-layer extrusion detected")
+                self.assertIn(outcome, scanner.gcode.messages[0])
+
+    def test_cancelled_or_failed_scan_does_not_report_successful_completion(self):
+        for outcome in ("cancel", "error", "blocked"):
+            scanner = PRIME_TOWER.PrimeTower(_FakeConfig("unused.gcode"))
+            job = PRIME_TOWER._ScanJob(
+                ("unused.gcode", 1024, 1), "unused.gcode", 10.0, 120.0)
+            scanner._active_job = job
+            if outcome == "cancel":
+                job.cancel_event.set()
+            elif outcome == "error":
+                job.error = "test error"
+            else:
+                job.block_reason = "unsafe tower"
+            job.done_event.set()
+            scanner._finish_scan(14.0, job)
+            self.assertEqual(scanner.gcode.messages, [])
+
     def test_small_file_uses_minimum_scan_timeout(self):
         scanner = PRIME_TOWER.PrimeTower(_FakeConfig(
             "unused.gcode", scan_timeout=120.0,
@@ -427,8 +457,10 @@ class PrimeTowerStatusTests(unittest.TestCase):
             path = Path(temp_dir, "delayed-tower.gcode")
             path.write_text(
                 "START_PRINT BED_TEMP=70 CHAMBER_TEMP=0\n"
-                "G90\nM83\n;TYPE:Prime tower\nG1 X20 Y30 E1\n"
+                "G90\nM83\n;LAYER_CHANGE\n;TYPE:Prime tower\n"
+                "G1 X20 Y30 E1\n;LAYER_CHANGE\n"
                 "; WIPE_TOWER_END\n"
+                "; enable_prime_tower = 1\n"
                 "; wipe_tower_no_sparse_layers = 1\n",
                 encoding="utf-8")
             scanner = PRIME_TOWER.PrimeTower(_FakeConfig(str(path)))
@@ -453,7 +485,8 @@ class PrimeTowerStatusTests(unittest.TestCase):
                 "; generated file\n"
                 "START_PRINT EXTRUDER_TEMP=245 BED_TEMP=70 "
                 "CHAMBER_TEMP=45 MATERIAL=PETG\n"
-                "G90\n;TYPE:Prime tower\nG1 X20 Y30 E1\n",
+                "G90\nM83\nG1 X10 Y20\n;LAYER_CHANGE\n"
+                ";TYPE:Prime tower\nG1 X20 Y30 E1\n;LAYER_CHANGE\n",
                 encoding="utf-8")
             scanner = PRIME_TOWER.PrimeTower(_FakeConfig(str(path)))
             scanner.wait_for_scan(1.0)
@@ -468,7 +501,8 @@ class PrimeTowerStatusTests(unittest.TestCase):
                 "; generated file\n"
                 "START_PRINT EXTRUDER_TEMP=245 BED_TEMP=70 "
                 "CHAMBER_TEMP=45 MATERIAL=PETG\n"
-                "G90\n;TYPE:Prime tower\nG1 X20 Y30 E1\n",
+                "G90\nM83\nG1 X10 Y20\n;LAYER_CHANGE\n"
+                ";TYPE:Prime tower\nG1 X20 Y30 E1\n;LAYER_CHANGE\n",
                 encoding="utf-8")
             scanner = PRIME_TOWER.PrimeTower(_FakeConfig(str(path)))
             pending = {
@@ -494,7 +528,8 @@ class PrimeTowerStatusTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir, "tower.gcode")
             path.write_text(
-                "G90\n;TYPE:Prime tower\nG1 X20 Y30 E1\n",
+                "G90\nM83\nG1 X10 Y20\n;LAYER_CHANGE\n"
+                ";TYPE:Prime tower\nG1 X20 Y30 E1\n;LAYER_CHANGE\n",
                 encoding="utf-8")
             with mock.patch.object(PRIME_TOWER.logging, "warning"):
                 scanner = PRIME_TOWER.PrimeTower(_FakeConfig(str(path)))
@@ -507,7 +542,8 @@ class PrimeTowerStatusTests(unittest.TestCase):
             path = Path(temp_dir, "tower.gcode")
             path.write_text(
                 "START_PRINT BED_TEMP=70 CHAMBER_TEMP=0\n"
-                "G90\n;TYPE:Prime tower\nG1 X20 Y30 E1\n",
+                "G90\nM83\nG1 X10 Y20\n;LAYER_CHANGE\n"
+                ";TYPE:Prime tower\nG1 X20 Y30 E1\n;LAYER_CHANGE\n",
                 encoding="utf-8")
             scanner = PRIME_TOWER.PrimeTower(_FakeConfig(str(path)))
             scanner.wait_for_scan(1.0)
@@ -518,8 +554,9 @@ class PrimeTowerStatusTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir, "tower.gcode")
             path.write_text(
-                "G90\nM83\nG1 X10 Y20\n;TYPE:Prime tower\n"
-                "G1 X20 Y30 E1\n; WIPE_TOWER_END\n",
+                "G90\nM83\nG1 X10 Y20\n;LAYER_CHANGE\n"
+                ";TYPE:Prime tower\nG1 X20 Y30 E1\n"
+                ";LAYER_CHANGE\n; WIPE_TOWER_END\n",
                 encoding="utf-8")
             scanner = PRIME_TOWER.PrimeTower(_FakeConfig(str(path)))
             initial = scanner.get_status(1.0)
@@ -535,8 +572,9 @@ class PrimeTowerStatusTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir, "tower.gcode")
             path.write_text(
-                "G90\nM83\nG1 X10 Y20\n;TYPE:Prime tower\n"
-                "G1 X20 Y30 E1\n; WIPE_TOWER_END\n",
+                "G90\nM83\nG1 X10 Y20\n;LAYER_CHANGE\n"
+                ";TYPE:Prime tower\nG1 X20 Y30 E1\n"
+                ";LAYER_CHANGE\n; WIPE_TOWER_END\n",
                 encoding="utf-8")
             reactor = _AdvancingReactor()
             _DeferredThread.created = []
@@ -571,8 +609,9 @@ class PrimeTowerStatusTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir, "tower.gcode")
             path.write_text(
-                "G90\nM83\nG1 X10 Y20\n;TYPE:Prime tower\n"
-                "G1 X20 Y30 E1\n; WIPE_TOWER_END\n",
+                "G90\nM83\nG1 X10 Y20\n;LAYER_CHANGE\n"
+                ";TYPE:Prime tower\nG1 X20 Y30 E1\n"
+                ";LAYER_CHANGE\n; WIPE_TOWER_END\n",
                 encoding="utf-8")
             reactor = _RejectingReactor()
             with mock.patch.object(
@@ -593,8 +632,9 @@ class PrimeTowerStatusTests(unittest.TestCase):
             second_path = Path(temp_dir, "second.gcode")
             first_path.write_text("G90\n", encoding="utf-8")
             second_path.write_text(
-                "G90\nM83\nG1 X10 Y20\n;TYPE:Prime tower\n"
-                "G1 X20 Y30 E1\n; WIPE_TOWER_END\n",
+                "G90\nM83\nG1 X10 Y20\n;LAYER_CHANGE\n"
+                ";TYPE:Prime tower\nG1 X20 Y30 E1\n"
+                ";LAYER_CHANGE\n; WIPE_TOWER_END\n",
                 encoding="utf-8")
             reactor = _AdvancingReactor()
             _DeferredThread.created = []

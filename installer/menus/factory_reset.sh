@@ -16,7 +16,7 @@ menu_factory_reset() {
         printf '  3. Run Creality factory reset only (wipe.sock all)\n'
         printf '  0. Back\n\n'
         printf 'Select [0-3]: '
-        read -r c
+        read_prompt c
 
         case "$c" in
             1) factory_reset_dry_run ;;
@@ -72,9 +72,10 @@ factory_reset_run() {
 
     printf '%s\n' "$(c_red 'This is destructive.')"
     printf '\n'
-    printf 'This will remove third-party and user top-level directories under /mnt/UDISK,\n'
+    printf 'This will attempt to remove all top-level directories under /mnt/UDISK,\n'
     printf 'preserve /mnt/UDISK/root and /mnt/UDISK/bin, then trigger Creality factory reset.\n'
-    printf 'The active stock /mnt/UDISK/creality tree is left to the Creality reset itself.\n\n'
+    printf 'This includes the entire /mnt/UDISK/creality tree.\n'
+    printf 'Removal errors (including recreated logs) are warned about; the reset continues.\n\n'
     printf 'This WILL remove /mnt/UDISK/printer_data.\n'
     printf 'That includes Klipper config, custom macros, saved meshes, logs, and backups stored there.\n\n'
     printf 'This may also remove downloaded firmware, timelapse/image folders,\n'
@@ -82,7 +83,7 @@ factory_reset_run() {
     printf 'Run the dry-run option first if you have not already reviewed what will be removed.\n\n'
 
     printf 'Type FACTORY RESET to continue: '
-    read -r answer
+    read_prompt answer
 
     if [ "$answer" != "FACTORY RESET" ]; then
         warn "confirmation did not match; aborting."
@@ -134,7 +135,7 @@ factory_reset_stock_run() {
     printf 'Third-party files that Creality does not remove may remain afterward.\n\n'
 
     printf 'Type CREALITY RESET to continue: '
-    read -r answer
+    read_prompt answer
 
     if [ "$answer" != "CREALITY RESET" ]; then
         warn "confirmation did not match; aborting."

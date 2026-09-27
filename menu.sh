@@ -33,7 +33,13 @@ release_installer_lock() {
 }
 
 acquire_installer_lock
-trap release_installer_lock EXIT INT TERM HUP
+trap release_installer_lock EXIT
+# Signal traps must terminate the shell.  A cleanup-only trap returns to the
+# interrupted menu loop and can leave an installer running after its terminal
+# has closed.
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 
 # If better-root has already changed root's home in /etc/passwd, but this
 # SSH session was opened before that change, $HOME may still be /root.

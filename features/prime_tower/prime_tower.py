@@ -1,10 +1,9 @@
-# Prime-tower footprint discovery for adaptive mesh and purge placement.
+# First-layer footprint discovery for adaptive mesh and purge placement.
 #
-# Creality Print does not emit EXCLUDE_OBJECT_DEFINE geometry for its prime
-# tower.  The tower is, however, identified by ;TYPE:Prime tower blocks in
-# the selected G-code file.  This module scans those actual motion blocks and
-# publishes one conservative rectangular footprint for other Klipper
-# components to consume before printing begins.
+# EXCLUDE_OBJECT_DEFINE polygons do not necessarily include brims, supports,
+# skirts, or a prime tower. This module reads the selected G-code's complete
+# first-layer extrusion footprint and publishes one conservative rectangle
+# for other Klipper components to consume before printing begins.
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 
@@ -26,6 +25,10 @@ _NO_SPARSE_BYTES_RE = re.compile(
 _TOWER_ENABLED_BYTES_RE = re.compile(
     br"(?im)^[ \t]*;[ \t]*enable_prime_tower[ \t]*="
     br"[ \t]*(?:1|true)[ \t]*(?:;[^\r\n]*)?\r*$"
+)
+_TOWER_ENABLED_PRESENT_BYTES_RE = re.compile(
+    br"(?im)^[ \t]*;[ \t]*enable_prime_tower[ \t]*="
+    br"[ \t]*(?:0|1|true|false)[ \t]*(?:;[^\r\n]*)?\r*$"
 )
 _MARKER_SCAN_CHUNK = 1024 * 1024
 _MARKER_SCAN_OVERLAP = 512
@@ -91,19 +94,6 @@ def _comment_type(line):
     return value[1:].strip()
 
 
-def _is_tower_end(line):
-    """Recognize WIPE_TOWER_END without a regex on every G-code line."""
-    comment = line.lstrip()
-    if not comment.startswith(b";"):
-        return False
-    comment = comment[1:].lstrip().lower()
-    marker = b"wipe_tower_end"
-    if not comment.startswith(marker):
-        return False
-    suffix = comment[len(marker):len(marker) + 1]
-    return not suffix or not (suffix.isalnum() or suffix == b"_")
-
-
 def _command_number(code):
     """Return (command letter, number, parameter offset), if supported."""
     if not code:
@@ -123,13 +113,13 @@ def _command_number(code):
 
 
 def _motion_parameters(code, offset):
-    """Return X, Y, and E values using a cheap whitespace-token parser.
+    """Return supported motion parameters using a cheap token parser.
 
     Creality Print emits normal whitespace-delimited G-code. Supporting an
     axis letter separated from its value retains the flexibility of the old
     regular expressions without applying them to every motion line.
     """
-    x_value = y_value = e_value = None
+    values = {}
     pending_axis = None
     for token in code[offset:].split():
         if pending_axis is not None:
@@ -138,17 +128,12 @@ def _motion_parameters(code, offset):
             except ValueError:
                 pending_axis = None
             else:
-                if pending_axis == b"X":
-                    x_value = value
-                elif pending_axis == b"Y":
-                    y_value = value
-                else:
-                    e_value = value
+                values[pending_axis] = value
                 pending_axis = None
                 continue
 
         axis = token[:1].upper()
-        if axis not in (b"X", b"Y", b"E"):
+        if axis not in (b"X", b"Y", b"E", b"I", b"J", b"R", b"P"):
             continue
         if len(token) == 1:
             pending_axis = axis
@@ -157,13 +142,87 @@ def _motion_parameters(code, offset):
             value = float(token[1:])
         except ValueError:
             continue
-        if axis == b"X":
-            x_value = value
-        elif axis == b"Y":
-            y_value = value
-        else:
-            e_value = value
-    return x_value, y_value, e_value
+        values[axis] = value
+    return values
+
+
+def _is_layer_change(line):
+    comment = line.lstrip()
+    if not comment.startswith(b";"):
+        return False
+    marker = comment[1:].strip().lower().replace(b" ", b"_")
+    return marker in (b"layer_change", b"change_layer")
+
+
+def _directed_sweep(start_angle, end_angle, clockwise):
+    if clockwise:
+        return (start_angle - end_angle) % (2.0 * math.pi)
+    return (end_angle - start_angle) % (2.0 * math.pi)
+
+
+def _arc_geometry(old_x, old_y, new_x, new_y, values, clockwise):
+    """Return (center_x, center_y, radius, start_angle, sweep), if valid."""
+    if b"I" in values or b"J" in values:
+        center_x = old_x + values.get(b"I", 0.0)
+        center_y = old_y + values.get(b"J", 0.0)
+        radius = math.hypot(old_x - center_x, old_y - center_y)
+        if radius <= 0.0:
+            return None
+        start = math.atan2(old_y - center_y, old_x - center_x)
+        end = math.atan2(new_y - center_y, new_x - center_x)
+        sweep = _directed_sweep(start, end, clockwise)
+        if abs(old_x - new_x) < 1e-9 and abs(old_y - new_y) < 1e-9:
+            sweep = 2.0 * math.pi
+    elif b"R" in values:
+        signed_radius = values[b"R"]
+        radius = abs(signed_radius)
+        delta_x, delta_y = new_x - old_x, new_y - old_y
+        chord = math.hypot(delta_x, delta_y)
+        if radius <= 0.0 or chord <= 0.0 or chord > 2.0 * radius:
+            return None
+        mid_x, mid_y = (old_x + new_x) / 2.0, (old_y + new_y) / 2.0
+        offset = math.sqrt(max(0.0, radius * radius - chord * chord / 4.0))
+        perpendicular_x = -delta_y / chord
+        perpendicular_y = delta_x / chord
+        candidates = []
+        for sign in (-1.0, 1.0):
+            candidate_x = mid_x + sign * perpendicular_x * offset
+            candidate_y = mid_y + sign * perpendicular_y * offset
+            start = math.atan2(old_y - candidate_y, old_x - candidate_x)
+            end = math.atan2(new_y - candidate_y, new_x - candidate_x)
+            sweep = _directed_sweep(start, end, clockwise)
+            candidates.append((candidate_x, candidate_y, start, sweep))
+        want_major = signed_radius < 0.0
+        matching = [candidate for candidate in candidates
+                    if (candidate[3] > math.pi) == want_major]
+        center_x, center_y, start, sweep = (matching or candidates)[0]
+    else:
+        return None
+
+    repeats = max(1, int(values.get(b"P", 1.0)))
+    if repeats > 1:
+        sweep += (repeats - 1) * 2.0 * math.pi
+    return center_x, center_y, radius, start, sweep
+
+
+def _arc_extrema(old_x, old_y, new_x, new_y, values, clockwise):
+    points = [(old_x, old_y), (new_x, new_y)]
+    geometry = _arc_geometry(
+        old_x, old_y, new_x, new_y, values, clockwise)
+    if geometry is None:
+        return points
+    center_x, center_y, radius, start, sweep = geometry
+    if sweep >= 2.0 * math.pi - 1e-9:
+        cardinals = range(4)
+    else:
+        cardinals = [index for index in range(4)
+                     if _directed_sweep(start, index * math.pi / 2.0,
+                                        clockwise) <= sweep + 1e-9]
+    for index in cardinals:
+        angle = index * math.pi / 2.0
+        points.append((center_x + radius * math.cos(angle),
+                       center_y + radius * math.sin(angle)))
+    return points
 
 
 def _file_contains_prime_tower(path, cancel_event=None):
@@ -200,11 +259,9 @@ def _read_prime_tower_footer(path, cancel_event=None):
     return {
         "enabled": _TOWER_ENABLED_BYTES_RE.search(metadata) is not None,
         "no_sparse": _NO_SPARSE_BYTES_RE.search(metadata) is not None,
+        "enabled_present":
+            _TOWER_ENABLED_PRESENT_BYTES_RE.search(metadata) is not None,
     }
-
-
-def _uses_no_sparse_prime_tower(path, cancel_event=None):
-    return _read_prime_tower_footer(path, cancel_event)["no_sparse"]
 
 
 def _read_start_print_temperatures(path):
@@ -227,36 +284,23 @@ def _read_start_print_temperatures(path):
 
 
 def parse_prime_tower(path, padding=0.5, cancel_event=None):
-    """Return a rectangular polygon around all prime-tower motion blocks.
+    """Return the complete first-layer positive-extrusion footprint.
 
-    The parser follows modal absolute/relative XY positioning and records the
-    actual path endpoints between ``;TYPE:Prime tower`` and
-    ``; WIPE_TOWER_END``.  It deliberately uses motion rather than slicer
-    metadata so rotation, resizing, sparse layers, and late-starting towers
-    are handled without slicer-specific geometry calculations.
+    Startup purge is excluded by starting at the first layer marker. Brims,
+    skirts, supports, models, and an enabled non-sparse prime tower are all
+    included. Parsing stops at the second layer marker, so time no longer
+    scales with the total print duration.
     """
     footer = _read_prime_tower_footer(path, cancel_event)
-    # Creality Print writes enable_prime_tower as an effective per-job value:
-    # it is zero for a single-color job even when the saved profile retains
-    # no-sparse=1.  Check this small footer first so an unsafe large file
-    # cannot time out while its first tower marker is hundreds of MB away.
+    # An explicitly disabled tower is safe even if the profile retains the
+    # no-sparse option. An enabled no-sparse tower is rejected before parsing.
     if footer["enabled"] and footer["no_sparse"]:
         raise _UnsupportedPrimeTower(_NO_SPARSE_BLOCK_REASON)
-    # An enabled footer already tells us to expect tower toolpaths, so avoid
-    # reading the file once for marker discovery and then again for geometry.
-    # Older slicers may omit or misreport this footer; retain the quick byte
-    # marker pass as a compatibility fallback for those files.
-    if not footer["enabled"]:
-        if not _file_contains_prime_tower(path, cancel_event):
-            return {
-                "detected": False,
-                "polygon": [],
-                "bounds": [],
-                "blocks": 0,
-            }
-    # The real toolpath marker remains the authority and fallback for files
-    # from slicer versions that omit or misreport enable_prime_tower.
-    if footer["no_sparse"]:
+    # If an older file says no-sparse but omits the effective tower setting,
+    # preserve the previous fail-closed safety behavior. This compatibility
+    # search is intentionally limited to the ambiguous legacy case.
+    if footer["no_sparse"] and not footer["enabled_present"] and \
+            _file_contains_prime_tower(path, cancel_event):
         raise _UnsupportedPrimeTower(_NO_SPARSE_BLOCK_REASON)
 
     absolute_xy = True
@@ -264,8 +308,10 @@ def parse_prime_tower(path, padding=0.5, cancel_event=None):
     x_pos = None
     y_pos = None
     e_pos = 0.0
-    in_tower = False
+    in_first_layer = False
+    layer_markers = 0
     tower_blocks = 0
+    extrusion_moves = 0
     x_min = x_max = y_min = y_max = None
 
     with open(path, "rb") as handle:
@@ -276,13 +322,16 @@ def parse_prime_tower(path, padding=0.5, cancel_event=None):
             if not line:
                 continue
             if line.startswith(b";"):
+                if _is_layer_change(line):
+                    layer_markers += 1
+                    if layer_markers == 1:
+                        in_first_layer = True
+                    else:
+                        break
+                    continue
                 type_value = _comment_type(line)
-                if type_value is not None:
-                    in_tower = type_value == b"prime tower"
-                    if in_tower:
-                        tower_blocks += 1
-                elif in_tower and _is_tower_end(line):
-                    in_tower = False
+                if in_first_layer and type_value == b"prime tower":
+                    tower_blocks += 1
                 continue
 
             comment_offset = line.find(b";")
@@ -310,8 +359,10 @@ def parse_prime_tower(path, padding=0.5, cancel_event=None):
             if command_letter != b"G" or command_number not in \
                     (0, 1, 2, 3, 92):
                 continue
-            x_value, y_value, e_value = _motion_parameters(
-                code, parameter_offset)
+            values = _motion_parameters(code, parameter_offset)
+            x_value = values.get(b"X")
+            y_value = values.get(b"Y")
+            e_value = values.get(b"E")
             if command_number == 92:
                 if x_value is not None:
                     x_pos = x_value
@@ -338,17 +389,23 @@ def parse_prime_tower(path, padding=0.5, cancel_event=None):
                 e_delta = e_value - e_pos if absolute_e else e_value
                 e_pos = e_value if absolute_e else e_pos + e_value
             x_pos, y_pos = new_x, new_y
-            if in_tower and e_delta > 0.000001:
-                if _finite_point((old_x, old_y)):
-                    x_min = old_x if x_min is None else min(x_min, old_x)
-                    x_max = old_x if x_max is None else max(x_max, old_x)
-                    y_min = old_y if y_min is None else min(y_min, old_y)
-                    y_max = old_y if y_max is None else max(y_max, old_y)
-                if _finite_point((x_pos, y_pos)):
-                    x_min = x_pos if x_min is None else min(x_min, x_pos)
-                    x_max = x_pos if x_max is None else max(x_max, x_pos)
-                    y_min = y_pos if y_min is None else min(y_min, y_pos)
-                    y_max = y_pos if y_max is None else max(y_max, y_pos)
+            if in_first_layer and e_delta > 0.000001 and \
+                    _finite_point((old_x, old_y)) and \
+                    _finite_point((x_pos, y_pos)):
+                extrusion_moves += 1
+                points = [(old_x, old_y), (x_pos, y_pos)]
+                if command_number in (2, 3):
+                    points = _arc_extrema(
+                        old_x, old_y, x_pos, y_pos, values,
+                        clockwise=command_number == 2)
+                for point_x, point_y in points:
+                    x_min = point_x if x_min is None else min(x_min, point_x)
+                    x_max = point_x if x_max is None else max(x_max, point_x)
+                    y_min = point_y if y_min is None else min(y_min, point_y)
+                    y_max = point_y if y_max is None else max(y_max, point_y)
+
+    if layer_markers == 0:
+        raise ValueError("first-layer marker was not found")
 
     if x_min is None:
         return {
@@ -356,6 +413,8 @@ def parse_prime_tower(path, padding=0.5, cancel_event=None):
             "polygon": [],
             "bounds": [],
             "blocks": tower_blocks,
+            "moves": 0,
+            "tower_enabled": footer["enabled"],
         }
 
     padding = max(0.0, float(padding))
@@ -372,6 +431,8 @@ def parse_prime_tower(path, padding=0.5, cancel_event=None):
         ],
         "bounds": bounds,
         "blocks": tower_blocks,
+        "moves": extrusion_moves,
+        "tower_enabled": footer["enabled"] or tower_blocks > 0,
     }
 
 
@@ -390,7 +451,10 @@ class PrimeTower:
         self._status = self._empty_status()
         self.gcode.register_command(
             "PRIME_TOWER_WAIT", self.cmd_PRIME_TOWER_WAIT,
-            desc="Wait cooperatively for prime-tower footprint discovery")
+            desc="Wait cooperatively for first-layer footprint discovery")
+        self.gcode.register_command(
+            "KAMP_REPORT_MESH_BOUNDS", self.cmd_KAMP_REPORT_MESH_BOUNDS,
+            desc="Report scan time and requested adaptive mesh bounds")
         register_event_handler = getattr(
             self.printer, "register_event_handler", None)
         if register_event_handler is not None:
@@ -398,7 +462,7 @@ class PrimeTower:
                 "klippy:connect", self._install_cartographer_mesh_hook)
 
     def _install_cartographer_mesh_hook(self, *args):
-        """Add the detected tower to Cartographer's adaptive object list.
+        """Add the first-layer footprint to Cartographer's object list.
 
         Cartographer 3D owns BED_MESH_CALIBRATE when it is installed, so its
         adapter computes adaptive bounds without calling Klipper's native
@@ -433,7 +497,7 @@ class PrimeTower:
                 if len(bounds) == 4:
                     logging.info(
                         "prime_tower: Cartographer adaptive mesh includes "
-                        "tower X[%.3f, %.3f] Y[%.3f, %.3f]",
+                        "first-layer footprint X[%.3f, %.3f] Y[%.3f, %.3f]",
                         bounds[0], bounds[2], bounds[1], bounds[3])
             return polygons
 
@@ -450,11 +514,14 @@ class PrimeTower:
             "polygon": [],
             "bounds": [],
             "blocks": 0,
+            "moves": 0,
+            "tower_enabled": False,
             "source": source,
             "error": error,
             "ready": ready,
             "blocked": blocked,
             "block_reason": block_reason,
+            "mesh_bounds_reporting": True,
         }
 
     def _selected_path(self, eventtime):
@@ -502,20 +569,37 @@ class PrimeTower:
         status["ready"] = True
         status["blocked"] = False
         status["block_reason"] = None
+        status["mesh_bounds_reporting"] = True
         self._status = status
         elapsed = max(0.0, eventtime - job.started_at)
+        status["scan_duration"] = elapsed
         file_size = job.cache_key[1]
+        # Publish on the reactor, once per completed job (not cached reads).
+        # This measures scan startup through result publication, including
+        # worker scheduling and callback/poll latency.
+        try:
+            tower_state = "prime tower enabled" if status.get(
+                "tower_enabled") else "prime tower disabled or absent"
+            footprint_state = "first-layer footprint detected" if status[
+                "detected"] else "no first-layer extrusion detected"
+            self.gcode.respond_info(
+                "KAMP first-layer scan complete in %.3f seconds; %s; %s."
+                % (elapsed, footprint_state, tower_state))
+        except Exception:
+            logging.exception("prime_tower: unable to report scan completion")
         if status["detected"]:
             logging.info(
-                "prime_tower: detected %d blocks at "
+                "prime_tower: detected %d first-layer extrusion moves "
+                "(%d prime-tower blocks) at "
                 "X[%.3f, %.3f] Y[%.3f, %.3f] in %s "
                 "(%s bytes, %.3fs)",
-                status["blocks"], status["bounds"][0],
+                status.get("moves", 0), status["blocks"], status["bounds"][0],
                 status["bounds"][2], status["bounds"][1],
                 status["bounds"][3], job.path, file_size, elapsed)
         else:
             logging.info(
-                "prime_tower: no tower detected in %s (%s bytes, %.3fs)",
+                "prime_tower: no first-layer extrusion detected in %s "
+                "(%s bytes, %.3fs)",
                 job.path, file_size, elapsed)
 
     def _scan_worker(self, job):
@@ -543,8 +627,8 @@ class PrimeTower:
 
     def _report_scan_status(self):
         message = (
-            "Prime-tower/KAMP safety: scanning selected G-code for "
-            "prime-tower geometry...")
+            "KAMP: scanning selected G-code first layer for complete print "
+            "footprint...")
         try:
             self.gcode.respond_info(message)
         except Exception:
@@ -670,6 +754,37 @@ class PrimeTower:
             status = self.get_status(eventtime)
         return status
 
+    def cmd_KAMP_REPORT_MESH_BOUNDS(self, gcmd):
+        self.cmd_PRIME_TOWER_WAIT(gcmd)
+        status = self._status
+        exclude = self.printer.lookup_object("exclude_object", None)
+        objects = exclude.get_status(self.reactor.monotonic()).get("objects", []) \
+            if exclude is not None else []
+        points = [point for obj in objects for point in obj.get("polygon", [])]
+        # Match the Cartographer adapter hook: the complete first-layer
+        # footprint is included even without exclude-object polygons.
+        if status.get("detected"):
+            points.extend(status.get("polygon", []))
+        margin = gcmd.get_float("ADAPTIVE_MARGIN", minval=0.0)
+        mesh_min = [float(v) for v in gcmd.get("MESH_MIN").split(",")]
+        mesh_max = [float(v) for v in gcmd.get("MESH_MAX").split(",")]
+        duration = status.get("scan_duration")
+        timing = "%.3f seconds" % duration if duration is not None else "unavailable"
+        if points:
+            low = [min(p[i] for p in points) for i in (0, 1)]
+            high = [max(p[i] for p in points) for i in (0, 1)]
+            combined = "X[%.3f, %.3f] Y[%.3f, %.3f]" % (
+                low[0], high[0], low[1], high[1])
+            mesh_min = [max(mesh_min[i], low[i] - margin) for i in (0, 1)]
+            mesh_max = [min(mesh_max[i], high[i] + margin) for i in (0, 1)]
+        else:
+            combined = "none; full configured mesh"
+        gcmd.respond_info(
+            "KAMP first-layer scan: file scan time %s; combined first-layer/"
+            "object bounds %s; margin %.3f mm; requested mesh X[%.3f, %.3f] "
+            "Y[%.3f, %.3f]." % (timing, combined, margin,
+                mesh_min[0], mesh_max[0], mesh_min[1], mesh_max[1]))
+
     def cmd_PRIME_TOWER_WAIT(self, gcmd):
         eventtime = self.reactor.monotonic()
         status = self.get_status(eventtime)
@@ -695,7 +810,7 @@ class PrimeTower:
         if status.get("error"):
             gcmd.respond_info(
                 "prime_tower: footprint scan failed; continuing without "
-                "tower geometry: %s" % (status["error"],))
+                "first-layer geometry: %s" % (status["error"],))
 
 
 def load_config(config):

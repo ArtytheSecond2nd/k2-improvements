@@ -51,13 +51,24 @@ die()  { echo "ERROR: $*" >&2; exit 1; }
 info() { echo "I: $*"; }
 warn() { echo "W: $*" >&2; }
 
+read_prompt() {
+    # A closed SSH terminal makes read fail immediately.  Never return that
+    # failure to a caller's menu loop: doing so creates an unbounded redraw and
+    # status-detection loop that can exhaust the printer's CPU and memory.
+    if IFS= read -r "$@"; then
+        return 0
+    fi
+    printf '\nI: installer input closed; exiting.\n' >&2
+    exit 0
+}
+
 confirm() {
     printf '%s [y/N]: ' "$1"
-    read -r ans
+    read_prompt ans
     case "$ans" in y|Y|yes|YES) return 0 ;; *) return 1 ;; esac
 }
 
-press_enter() { printf '\nPress Enter to continue...'; read -r _; }
+press_enter() { printf '\nPress Enter to continue...'; read_prompt _; }
 
 require_root() {
     [ "$(id -u)" = "0" ] || die "must run as root"

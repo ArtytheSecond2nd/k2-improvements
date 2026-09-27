@@ -31,7 +31,7 @@ Use **Optional extras -> KAMP adaptive purge**. The installer adds:
 - a validated K2-compatible regular-file copy of upstream `Line_Purge.cfg`
   (intentionally not a symlink);
 - K2-specific settings;
-- automatic prime-tower footprint detection;
+- automatic complete first-layer footprint detection;
 - `[exclude_object]` when it is not already configured; and
 - optional firmware retraction when selected.
 
@@ -60,17 +60,15 @@ upstream macro:
    print in that order. It warns and skips the adaptive purge if object
    geometry is missing, settings are invalid, axes are not homed, or no safe
    corridor exists.
-4. When Creality Print includes a prime tower, its actual extrusion footprint
-   is added to the occupied print boundary before the purge location is
-   selected. This keeps KAMP from choosing a line through the tower. A tower
-   alone does not substitute for missing object geometry; the normal
-   missing-geometry skip or stock-purge fallback still applies.
+4. Actual first-layer extrusion is added to the occupied boundary before the
+   purge location is selected. This covers brims, skirts, supports, models,
+   and prime towers, even without exclude-object geometry.
 
 Creality Print's **Prime tower -> No sparse layers (beta)** option is not
 supported on the K2 Plus. It can delay the tower until a color change, then
 command the bed back to first-layer height while a tall model is already on
-it, potentially driving the model into the toolhead or X rail. When an actual
-prime-tower toolpath and that setting are both present, the printer-side
+it, potentially driving the model into the toolhead or X rail. When an enabled
+prime tower and that setting are both present, the printer-side
 `START_PRINT` preflight rejects the file before printer preparation with
 instructions to disable the option and reslice. Merely retaining the setting
 in a profile does not block a file that contains no prime tower. KAMP also
@@ -83,11 +81,9 @@ rejection turns the heaters off and retains Klipper's failed-print state so
 Creality Print and configured notifications clearly report the failure.
 
 The scan runs in a background worker and `START_PRINT` waits cooperatively for
-it. Its timeout scales with file size, and selecting a different file cancels
-obsolete work. After a cancellation, Creality's virtual-SD clear and reselection
-causes the resent job to be scanned again. Large files can add a visible
-preflight delay; `klippy.log` records the detected block count, bounds, file
-size, and elapsed time.
+it. It stops at the second layer marker, and selecting a different file cancels
+obsolete work. The console reports elapsed time and the final requested mesh;
+`klippy.log` records move count, bounds, file size, and elapsed time.
 See the shared [prime-tower scanner guide](../../../features/prime_tower/README.md)
 for its failure and timeout behavior.
 

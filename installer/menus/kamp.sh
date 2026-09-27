@@ -14,7 +14,7 @@ menu_kamp() {
         printf '  3. Edit kamp_settings.cfg (purge_height / purge_margin / etc.)\n'
         printf '  b. Back\n\n'
         printf 'Choose: '
-        read -r c
+        read_prompt c
         case "$c" in
             1) kamp_show_readme ;;
             2) kamp_install ;;

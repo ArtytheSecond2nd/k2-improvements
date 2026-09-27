@@ -10,13 +10,13 @@ from pathlib import Path
 
 MARKER = "k2-improvements: balance LINE_PURGE retraction before slicer travel"
 BOUNDARY_MARKER = "k2-improvements: constrain the complete LINE_PURGE motion path"
-WAIT_MARKER = "k2-improvements: wait cooperatively for prime-tower geometry"
+WAIT_MARKER = "k2-improvements: wait cooperatively for first-layer geometry"
 
 
 WAIT_WRAPPER = r'''[gcode_macro LINE_PURGE]
-description: K2-safe KAMP purge with prime-tower synchronization
+description: K2-safe KAMP purge with first-layer synchronization
 gcode:
-    # k2-improvements: wait cooperatively for prime-tower geometry
+    # k2-improvements: wait cooperatively for first-layer geometry
     PRIME_TOWER_WAIT
     _KAMP_LINE_PURGE {rawparams}
 
@@ -28,8 +28,8 @@ BOUNDARY_CALCULATIONS = r'''    # k2-improvements: constrain the complete LINE_P
     {% set boundary_inset = 0.5 | float %}
     {% set path_length = purge_amount + 10.0 %}
     {% set object_points = printer.exclude_object.objects | map(attribute='polygon') | sum(start=[]) %}
-    {% set tower_points = printer.prime_tower.polygon if object_points | length > 0 and printer.prime_tower is defined and printer.prime_tower.detected else [] %}
-    {% set all_points = object_points + tower_points %}
+    {% set footprint_points = printer.prime_tower.polygon if printer.prime_tower is defined and printer.prime_tower.detected else [] %}
+    {% set all_points = object_points + footprint_points %}
     {% set stock_purge_fallback = printer["gcode_macro _KAMP_Settings"].stock_purge_fallback | int %}
     {% set object_x_min = (all_points | map(attribute=0) | min | default(0)) | float %}
     {% set object_x_max = (all_points | map(attribute=0) | max | default(0)) | float %}
@@ -271,7 +271,7 @@ def add_balancing_unretracts(text):
 
 
 def add_prime_tower_wait_wrapper(text):
-    """Defer rendering the purge calculation until tower scanning finishes.
+    """Defer rendering the purge calculation until first-layer scan finishes.
 
     Klipper renders an entire gcode_macro before executing its first command.
     A wrapper is therefore required: PRIME_TOWER_WAIT runs first, and the

@@ -45,22 +45,13 @@ for DIR in "$UDISK_ROOT"/* "$UDISK_ROOT"/.[!.]* "$UDISK_ROOT"/..?*; do
         "$UDISK_ROOT/root"|"$UDISK_ROOT/bin")
             echo "KEEP:   $DIR"
             ;;
-        "$UDISK_ROOT/creality")
-            # Creality services continuously write files below userdata/log.
-            # Removing this live tree races those writers and can fail with
-            # "Directory not empty". It is stock-owned data, so hand it to
-            # Creality's own wipe.sock reset instead of pre-deleting it.
-            if [ "$MODE" = "--dry-run" ]; then
-                echo "DEFER:  $DIR (active stock data; removed by Creality factory reset)"
-            else
-                echo "Deferring: $DIR (active stock data; Creality factory reset owns this path)"
-            fi
-            ;;
         "$UDISK_ROOT"/*)
             if [ "$MODE" = "--dry-run" ]; then
                 echo "REMOVE: $DIR"
             else
                 echo "Removing: $DIR"
+                # Include creality: active logging may recreate files during
+                # removal. Warn on failure, but still request the stock reset.
                 if ! remove_path "$DIR"; then
                     record_cleanup_failure "$DIR"
                     continue
@@ -114,7 +105,7 @@ if [ "$CLEANUP_FAILURES" -gt 0 ]; then
     echo "============================================================" >&2
     echo "$CLEANUP_FAILURES path(s) could not be completely removed." >&2
     echo "Continuing with the confirmed Creality factory reset." >&2
-    echo "Some third-party files may remain afterward." >&2
+    echo "Some files may remain, including active Creality logs." >&2
     echo "============================================================" >&2
 fi
 
