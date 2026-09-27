@@ -21,4 +21,13 @@ ln -sf ${SCRIPT_DIR}/bin/systemctl /mnt/UDISK/bin/
 # update the path
 echo 'export PATH=/mnt/UDISK/bin:$PATH' > /etc/profile.d/better-init.sh
 
-sh "${SCRIPT_DIR}/../../scripts/klippy_code_restart.sh"
+# Moonraker builds its recurring provider command from the first successful
+# service discovery. Reload it after replacing supervisorctl so an older empty
+# or stale command cannot survive an Improved Init refresh.
+if [ -x /etc/init.d/moonraker ]; then
+    /etc/init.d/moonraker restart
+fi
+
+if [ "${K2_DEFER_FIRMWARE_RESTART:-0}" != 1 ]; then
+    sh "${SCRIPT_DIR}/../../scripts/klippy_code_restart.sh"
+fi

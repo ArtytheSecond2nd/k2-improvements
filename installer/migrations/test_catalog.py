@@ -25,6 +25,7 @@ KNOWN_COMPONENTS = {
     "material-z-offsets",
     "plate-aware-mesh",
     "memory-diagnostics",
+    "better-init",
 }
 
 EXPECTED_DETECTORS = {
@@ -42,6 +43,7 @@ EXPECTED_DETECTORS = {
     "material-z-offsets": "is_material_z_offsets",
     "plate-aware-mesh": "is_plate_aware_mesh",
     "memory-diagnostics": "is_memory_diagnostics",
+    "better-init": "is_better_init",
 }
 
 
@@ -64,6 +66,16 @@ def recommended(installed, completed=frozenset()):
 
 
 class MigrationCatalogTests(unittest.TestCase):
+    def test_improved_init_polling_fix_is_offered_exactly_once(self):
+        update_id = "better-init-provider-polling-v1"
+        catalog_ids = {entry[0] for entry in entries()}
+        self.assertIn(update_id, catalog_ids)
+        previously_completed = catalog_ids - {update_id}
+        self.assertEqual(
+            recommended({"better-init"}, previously_completed), {"better-init"}
+        )
+        self.assertEqual(recommended({"better-init"}, catalog_ids), set())
+
     def test_first_layer_footprint_upgrade_is_offered_exactly_once(self):
         ids = {entry[0] for entry in entries()}
         updates = {"kamp-first-layer-footprint-carto-v1",
