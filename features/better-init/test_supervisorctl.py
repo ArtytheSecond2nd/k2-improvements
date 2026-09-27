@@ -119,6 +119,12 @@ class SupervisorctlWrapperTests(unittest.TestCase):
     def test_installer_reloads_moonraker_and_honors_deferred_restart(self):
         installer = (WRAPPER.parent.parent / "install.sh").read_text(encoding="utf-8")
         self.assertIn("/etc/init.d/moonraker restart", installer)
+        restart_position = installer.index("/etc/init.d/moonraker restart")
+        wait_position = installer.index("nc -z 127.0.0.1 7125")
+        defer_position = installer.index("K2_DEFER_FIRMWARE_RESTART:-0")
+        self.assertLess(restart_position, wait_position)
+        self.assertLess(wait_position, defer_position)
+        self.assertIn('[ "$new_moonraker_pid" != "$old_moonraker_pid" ]', installer)
         self.assertIn("K2_DEFER_FIRMWARE_RESTART:-0", installer)
 
 
