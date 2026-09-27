@@ -71,6 +71,7 @@ class MigrationCatalogTests(unittest.TestCase):
     def test_start_print_fast_stop_is_offered_exactly_once(self):
         update_ids = {
             "start-print-fast-stop-1155-v1",
+            "start-print-fast-stop-m191-handoff-v1",
             "start-print-fast-stop-waits-v1",
         }
         catalog_ids = {entry[0] for entry in entries()}

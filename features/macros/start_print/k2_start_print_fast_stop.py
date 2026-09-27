@@ -30,14 +30,25 @@ class K2StartPrintFastStop:
             )
             return
 
-        macro = self.printer.lookup_object("gcode_macro START_PRINT", None)
-        if macro is None or not hasattr(macro, "template"):
+        start_print = self.printer.lookup_object("gcode_macro START_PRINT", None)
+        if start_print is None or not hasattr(start_print, "template"):
             raise self.printer.config_error(
                 "START_PRINT Fast Stop requires the managed START_PRINT macro"
             )
-        template = macro.template
+        self._make_template_cancelable(start_print.template)
+
+        # M191 is a nested macro within START_PRINT.  Give its command loop the
+        # same boundary checks so a canceled chamber wait does not execute its
+        # normal successful-wait restoration before END_PRINT takes control.
+        m191 = self.printer.lookup_object("gcode_macro M191", None)
+        if m191 is not None and hasattr(m191, "template"):
+            self._make_template_cancelable(m191.template)
+
+        self.active = True
+        logging.info("START_PRINT Fast Stop enabled")
+
+    def _make_template_cancelable(self, template):
         if getattr(template, "k2_fast_stop_active", False):
-            self.active = True
             return
 
         def run_cancelable_start_print(context=None):
@@ -48,8 +59,6 @@ class K2StartPrintFastStop:
 
         template.run_gcode_from_command = run_cancelable_start_print
         template.k2_fast_stop_active = True
-        self.active = True
-        logging.info("START_PRINT Fast Stop enabled")
 
     def get_status(self, eventtime):
         return {"active": self.active}
