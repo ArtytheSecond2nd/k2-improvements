@@ -19,3 +19,13 @@ output is written to `/tmp/k2-save-config-restart.log`.
 Installer workflows use the same rule when restarting the Klippy host to load
 new Python modules: motor-ready, startup-fault, and readiness-timeout outcomes
 all continue to one firmware restart, followed by final readiness validation.
+
+Creality's internal `CXSAVE_CONFIG` path is also kept synchronized with
+Klipper's runtime status. An automatic save that produces identical file
+content is treated as a no-op, so a firmware restart does not leave Fluidd's
+Save Config button active or create another redundant backup. Successful
+automatic writes clear their completed pending state without restarting.
+
+Only the five newest primary `printer-YYYYMMDD_HHMMSS.cfg` backups are
+retained. Backups with other names and backups belonging to included config
+files are not removed.

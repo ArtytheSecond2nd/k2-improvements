@@ -4,6 +4,9 @@
 
 migration_catalog() {
     cat <<'EOF'
+start-print-managed-backups-v1|cartographer-plate-workflow|is_carto_plate_workflow|Stop retaining redundant backups of installer-managed START_PRINT wrappers
+material-z-managed-backups-v1|material-z-offsets|is_material_z_offsets|Stop retaining redundant backups of installer-managed START_PRINT files
+save-config-cxsave-retention-v1|save-config-restart|is_save_config_restart|Clear completed automatic saves, skip unchanged writes, and retain only five printer config backups
 better-init-provider-polling-v1|better-init|is_better_init|Refresh Improved Init service discovery to prevent empty Moonraker polling loops and reduce recurring status overhead
 start-print-fast-stop-m191-handoff-v1|start-print-fast-stop|is_start_print_fast_stop|Hand canceled M191 waits directly to END_PRINT without a redundant bed restoration move
 start-print-fast-stop-waits-v1|start-print-fast-stop|is_start_print_fast_stop|Allow Creality Fast Stop to end an active M191 chamber wait

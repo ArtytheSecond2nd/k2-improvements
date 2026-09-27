@@ -58,7 +58,12 @@ selection. See the repository [validation report](../../../VALIDATION.md).
 
 ## Safety and updates
 
-- The installer backs up the active `custom/start_print.cfg`.
+- The installer backs up an operator-authored `custom/start_print.cfg` before
+  replacement. Symlinks, tracked source copies, and complete managed wrappers
+  are reproducible and are not backed up repeatedly.
+- Refresh removes only old wrapper backups that are byte-for-byte identical to
+  the current tracked source or active managed copy; uncertain or customized
+  backups are preserved.
 - It replaces the macro symlink with a managed custom copy built from the
   current tracked source, then inserts the wrapper into that copy.
 - The tracked repository source is never modified, so installing the workflow

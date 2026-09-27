@@ -68,6 +68,22 @@ def recommended(installed, completed=frozenset()):
 
 
 class MigrationCatalogTests(unittest.TestCase):
+    def test_save_and_managed_backup_fixes_are_offered_exactly_once(self):
+        expected = {
+            "save-config-cxsave-retention-v1": "save-config-restart",
+            "start-print-managed-backups-v1": "cartographer-plate-workflow",
+            "material-z-managed-backups-v1": "material-z-offsets",
+        }
+        catalog_ids = {entry[0] for entry in entries()}
+        self.assertTrue(set(expected) <= catalog_ids)
+        for update_id, component in expected.items():
+            with self.subTest(update_id=update_id):
+                previously_completed = catalog_ids - {update_id}
+                self.assertEqual(
+                    recommended({component}, previously_completed), {component}
+                )
+                self.assertEqual(recommended({component}, catalog_ids), set())
+
     def test_start_print_fast_stop_is_offered_exactly_once(self):
         update_ids = {
             "start-print-fast-stop-1155-v1",

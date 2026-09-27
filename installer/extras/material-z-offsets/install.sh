@@ -11,6 +11,7 @@ KLIPPER_EXTRAS="${KLIPPER_DIR:-${HOME}/klipper}/klippy/extras"
 PYTHON="${K2_PYTHON:-python3}"
 START_PRINT_SOURCE="$INSTALLER_BASE/features/macros/start_print/start_print.cfg"
 HAD_SURFACE_WRAPPER=0
+. "$INSTALLER_BASE/installer/lib/start_print_backups.sh"
 
 [ -f "$CUSTOM/overrides.cfg" ] || { echo "ERROR: install macros before Material Z Offsets"; exit 1; }
 [ -e "$CUSTOM/start_print.cfg" ] || { echo "ERROR: install macros before Material Z Offsets"; exit 1; }
@@ -27,11 +28,11 @@ sh "$INSTALLER_BASE/installer/extras/fluidd-ui-overlay/install.sh"
 # The editor's automatic material registration is invoked from START_PRINT.
 # Refresh this managed link so installing the optional editor cannot leave an
 # older START_PRINT in place with a working UI but no apply/register handoff.
-if [ -f "$CUSTOM/start_print.cfg" ] && [ ! -L "$CUSTOM/start_print.cfg" ]; then
-    START_PRINT_BACKUP="$CUSTOM/start_print.cfg.before-material-z-offsets.$(date +%Y%m%d-%H%M%S)"
-    cp -p "$CUSTOM/start_print.cfg" "$START_PRINT_BACKUP"
-    echo "I: preserved custom START_PRINT at $START_PRINT_BACKUP"
-fi
+cleanup_managed_start_print_backups \
+    "$CUSTOM/start_print.cfg" "$START_PRINT_SOURCE"
+backup_unmanaged_start_print \
+    "$CUSTOM/start_print.cfg" "$START_PRINT_SOURCE" \
+    "before-material-z-offsets.$(date +%Y%m%d-%H%M%S)"
 ln -sfn "$START_PRINT_SOURCE" "$CUSTOM/start_print.cfg"
 if [ "$HAD_SURFACE_WRAPPER" -eq 1 ]; then
     sh "$INSTALLER_BASE/installer/extras/surface-selection-wrapper/install.sh"

@@ -5,9 +5,11 @@
 set -eu
 
 SCRIPT_DIR="$(readlink -f "$(dirname "$0")")"
+INSTALLER_BASE="${INSTALLER_DIR:-$(readlink -f "$SCRIPT_DIR/../../..")}" # repository root
 CFG_DIR="${PRINTER_CFG_DIR:-/mnt/UDISK/printer_data/config}"
 TARGET="$CFG_DIR/custom/start_print.cfg"
 SOURCE="$SCRIPT_DIR/../../../features/macros/start_print/start_print.cfg"
+. "$INSTALLER_BASE/installer/lib/start_print_backups.sh"
 
 # The wrapper calls Cartographer commands and must not be installed on the
 # stock PR Touch path.
@@ -40,8 +42,9 @@ if grep -qE '^[[:space:]]*# === BEGIN surface-selection wrapper' "$SOURCE" &&
     exit 1
 fi
 
-BACKUP="${TARGET}.before-surface-wrapper-$(date +%s)"
-cp "$TARGET" "$BACKUP"
+cleanup_managed_start_print_backups "$TARGET" "$SOURCE"
+backup_unmanaged_start_print "$TARGET" "$SOURCE" \
+    "before-surface-wrapper-$(date +%s)"
 
 # Rebuild from the latest tracked source each time. Dropping any marked block
 # from the input keeps this safe if an older checkout already contains one.
@@ -66,6 +69,5 @@ dropping { next }
 mv "${TARGET}.new" "$TARGET"
 
 echo "I: managed surface-selection wrapper installed at $TARGET"
-echo "I: backup at $BACKUP"
 echo "I: tracked source left unchanged at $SOURCE"
 echo "I: active on next Klipper restart"
