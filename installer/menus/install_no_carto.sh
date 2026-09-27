@@ -82,7 +82,7 @@ menu_install_no_carto() {
         if HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 sh "$script"; then
             installed=$((installed+1))
             case "$name" in
-                screws_tilt_adjust|abort_homing|save-config-restart|virtual-sdcard-guard|macros)
+                better-init|screws_tilt_adjust|abort_homing|save-config-restart|virtual-sdcard-guard|macros)
                     printf '%s\n' "$name" >> "$migration_installed_file"
                     ;;
             esac

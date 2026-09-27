@@ -32,6 +32,11 @@ else
     python ${SCRIPT_DIR}/../../../scripts/ensure_included.py \
         ~/printer_data/config/custom/main.cfg k2_prtouch_safe_xy.cfg
 fi
+
+# Creality firmware 1.1.5.5 introduced a cancel-aware command loop, but macro
+# templates still bypass it. Enable the narrowly scoped START_PRINT bridge only
+# when that firmware API is available.
+sh "$SCRIPT_DIR/install_fast_stop.sh" --no-restart
 touch /tmp/k2-klippy-code-restart-required
 
 if [ "${1:-}" != "--no-restart" ]; then

@@ -1,5 +1,18 @@
 # START_PRINT
 
+## Fast Stop on firmware 1.1.5.5 and newer
+
+Creality firmware 1.1.5.5 added a cancel-aware top-level command loop, but
+Klipper macro templates still execute through the older non-cancelable path.
+The installer enables `k2_start_print_fast_stop` only when the printer reports
+firmware 1.1.5.5 or newer and the expected Creality cancellation API is present.
+
+The helper changes only the managed `START_PRINT` template. When Cancel is
+requested, the command currently executing is allowed to finish; the remaining
+START_PRINT commands are then skipped and Creality's normal cancel/end-print
+sequence continues. Other macros retain their stock behavior. Older or unknown
+firmware versions do not load the helper.
+
 Replaces the stock start macro with a temperature-aware workflow that:
 
 - heats the bed and optionally soaks the complete machine after its requested

@@ -16,3 +16,26 @@ detect_printer_fw() {
 
     [ -n "$v" ] && echo "$v" || echo "unknown"
 }
+
+# Return success when a dotted numeric firmware version is at least the
+# requested minimum. Unknown or malformed versions are never treated as new.
+printer_fw_at_least() {
+    awk -v current="$1" -v minimum="$2" 'BEGIN {
+        current_count = split(current, current_parts, ".")
+        minimum_count = split(minimum, minimum_parts, ".")
+        count = current_count > minimum_count ? current_count : minimum_count
+        for (i = 1; i <= count; i++) {
+            current_value = i <= current_count ? current_parts[i] : 0
+            minimum_value = i <= minimum_count ? minimum_parts[i] : 0
+            if (current_value !~ /^[0-9]+$/ || minimum_value !~ /^[0-9]+$/)
+                exit 1
+            current_value += 0
+            minimum_value += 0
+            if (current_value > minimum_value)
+                exit 0
+            if (current_value < minimum_value)
+                exit 1
+        }
+        exit 0
+    }'
+}

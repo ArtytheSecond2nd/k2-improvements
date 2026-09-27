@@ -26,6 +26,7 @@ migration_component_label() {
         plate-aware-mesh) echo 'Plate-aware saved meshes' ;;
         nozzle-camera) echo 'Stock nozzle camera stream' ;;
         better-init) echo 'Improved Init service management' ;;
+        start-print-fast-stop) echo 'START_PRINT Fast Stop (firmware 1.1.5.5+)' ;;
         *) echo "$1" ;;
     esac
 }
@@ -48,11 +49,17 @@ migration_component_installed() {
         plate-aware-mesh) is_plate_aware_mesh ;;
         nozzle-camera) is_nozzle_camera ;;
         better-init) is_better_init ;;
+        start-print-fast-stop) is_start_print_fast_stop ;;
         *) return 1 ;;
     esac
 }
 
 migration_component_applicable() {
+    # A pre-update snapshot must never override the firmware safety gate.
+    if [ "$1" = start-print-fast-stop ]; then
+        is_start_print_fast_stop_eligible
+        return
+    fi
     migration_component_installed "$1" 2>/dev/null && return 0
     migration_component_present "$1" 2>/dev/null && return 0
     [ -f "$MIGRATION_INSTALLED_SNAPSHOT" ] &&
@@ -120,6 +127,9 @@ migration_component_present() {
             [ -e /etc/profile.d/better-init.sh ] ||
                 [ -e /mnt/UDISK/bin/supervisorctl ]
             ;;
+        start-print-fast-stop)
+            is_start_print_fast_stop_eligible
+            ;;
         *) return 1 ;;
     esac
 }
@@ -131,7 +141,7 @@ migration_capture_installed_components() {
     : > "$temporary"
     for component in cartographer save-config-restart virtual-sdcard-guard abort_homing \
         screws_tilt_adjust macros r3men-bed kamp-adaptive-purge \
-        axis_twist_compensation cartographer-plate-workflow global-touch-offsets material-z-offsets plate-aware-mesh nozzle-camera better-init; do
+        axis_twist_compensation cartographer-plate-workflow global-touch-offsets material-z-offsets plate-aware-mesh nozzle-camera better-init start-print-fast-stop; do
         if migration_component_installed "$component" 2>/dev/null ||
            migration_component_present "$component" 2>/dev/null; then
             printf '%s\n' "$component" >> "$temporary"
@@ -159,7 +169,7 @@ migration_pending_components() {
     entries=$(migration_pending_entries)
     for component in cartographer save-config-restart virtual-sdcard-guard abort_homing \
         screws_tilt_adjust macros r3men-bed kamp-adaptive-purge \
-        axis_twist_compensation cartographer-plate-workflow global-touch-offsets material-z-offsets plate-aware-mesh nozzle-camera better-init; do
+        axis_twist_compensation cartographer-plate-workflow global-touch-offsets material-z-offsets plate-aware-mesh nozzle-camera better-init start-print-fast-stop; do
         if printf '%s\n' "$entries" | grep -q "^[^|]*|$component|"; then
             printf '%s\n' "$component"
         fi
@@ -210,6 +220,12 @@ migration_mark_component_current() {
             migration_mark_component_current "$dependency" || dependency_failed=1
         done
         [ "$dependency_failed" -eq 0 ] || return 1
+    fi
+    # The macros installer also installs the firmware-gated START_PRINT bridge.
+    # A fresh macros installation should not immediately offer that migration.
+    if [ "$component" = macros ] && \
+       migration_component_installed start-print-fast-stop 2>/dev/null; then
+        migration_mark_component_current start-print-fast-stop || return 1
     fi
 }
 
@@ -379,6 +395,10 @@ migration_repair_component() {
             HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
                 sh "$INSTALLER_DIR/features/better-init/install.sh"
             ;;
+        start-print-fast-stop)
+            HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
+                sh "$INSTALLER_DIR/features/macros/start_print/install_fast_stop.sh" --no-restart
+            ;;
         *)
             warn "no repair action is registered for $component"
             return 1
@@ -388,7 +408,7 @@ migration_repair_component() {
 
 migration_component_restart_kind() {
     case "$1" in
-        cartographer|macros|save-config-restart|virtual-sdcard-guard|memory-diagnostics|abort_homing|screws_tilt_adjust|kamp-adaptive-purge|axis_twist_compensation|global-touch-offsets|material-z-offsets)
+        cartographer|macros|save-config-restart|virtual-sdcard-guard|memory-diagnostics|abort_homing|screws_tilt_adjust|kamp-adaptive-purge|axis_twist_compensation|global-touch-offsets|material-z-offsets|start-print-fast-stop)
             echo code
             ;;
         *)

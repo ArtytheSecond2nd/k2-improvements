@@ -9,6 +9,30 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class InstallerFailureSafetyTests(unittest.TestCase):
+    def test_fresh_setup_installs_improved_init_before_mainline_moonraker(self):
+        for relative_path, order_variable in (
+            ("installer/menus/install_all.sh", "_INSTALL_ALL_ORDER"),
+            ("installer/menus/install_no_carto.sh", "_INSTALL_NO_CARTO_ORDER"),
+        ):
+            with self.subTest(script=relative_path):
+                text = (ROOT / relative_path).read_text(encoding="utf-8")
+                order_start = text.index(f"{order_variable}='")
+                order_end = text.index("'\n", order_start)
+                order = text[order_start:order_end]
+                self.assertLess(order.index("better-init|"), order.index("moonraker|"))
+
+    def test_fresh_setup_marks_improved_init_migrations_current(self):
+        for relative_path in (
+            "installer/menus/install_all.sh",
+            "installer/menus/install_no_carto.sh",
+        ):
+            with self.subTest(script=relative_path):
+                text = (ROOT / relative_path).read_text(encoding="utf-8")
+                self.assertIn(
+                    "better-init|screws_tilt_adjust|",
+                    text,
+                )
+
     def test_better_root_copies_are_rerunnable_and_noninteractive_safe(self):
         scripts = (
             ROOT / "features/better-root/install.sh",

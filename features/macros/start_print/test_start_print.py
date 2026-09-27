@@ -7,6 +7,8 @@ import unittest
 
 CONFIG = pathlib.Path(__file__).with_name("start_print.cfg")
 MACROS_INSTALLER = CONFIG.parent.parent / "install.sh"
+START_PRINT_INSTALLER = CONFIG.with_name("install.sh")
+FAST_STOP_INSTALLER = CONFIG.with_name("install_fast_stop.sh")
 
 
 class StartPrintConfigTests(unittest.TestCase):
@@ -198,6 +200,16 @@ class StartPrintConfigTests(unittest.TestCase):
         restore = installer.index("surface-selection-wrapper/install.sh")
         self.assertLess(capture, refresh)
         self.assertLess(refresh, restore)
+
+    def test_fast_stop_install_is_firmware_gated_and_api_checked(self):
+        parent = START_PRINT_INSTALLER.read_text(encoding="utf-8")
+        installer = FAST_STOP_INSTALLER.read_text(encoding="utf-8")
+        self.assertIn('sh "$SCRIPT_DIR/install_fast_stop.sh" --no-restart', parent)
+        self.assertIn("MINIMUM_FW=1.1.5.5", installer)
+        self.assertIn('printer_fw_at_least "$firmware" "$MINIMUM_FW"', installer)
+        self.assertIn("def _process_commands.*check_cancel=", installer)
+        self.assertIn("cancel_pending", installer)
+        self.assertIn("k2_start_print_fast_stop.cfg True", installer)
 
 
 if __name__ == "__main__":
