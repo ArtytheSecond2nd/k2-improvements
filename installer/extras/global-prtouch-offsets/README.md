@@ -1,6 +1,6 @@
 # Global No-Carto Z Offsets
 
-Optional, hardware-test-stage editor for the native PR Touch path. Use
+Optional global Z-offset editor for the native PR Touch path. Use
 **Optional extras -> Global No-Carto Z Offsets**, then power-cycle while idle
 and wait for full startup. Installation also enables the tested transient-only
 touchscreen compatibility; neither installation nor opening the editor moves
@@ -79,9 +79,9 @@ refused. A changed native baseline or a removed plate workflow also blocks
 that recovery rather than guessing. This
 additional power-loss path has unit tests but still needs physical validation.
 
-## Initial hardware test
+## Fresh-install verification and calibration
 
-Keep the PR Touch tracer enabled. Before printing, check the selected global
+No temporary tracer is required. Before printing, check the selected global
 value and native baseline. With a fresh zero native baseline and the initial
 DEFAULT of -0.080, the baseline-relative delta must be -0.080, not zero.
 Existing saved tables retain their own DEFAULT. Check:
@@ -103,8 +103,14 @@ value through the editor if desired.
 
 After installing plate-aware meshes, test two distinct plate values, then a
 print without SURFACE to verify DEFAULT, and an unconfigured/custom surface to
-verify inheritance. Test both slicer template families. No claim of hardware
-validation is made until those checks pass; keep initial changes tiny.
+verify inheritance. Check the slicer template family you intend to use; keep
+initial changes tiny. Native firmware 1.1.5.5 hardware testing confirmed
+repeatable first layers on high-temp, textured PEI, and epoxy plates with their
+individual global values while retaining the material offsets. Those tuned
+values are printer-specific, not installation defaults. Calibrate the global
+values using the same material and process across plates, then check the other
+materials using their material offsets. Power-loss recovery still needs its
+separate physical validation described above.
 
 Manual install/remove (idle only):
 
