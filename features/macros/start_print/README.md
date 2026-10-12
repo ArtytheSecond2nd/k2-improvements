@@ -22,9 +22,30 @@ and `_CREATE_MESH` cancel-aware. Machine and mesh heat-soak dwells in those
 managed templates wait on the host with cancellation checks at most one second
 apart, instead of queueing a long MCU dwell that delays end-print cleanup.
 Cancel during their nested M191 wait skips the remaining soak, tilt, mesh, and
-print-start commands. Native probing/cleaning commands, offset cleanup, and
-Cartographer's existing execution path are unchanged. A move already executing
-may still finish before cancellation takes control.
+print-start commands. Offset cleanup and Cartographer's existing execution
+path are unchanged. A move already executing may still finish before
+cancellation takes control.
+
+Native PR Touch `BED_MESH_CALIBRATE` also checks Cancel immediately before and
+after each complete `probe.run_probe` call. It does not interrupt a pressure
+sample or homing move. Cancellation unwinds the compiled mesh loop without
+finalizing/saving partial results, ends the multi-probe session, releases native
+disturbance control, and restores the motion limits temporarily changed by the
+mesh routine. Creality then runs its existing cancel/end-print cleanup. The
+sample hook is inactive outside mesh calibration: homing, tilt adjustment,
+nozzle cleaning, and ordinary probing retain their original behavior. The guard
+is installed only for the native PR Touch probe on supported Fast Stop firmware;
+unsupported interfaces leave the mesh handler unchanged and log a warning.
+If cancellation cleanup itself fails, the helper requests shutdown rather than
+silently continuing with unverified probe state. The helper status reports
+`stock_mesh_cancel: true` when this guard is installed.
+
+Hardware validation on a native PR Touch printer running firmware 1.1.5.5
+confirmed cancellation during mesh probing, mesh heat soak, machine heat
+soak, M191 bed lowering, and active M191 chamber circulation. During meshing,
+the current probe finished and no next point started; end-print cleanup took
+over without saving a partial mesh. The temporary tracer and standalone
+compiled-driver diagnostic fixture are not part of this integration branch.
 
 Replaces the stock start macro with a temperature-aware workflow that:
 
