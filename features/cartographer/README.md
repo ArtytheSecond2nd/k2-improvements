@@ -98,6 +98,31 @@ changes; verify `origin` is either the supported upstream or Rcpilot33 fork;
 and preserve divergent local commits on a separate branch. The installer
 deliberately never deletes or resets those states automatically.
 
+## Stationary Scan probe positioning
+
+The K2 compatibility module `k2_cartographer_probe_wait` waits for queued
+positioning moves to finish before calling Cartographer's stationary Scan
+probe. This prevents its five-second usable-sample timeout from expiring while
+the bed is still rising from a lowered position for `Z_TILT_ADJUST` or
+`SCREWS_TILT_CALCULATE`. It also covers stationary `PROBE` and
+`PROBE_ACCURACY` calls.
+
+The original sample timeout and probe calculations remain in the plugin.
+The module does not change movement speed, screw-access bed lowering,
+continuous scan meshing, Touch probing, K2 endstop homing, calibration models,
+temperature compensation, or saved offsets. It modifies only this printer's
+Scan probe entry point, not the plugin checkout or shared sample collector.
+Unsupported plugin interfaces stop configuration rather than silently omitting
+the protection. Shutdown while waiting aborts before sampling resumes.
+
+Existing Cartographer installs receive this through migration
+`cartographer-stationary-probe-motion-wait-v1` and the protected Klippy restart.
+`klippy.log` records `K2 Cartographer stationary Scan probe motion wait installed`,
+and `k2_cartographer_probe_wait.installed` reports activation. No re-mesh or
+offset adjustment is required solely for this timing fix. Hardware validation
+should include screws tilt from a lowered bed, normal Z tilt, homing, Touch,
+and a continuous scan mesh.
+
 ## Hardware
 
 - [Cartographer V4 AIO Standard](https://cartographer3d.com/products/cartographer-v4-aio-standard), or

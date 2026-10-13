@@ -76,6 +76,17 @@ def recommended(installed, completed=frozenset()):
 
 
 class MigrationCatalogTests(unittest.TestCase):
+    def test_stationary_scan_motion_wait_is_offered_once_to_cartographer_only(self):
+        update_id = "cartographer-stationary-probe-motion-wait-v1"
+        ids = {entry[0] for entry in entries()}
+        self.assertIn(update_id, ids)
+        self.assertEqual(recommended({"cartographer"}, ids - {update_id}),
+                         {"cartographer"})
+        self.assertEqual(recommended({"cartographer"}, ids), set())
+        self.assertEqual(recommended(set(), ids - {update_id}), set())
+        self.assertEqual(recommended({"macros", "screws_tilt_adjust"},
+                                     ids - {update_id}), set())
+
     def test_native_final_z_fix_is_offered_once_to_installed_macros(self):
         update_id = "prtouch-final-z-after-tilt-v1"
         catalog_ids = {entry[0] for entry in entries()}
