@@ -15,10 +15,12 @@ import struct
 
 import argparse
 import hashlib
+import json
 import pathlib
 import re
 import subprocess
 import time
+import urllib.request
 from typing import Optional, Union
 
 # ============================================================================
@@ -526,20 +528,99 @@ def format_firmware_label(version: str) -> str:
     return label
 
 
+MANAGED_PLUGIN_DIR = pathlib.Path("/mnt/UDISK/root/cartographer3d-plugin")
+AUDITED_CONSTANTS_SHA256 = "5d413961b8daa0ae14ed2dbc78688d01c8e5f9421a0b44608c1cc5d1cc47bea1"
+
+
+def plugin_support_error() -> Optional[str]:
+    """Read the same managed checkout that the K2 Klipper shim imports."""
+    source = MANAGED_PLUGIN_DIR / "src/cartographer/mcu/constants.py"
+    try:
+        data = source.read_bytes().replace(b"\r\n", b"\n")
+    except OSError as error:
+        return f"Cannot read required plugin source: {source}\n{error}"
+    actual = hashlib.sha256(data).hexdigest()
+    if actual != AUDITED_CONSTANTS_SHA256:
+        return (f"Plugin source has not passed the V4 6.2 compatibility audit: {source}\n"
+                f"Expected SHA-256: {AUDITED_CONSTANTS_SHA256}\nActual SHA-256: {actual}")
+    return None
+
+
 def v4_620_plugin_supported() -> bool:
     """Fail closed unless the managed plugin has the audited 1.6 divisor code.
 
     Check source without importing printer modules or trusting the fork's
     legacy 1.5 version label. Future changes require a fresh compatibility audit.
     """
-    source = pathlib.Path.home() / "cartographer3d-plugin/src/cartographer/mcu/constants.py"
+    return plugin_support_error() is None
+
+
+def plugin_prepare_idle_error() -> Optional[str]:
+    """Do not change an existing plugin checkout during a print or pause."""
+    api = os.environ.get("MOONRAKER_URL", "http://127.0.0.1:7125").rstrip("/")
     try:
-        data = source.read_bytes().replace(b"\r\n", b"\n")
-    except OSError:
+        with urllib.request.urlopen(
+                api + "/printer/objects/query?print_stats&virtual_sdcard", timeout=3) as response:
+            status = json.load(response)["result"]["status"]
+        state = status["print_stats"]["state"]
+        active = status["virtual_sdcard"]["is_active"]
+        if state not in ("standby", "complete", "cancelled", "error") or active is not False:
+            return "Printer is printing, paused, or not idle; finish/cancel the job before preparing the plugin."
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        return f"Could not verify printer idle state through Moonraker: {error}"
+    return None
+
+
+def prepare_plugin_for_flash(args) -> bool:
+    """Prepare software only, before service stops or entering Katapult.
+
+    Explicit legacy/custom firmware paths do not require V4 6.2 support.
+    The interactive recommended-firmware flow checks/prepares it up front.
+    """
+    if args.firmware and pathlib.Path(args.firmware).name not in V4_620_CHECKSUMS:
+        return True
+    if v4_620_plugin_supported():
+        return True
+    console.print("[yellow]Firmware plugin prerequisite is not ready.[/yellow]")
+    console.print(plugin_support_error(), markup=False)
+    console.print("Preparing the plugin only downloads/fast-forwards its managed checkout. "
+                  "It does not enable Cartographer, change printer configuration, or restart services.")
+    try:
+        answer = Prompt.ask("Prepare/refresh the managed Cartographer plugin now?",
+                            choices=["y", "n"], default="n")
+    except (EOFError, KeyboardInterrupt):
         return False
-    return hashlib.sha256(data).hexdigest() == (
-        "5d413961b8daa0ae14ed2dbc78688d01c8e5f9421a0b44608c1cc5d1cc47bea1"
-    )
+    if answer != "y":
+        console.print("Preflight stopped; no firmware written or USB mode changed.")
+        return False
+    # A new checkout cannot replace code loaded from this managed path and
+    # may be prepared before Moonraker itself is installed. Refreshing an
+    # existing checkout requires a verified idle printer.
+    if MANAGED_PLUGIN_DIR.exists():
+        error = plugin_prepare_idle_error()
+        if error:
+            console.print(error, markup=False)
+            return False
+    installer = pathlib.Path(__file__).resolve().parents[1] / "install_plugin.sh"
+    if not installer.is_file():
+        console.print(f"Plugin preparation script missing: {installer}", markup=False)
+        return False
+    try:
+        result = subprocess.run(["sh", str(installer), str(MANAGED_PLUGIN_DIR)], check=False)
+    except OSError as error:
+        console.print(f"Plugin preparation could not run: {error}", markup=False)
+        return False
+    if result.returncode:
+        console.print("Plugin preparation failed. Preserve any local edits/divergent commits, "
+                      "check network access, and retry. No USB mode change or firmware write was requested.")
+        return False
+    error = plugin_support_error()
+    if error:
+        console.print(error, markup=False)
+        console.print("Prepared source still fails the compatibility audit; firmware flashing is blocked.")
+        return False
+    console.print("[green]Plugin prerequisite verified; continuing to USB/Katapult flashing.[/green]")
+    return True
 
 
 def prompt_firmware(mcu: str, proto_str: str, fw_version: Optional[str] = None) -> Optional[pathlib.Path]:
@@ -635,6 +716,7 @@ def prompt_firmware(mcu: str, proto_str: str, fw_version: Optional[str] = None) 
             if path.name in V4_620_CHECKSUMS and not v4_620_plugin_supported():
                 console.print("[red]V4 6.2 requires the audited sensor-frequency support. "
                               "Refresh the K2 Cartographer plugin before flashing.[/red]")
+                console.print(plugin_support_error(), markup=False)
                 return None
             expected = V3_610_CHECKSUMS.get(path.name) or V4_620_CHECKSUMS.get(path.name)
             if expected and hashlib.sha256(path.read_bytes()).hexdigest() != expected:
@@ -764,7 +846,18 @@ def wait_for_exit():
 def main():
     parser = argparse.ArgumentParser(description="Cartographer Flasher (Direct USB)")
     parser.add_argument("-f", "--firmware", help="Firmware file path")
+    parser.add_argument("--check-plugin", action="store_true",
+                        help="Check the managed V4 6.2 plugin prerequisite without USB access or changes")
     args = parser.parse_args()
+
+    # Keep prerequisite errors on the normal terminal, before USB manipulation
+    # or the alternate-screen UI can hide them from the installer transcript.
+    if args.check_plugin:
+        error = plugin_support_error()
+        console.print(error or "Audited V4 6.2 plugin prerequisite verified.", markup=False)
+        return 3 if error else 0
+    if not prepare_plugin_for_flash(args):
+        return 3
     
     # Enter alternate screen buffer (like nano/vim)
     print("\033[?1049h", end="", flush=True)
@@ -874,6 +967,10 @@ def _main_inner(args):
         if args.firmware:
             fw_path = pathlib.Path(args.firmware)
             console.print(f"[green]✓[/green] Using: [bold]{fw_path.name}[/bold]")
+            # Do not let -f bypass the compatibility check for bundled V4 6.2.
+            if fw_path.name in V4_620_CHECKSUMS and not v4_620_plugin_supported():
+                console.print(plugin_support_error(), markup=False)
+                fw_path = None
         else:
             fw_path = prompt_firmware(flasher.mcu_type, proto_str, fw_version)
         
@@ -888,7 +985,20 @@ def _main_inner(args):
             return 2
         
         if not fw_path:
-            return 1
+            # Selection/preflight refusal is not a failed firmware write. The
+            # device may already be in Katapult, so leave it cleanly before
+            # restarting services. Retain the explanation until acknowledged.
+            try:
+                flasher.finish()
+                console.print("No firmware written; device returned to normal mode.")
+            except Exception as error:
+                console.print(f"No firmware written; could not exit Katapult: {error}", markup=False)
+                console.print("Unplug/replug the probe or power-cycle before continuing. "
+                              "DFU is not automatically required for a preflight refusal.")
+                wait_for_exit()
+                return 4
+            wait_for_exit()
+            return 3
         
         flasher.firmware_path = fw_path
         

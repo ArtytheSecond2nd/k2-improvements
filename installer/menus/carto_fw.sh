@@ -207,8 +207,8 @@ carto_fw_launch() {
         printf '  lsusb | grep -i cartographer\n\n'
         printf 'If the probe does not reappear, unplug/replug the Cartographer USB or power-cycle the printer.\n\n'
         printf '%s\n' '--- Protected restart after Cartographer flash ---'
-        printf 'Reloading Klipper configuration and the newly flashed Cartographer firmware.\n\n'
-        if sh "$INSTALLER_DIR/scripts/firmware_restart.sh"; then
+        printf 'Reloading Klippy code, any prepared plugin, and the newly flashed Cartographer firmware.\n\n'
+        if sh "$INSTALLER_DIR/scripts/klippy_code_restart.sh"; then
             printf '\n%s\n' "$(c_green 'Protected firmware restart completed successfully.')"
             printf 'Reopen Cartographer tools to verify the new firmware version, then recalibrate.\n\n'
         else
@@ -217,6 +217,13 @@ carto_fw_launch() {
         fi
     elif [ "$flash_status" -eq 2 ]; then
         printf '\n%s\n\n' "$(c_yellow 'Firmware flashing cancelled; no protected restart was requested.')"
+    elif [ "$flash_status" -eq 3 ]; then
+        printf '\n%s\n' "$(c_yellow 'Firmware preflight/selection refused; no firmware was written.')"
+        printf 'Review the prerequisite or selection message above. No protected restart or DFU recovery is requested.\n\n'
+    elif [ "$flash_status" -eq 4 ]; then
+        warn 'No firmware was written, but the probe could not exit Katapult cleanly.'
+        printf 'Unplug/replug the probe or power-cycle before continuing.\n'
+        printf 'This was not a failed firmware write; no automatic DFU recovery or restart is requested.\n\n'
     else
         warn "flash.py exited non-zero"
         printf '\n'

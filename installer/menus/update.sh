@@ -318,6 +318,7 @@ migration_print_firmware_notice() {
     [ -n "$old" ] && [ -n "$new" ] && [ "$old" != "$new" ] || return 0
     changed=$(git -C "$INSTALLER_DIR" diff --name-only "$old" "$new" -- \
         features/cartographer/firmware/flash.py \
+        installer/menus/carto_fw.sh \
         features/cartographer/firmware/firmware/CartographerV3_6.1.0_USB_full_8kib_offset.bin \
         features/cartographer/firmware/firmware/CartographerV3_6.1.0_USB_lite_8kib_offset.bin \
         features/cartographer/firmware/firmware/CartographerV4_6.2.0_USB_full_8kib_offset.bin \
@@ -327,7 +328,7 @@ migration_print_firmware_notice() {
     printf '%s\n' 'Recommended Cartographer firmware: V4 6.2.0 and V3 6.1.0 Full / Lite.'
     printf '%s\n' 'V4 6.0.0 and V3 5.1.0 remain available as legacy rollback choices.'
     printf '%s\n' 'Available in Cartographer tools -> Normal USB / Katapult firmware flash.'
-    printf '%s\n' 'Requires the audited plugin support; the flasher checks before selection.'
+    printf '%s\n' 'Normal flashing checks/prepares the audited plugin before USB/Katapult entry without enabling Cartographer.'
     printf '%s\n' 'No automatic flash or printer restart is performed by this installer update.'
     printf '%s\n\n' 'After flashing: protected firmware restart, then Scan and Touch calibration.'
 }

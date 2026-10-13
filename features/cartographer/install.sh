@@ -119,6 +119,10 @@ rm -f ~/klipper/klippy/extras/k2_cartographer_scan_guard.pyc \
     ~/klipper/klippy/extras/__pycache__/k2_cartographer_scan_guard.*.pyc
 ln -sf ${SCRIPT_DIR}/k2_cartographer_scan_guard.py \
     ~/klipper/klippy/extras/k2_cartographer_scan_guard.py
+rm -f ~/klipper/klippy/extras/k2_cartographer_probe_wait.pyc \
+    ~/klipper/klippy/extras/__pycache__/k2_cartographer_probe_wait.*.pyc
+ln -sf ${SCRIPT_DIR}/k2_cartographer_probe_wait.py \
+    ~/klipper/klippy/extras/k2_cartographer_probe_wait.py
 rm -f ~/klipper/klippy/extras/k2_safe_move_z.pyc \
     ~/klipper/klippy/extras/__pycache__/k2_safe_move_z.*.pyc
 ln -sf ${SCRIPT_DIR}/patches/k2_safe_move_z.py \

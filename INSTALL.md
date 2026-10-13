@@ -143,7 +143,9 @@ Complete the stock Creality setup first. Then:
 4. Confirm whether the probe is Cartographer V3 or V4.
 5. Power on, run bootstrap, and open the installer.
 6. Review **Cartographer tools → Firmware flash** before installing the
-   Cartographer software path.
+   Cartographer software path. The normal flasher checks the required plugin
+   before entering Katapult and offers plugin-only preparation if needed. This
+   does not enable Cartographer or change the stock-probe configuration.
 
 Use only the bundled firmware matching the connected hardware. Selecting the
 wrong mount profile, omitting required spacers, or flashing firmware for the
