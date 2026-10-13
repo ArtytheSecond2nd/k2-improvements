@@ -76,6 +76,17 @@ def recommended(installed, completed=frozenset()):
 
 
 class MigrationCatalogTests(unittest.TestCase):
+    def test_native_final_z_fix_is_offered_once_to_installed_macros(self):
+        update_id = "prtouch-final-z-after-tilt-v1"
+        catalog_ids = {entry[0] for entry in entries()}
+        self.assertIn(update_id, catalog_ids)
+        self.assertEqual(recommended({"macros"}, catalog_ids - {update_id}),
+                         {"macros"})
+        self.assertEqual(recommended({"macros"}, catalog_ids), set())
+        self.assertEqual(recommended(set(), catalog_ids - {update_id}), set())
+        self.assertEqual(recommended({"cartographer", "plate-aware-mesh"},
+                                     catalog_ids - {update_id}), set())
+
     def test_stock_plate_picker_and_native_editor_slicer_updates_are_tracked_separately(self):
         updates = {"plate-aware-mesh-slicer-choice-v1": "plate-aware-mesh",
                    "global-prtouch-offsets-slicer-choice-v4": "global-prtouch-offsets"}

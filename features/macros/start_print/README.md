@@ -117,6 +117,34 @@ reference after nozzle cleaning: Touch Home or another Scan `G28 Z`. The Scan
 choice requires a calibrated Scan model and may need its own first-layer Z
 offset tuning. Existing `overrides.cfg` selections survive macro updates.
 
+## Native PR Touch final Z reference
+
+On no-Cartographer printers, `START_PRINT` waits for the nozzle to reach 140 C
+before the post-soak Z home and clears the automatically restored `default`
+mesh before tilt adjustment. After tilt, it cleans the nozzle, restores 140 C,
+re-homes Z at the centre, and clears `default` again before selecting the
+requested temperature/plate mesh and applying the global plate offset.
+This final re-home runs even when the requested mesh already exists.
+
+The missing-mesh routine uses the same clean, temperature wait, final home,
+and mesh-clear order after its own soak and tilt adjustment. Saved-mesh and
+new-mesh prints therefore no longer intentionally use different Z references.
+Cartographer's startup sequence and final Touch/Scan home are unchanged.
+
+After updating, recheck each plate's global Z offset with the same reference
+material and printing process. Existing offsets may have absorbed the old
+post-tilt reference shift; do not automatically subtract a fixed correction.
+Saved meshes and material offsets are retained. Validate a newly created mesh
+and a repeat print using that saved mesh before changing material offsets.
+The installer tracks this update as `prtouch-final-z-after-tilt-v1`.
+
+Local template-rendering regressions use Jinja2 (also a Klipper dependency):
+
+```sh
+python3 -m pip install Jinja2
+python3 -m unittest discover -s features/macros/start_print -p 'test*.py'
+```
+
 ## Slicer setup
 
 Pass nozzle, bed, chamber, and material values from the slicer:

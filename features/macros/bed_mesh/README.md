@@ -26,6 +26,13 @@ This skips only the additional delay before creating a missing saved mesh; all
 requested temperature waits, tilt adjustment, homing, cleaning, and probing
 still run.
 
+For native PR Touch, mesh creation clears any active mesh before tilt
+adjustment, then cleans the nozzle, waits for 140 C, re-homes Z, and clears the
+automatically restored `default` profile before calibration. `START_PRINT`
+uses the same final reference when reusing a saved profile. Recheck plate Z
+offsets after the `prtouch-final-z-after-tilt-v1` macro update; it does not
+delete saved meshes or change material offsets.
+
 ## Stock PR Touch prerequisite
 
 On a no-Cartographer / stock PR Touch installation, create and save a
