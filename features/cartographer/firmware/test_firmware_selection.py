@@ -19,9 +19,10 @@ class FirmwareSelectionTests(unittest.TestCase):
         nodes = [n for n in tree.body if
                  isinstance(n, ast.FunctionDef) and n.name in
                  ('prompt_firmware', 'scan_flash_for_version', '_print_unsupported_device',
-                  'v4_620_plugin_supported', 'format_firmware_label')
+                  'v4_620_plugin_supported', 'plugin_support_error', 'format_firmware_label')
                  or isinstance(n, ast.Assign) and any(
-                     isinstance(t, ast.Name) and t.id in ('V3_610_CHECKSUMS', 'V4_620_CHECKSUMS')
+                     isinstance(t, ast.Name) and t.id in ('V3_610_CHECKSUMS', 'V4_620_CHECKSUMS',
+                                                        'MANAGED_PLUGIN_DIR', 'AUDITED_CONSTANTS_SHA256')
                      for t in n.targets)]
         self.env = dict(pathlib=pathlib, Optional=Optional, hashlib=hashlib, re=re,
                         struct=struct, __file__=str(ROOT / 'flash.py'))

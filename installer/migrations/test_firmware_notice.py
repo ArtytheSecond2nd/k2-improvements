@@ -31,6 +31,13 @@ migration_print_firmware_notice old "$NEW"
         self.assertIn("No automatic flash or printer restart", result.stdout)
         self.assertIn("Scan and Touch calibration", result.stdout)
 
+    def test_plugin_preflight_update_is_reported_without_component_reinstall(self):
+        result = self.run_notice(changed="installer/menus/carto_fw.sh")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("checks/prepares the audited plugin before USB/Katapult entry", result.stdout)
+        self.assertIn("without enabling Cartographer", result.stdout)
+        self.assertIn("No automatic flash or printer restart", result.stdout)
+
     def test_unrelated_noop_and_missing_history_are_quiet(self):
         for options in ({"changed": ""}, {"new": "old"}, {"failed": "1"}):
             with self.subTest(options=options):

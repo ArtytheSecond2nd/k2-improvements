@@ -51,16 +51,43 @@ aborts. All DFU recovery images are unchanged.
 Upstream requires plugin 1.6.0 support. Our K2 integration at `8478ed2` already
 contains upstream release `6e11435`, including `CARTOGRAPHER_SENSOR_FREQ_DIVISOR`
 handling, despite its retained `1.5.0+k2.upstream...` version label.
-Before selecting 6.2, refresh the managed Cartographer plugin using the installer
-and let its protected host reload/restart finish.
+Before entering USB/Katapult mode, the normal flasher checks the managed plugin
+source. If it is missing or fails the audit, it offers to download/fast-forward
+only the plugin checkout using the safe plugin installer. This works before
+Cartographer setup is installed: it does not enable the probe, write printer
+configuration, install Klipper links, or restart services. A fresh checkout can
+be prepared before Moonraker is installed; refreshing an existing checkout
+requires an idle printer verified through Moonraker. Dirty, divergent, or unrecognized
+checkouts are preserved and refused; network or audit failures stop before USB
+mode changes. Already-audited checkouts need no download or refresh.
 
 The flasher checks the SHA-256 of the audited plugin's
-`~/cartographer3d-plugin/src/cartographer/mcu/constants.py` (normalizing CRLF to
+`/mnt/UDISK/root/cartographer3d-plugin/src/cartographer/mcu/constants.py`
+(the same path used by the Klipper shim, normalizing CRLF to
 LF): `5d413961b8daa0ae14ed2dbc78688d01c8e5f9421a0b44608c1cc5d1cc47bea1`.
 Missing or different code blocks 6.2 selection. This conservative check covers
 the required frequency conversion, not every aspect of plugin correctness.
 Other plugin locations or future source changes require a fresh audit; the
 version label alone is not accepted as proof of compatibility.
+
+Prerequisite errors print the source path and, for a hash mismatch, both hashes
+on the normal terminal so the message survives the flasher's alternate-screen
+UI. `flash.py --check-plugin` performs only this read-only check; it does not
+prepare software, query USB, stop services, or flash. Explicit legacy firmware
+file paths do not require the V4 6.2 prerequisite. V4 6.2 `--firmware` paths
+still undergo the compatibility check.
+
+A later selection refusal exits Katapult without writing firmware and keeps
+the explanation visible until acknowledged. The installer distinguishes that
+refusal from an actual write/communication failure: it does not suggest DFU or
+request a protected restart. If exiting Katapult fails, it advises unplugging
+and reconnecting the probe or power-cycling before continuing. DFU remains a
+separate recovery action. Successful flashing uses the protected Klippy host
+reload followed by firmware reset, so a prepared plugin cannot leave old Python
+modules resident in an existing Cartographer setup. It requires Scan and Touch
+recalibration. Installer update tracking reports
+these tools as a manual firmware-workflow update, not a component reinstall or
+an automatic firmware flash.
 
 The official USB application images below are pinned to firmware repository
 commit `e5c2b17dbe04ec1f747af5d81b2215949a0a9f8e`, under
