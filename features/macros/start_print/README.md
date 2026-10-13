@@ -17,6 +17,36 @@ the chamber target or performing the normal successful-wait bed restoration.
 Other macros retain their stock behavior. Older or unknown firmware versions
 do not load the helper.
 
+On no-Cartographer PR Touch printers, the helper also makes `MESH_IF_NEEDED`
+and `_CREATE_MESH` cancel-aware. Machine and mesh heat-soak dwells in those
+managed templates wait on the host with cancellation checks at most one second
+apart, instead of queueing a long MCU dwell that delays end-print cleanup.
+Cancel during their nested M191 wait skips the remaining soak, tilt, mesh, and
+print-start commands. Offset cleanup and Cartographer's existing execution
+path are unchanged. A move already executing may still finish before
+cancellation takes control.
+
+Native PR Touch `BED_MESH_CALIBRATE` also checks Cancel immediately before and
+after each complete `probe.run_probe` call. It does not interrupt a pressure
+sample or homing move. Cancellation unwinds the compiled mesh loop without
+finalizing/saving partial results, ends the multi-probe session, releases native
+disturbance control, and restores the motion limits temporarily changed by the
+mesh routine. Creality then runs its existing cancel/end-print cleanup. The
+sample hook is inactive outside mesh calibration: homing, tilt adjustment,
+nozzle cleaning, and ordinary probing retain their original behavior. The guard
+is installed only for the native PR Touch probe on supported Fast Stop firmware;
+unsupported interfaces leave the mesh handler unchanged and log a warning.
+If cancellation cleanup itself fails, the helper requests shutdown rather than
+silently continuing with unverified probe state. The helper status reports
+`stock_mesh_cancel: true` when this guard is installed.
+
+Hardware validation on a native PR Touch printer running firmware 1.1.5.5
+confirmed cancellation during mesh probing, mesh heat soak, machine heat
+soak, M191 bed lowering, and active M191 chamber circulation. During meshing,
+the current probe finished and no next point started; end-print cleanup took
+over without saving a partial mesh. The temporary tracer and standalone
+compiled-driver diagnostic fixture are not part of this integration branch.
+
 Replaces the stock start macro with a temperature-aware workflow that:
 
 - heats the bed and optionally soaks the complete machine after its requested
@@ -86,6 +116,34 @@ homing, tilt adjustment, and bed meshing. The setting chooses only the final Z
 reference after nozzle cleaning: Touch Home or another Scan `G28 Z`. The Scan
 choice requires a calibrated Scan model and may need its own first-layer Z
 offset tuning. Existing `overrides.cfg` selections survive macro updates.
+
+## Native PR Touch final Z reference
+
+On no-Cartographer printers, `START_PRINT` waits for the nozzle to reach 140 C
+before the post-soak Z home and clears the automatically restored `default`
+mesh before tilt adjustment. After tilt, it cleans the nozzle, restores 140 C,
+re-homes Z at the centre, and clears `default` again before selecting the
+requested temperature/plate mesh and applying the global plate offset.
+This final re-home runs even when the requested mesh already exists.
+
+The missing-mesh routine uses the same clean, temperature wait, final home,
+and mesh-clear order after its own soak and tilt adjustment. Saved-mesh and
+new-mesh prints therefore no longer intentionally use different Z references.
+Cartographer's startup sequence and final Touch/Scan home are unchanged.
+
+After updating, recheck each plate's global Z offset with the same reference
+material and printing process. Existing offsets may have absorbed the old
+post-tilt reference shift; do not automatically subtract a fixed correction.
+Saved meshes and material offsets are retained. Validate a newly created mesh
+and a repeat print using that saved mesh before changing material offsets.
+The installer tracks this update as `prtouch-final-z-after-tilt-v1`.
+
+Local template-rendering regressions use Jinja2 (also a Klipper dependency):
+
+```sh
+python3 -m pip install Jinja2
+python3 -m unittest discover -s features/macros/start_print -p 'test*.py'
+```
 
 ## Slicer setup
 

@@ -1,5 +1,11 @@
 # Cartographer Mount Offset Setup
 
+After selecting a JimmyV mount, configure **Optional extras -> JimmyV AI /
+nozzle USB power protection** to disable factory nozzle-camera AI. Explicitly
+enable its USB-power mode only if Cartographer is wired to the switched
+factory nozzle-camera USB connector. A mount selection alone does not imply
+that wiring choice.
+
 Switches among the Jamin/default, JimmyV legacy, and JimmyV final Cartographer
 mounts by editing only `custom/overrides.cfg`. It never modifies
 `custom/cartographer.cfg` or `printer.cfg`.
@@ -91,9 +97,46 @@ the same key is not already present in `overrides.cfg`.
 
 ## Preservation and safety
 
+### Optional mesh-only front travel (hardware validation pending)
+
+Each JimmyV preset now offers a separate clearance confirmation. It defaults
+to **off**. Enable it only after removing the Y-homing spacers and verifying
+that the installed toolhead/mount has physical clearance to nozzle **Y=-6 mm**.
+Apply the Cartographer `cartographer-jimmyv-mesh-front-travel-v1` migration
+before enabling it on an existing installation.
+
+With confirmation, the picker writes the exact JimmyV profile and
+`mesh_front_travel: 6` to `[k2_cartographer_scan_guard]` in `overrides.cfg`.
+The mesh minimum becomes `5, 30` for legacy, `5, 6` for final/no-3DO, or
+`5, 11` for final/3DO. The preset mesh maximum stays `345, 340`; speed, grid,
+and unrelated user settings are preserved. Reapplying the same enabled preset keeps the confirmation;
+answer **n** to disable it and restore that preset's original mesh minimum.
+Jamin and Custom do not offer the extension and remove any prior opt-in.
+
+The guard temporarily permits nozzle Y down to -6 only inside the actual
+Cartographer **scan** mesh handler. This covers manual `BED_MESH_CALIBRATE`,
+adaptive start-print scans, and scans created by `MESH_IF_NEEDED`. It uses
+Creality's runtime setter for both Python and native motion boundaries; the
+scan-path planner sees the same floor, preventing rounded turns below -6.
+It does not change homing coordinates, Y=0, permanent jog/print limits, X,
+rear Y, or Z limits. Non-scan methods do not receive extended travel.
+
+Successful scans return to at least the ordinary front boundary before
+restoring the captured limits. Errors/cancellation/disconnection restore the
+limits without attempting recovery motion or marking disabled motors homed.
+No general-purpose boundary-unlock command is provided. Runtime status
+`k2_cartographer_scan_guard` publishes `mesh_front_active` and actual `y_limits`
+for validation. If an aborted scan leaves the head at negative Y, do not
+restart printing blindly; inspect the failure and return safely inside the
+ordinary boundary after resolving it.
+
 - Existing unrelated settings, including `[bed_mesh] probe_count`, are kept.
 - The picker can be rerun at any time to switch profiles.
-- Reapplying the active profile is a no-op.
+- Reapplying the active profile is a no-op unless a JimmyV profile still has
+  the incompatible stock nozzle-camera extra installed.
+- Every JimmyV profile locks out the stock nozzle-camera stream. Selecting
+  one removes that managed extra, with recovery backups, without switching
+  off the shared USB rail. The 3DO camera and enclosure camera are untouched.
 - Before a change, `overrides.cfg` is backed up beside the file with a
   `.before-cartographer-offset-<timestamp>` suffix.
 - After a successful change, only the two newest backups created by this
@@ -103,6 +146,13 @@ the same key is not already present in `overrides.cfg`.
 
 ## Activation
 
-Run `FIRMWARE_RESTART` after switching and wait for the complete K2 startup
-sequence before the next home operation. If the restart fails, power-cycle the
-printer before homing.
+After a standalone mount change, the picker automatically performs the protected
+`FIRMWARE_RESTART` and waits for Klipper and K2 motor initialization before
+returning. It refuses changes while printing or paused, or if Moonraker cannot
+confirm an idle state. Cancel and no-change selections do not restart anything
+unless incompatible stock-camera removal is needed.
+
+During full Cartographer setup, activation is deferred to the workflow's one
+final protected restart. If a restart fails, the saved settings remain on disk;
+check Fluidd and power-cycle before homing. Reapplying those same saved settings
+is a no-op, so use Maintenance's protected restart action to retry activation.

@@ -3,10 +3,14 @@
 
 show_status() {
     clear
-    local fw chw cfw profile profile_display
+    local fw chw cfw profile profile_display carto_version
     fw="$(detect_printer_fw)"
-    chw="$(detect_carto_hw)"
-    cfw="$(detect_carto_fw)"
+    carto_version=
+    if is_cartographer; then
+        carto_version="$(_detect_carto_version_string || true)"
+    fi
+    chw="$(detect_carto_hw "$carto_version")"
+    cfw="$(detect_carto_fw "$carto_version")"
     profile="$(detect_install_profile)"
 
     case "$profile" in
@@ -50,12 +54,14 @@ show_status() {
     status_line 'secure-auth' is_secure_auth
     status_line 'R3MEN bed thermistor profile' is_r3men_bed
     status_line 'Stock nozzle camera stream' is_nozzle_camera
+    status_line 'Nozzle-camera AI / USB protection' is_nozzle_usb_cartographer
     if [ -f "$INSTALLER_DIR/installer/extras/kamp-adaptive-purge/install.sh" ]; then
         status_line 'KAMP adaptive purge' is_kamp
     fi
     status_line 'Material Z Offsets' is_material_z_offsets
     if ! is_cartographer; then
         status_line 'Plate-aware saved meshes' is_plate_aware_mesh
+        status_line 'Global No-Carto Z Offsets' is_global_prtouch_offsets
     fi
     if is_cartographer; then
         if is_carto_plate_workflow; then

@@ -1,6 +1,33 @@
 #!/bin/sh
 # Per-feature install detection. Each function returns 0 if installed, 1 if not.
 
+_load_stock_nozzle_camera_helpers() {
+    command -v stock_nozzle_camera_available >/dev/null 2>&1 ||
+        . "${INSTALLER_DIR:-${SCRIPT_DIR:-/mnt/UDISK/root/k2-improvements}}/scripts/stock_nozzle_camera.sh"
+}
+is_stock_nozzle_camera_available() {
+    _load_stock_nozzle_camera_helpers && stock_nozzle_camera_available
+}
+is_nozzle_camera_mount_compatible() {
+    _load_stock_nozzle_camera_helpers && stock_nozzle_camera_mount_compatible
+}
+is_nozzle_usb_cartographer() {
+    local custom="${PRINTER_CFG_DIR:-/mnt/UDISK/printer_data/config}/custom"
+    local klipper="${KLIPPER_DIR:-/usr/share/klipper}"
+    [ -e "$custom/k2_nozzle_camera_guard.cfg" ] &&
+    [ -e "$klipper/klippy/extras/k2_nozzle_camera_guard.py" ] &&
+    grep -q '^\[include k2_nozzle_camera_guard\.cfg\]$' "$custom/main.cfg" 2>/dev/null
+    [ "$?" -eq 0 ] || return 1
+    if grep -q '^# usb_power_hold: 1$' "$custom/k2_nozzle_camera_guard.cfg"; then
+        grep -q 'k2-improvements: Cartographer nozzle USB power guard' \
+            "${K2_SYSTEM_ROOT:-}/usr/bin/nozzle_cam_power.sh" 2>/dev/null &&
+        [ -e "${K2_SYSTEM_ROOT:-}/etc/rc.d/S53k2-nozzle-usb" ] &&
+        grep -q '^DEPEND=board_init$' "${K2_SYSTEM_ROOT:-}/etc/init.d/k2-nozzle-usb" &&
+        grep -q '^DEPEND=.*[,=]k2-nozzle-usb\([,]\|$\)' "${K2_SYSTEM_ROOT:-}/etc/init.d/klipper" &&
+        grep -q '^    /etc/init.d/k2-nozzle-usb start || return 1$' "${K2_SYSTEM_ROOT:-}/etc/init.d/klipper"
+    fi
+}
+
 is_entware()       { [ -x /opt/bin/opkg ]; }
 is_better_root()   { grep -q '^root:.*:/mnt/UDISK/root:' /etc/passwd 2>/dev/null; }
 is_cartographer() {
@@ -147,7 +174,7 @@ has_settings_ui_overlay() {
     case "$version" in
         ''|*[!0-9]*) return 1 ;;
     esac
-    [ "$version" -ge 3 ]
+    [ "$version" -ge "${1:-3}" ]
 }
 is_global_touch_offsets() {
     local custom="$PRINTER_CFG_DIR/custom"
@@ -156,6 +183,18 @@ is_global_touch_offsets() {
     grep -q '^\[include global_touch_offsets\.cfg\]$' "$custom/main.cfg" 2>/dev/null &&
     [ -e "$editor" ] &&
     has_settings_ui_overlay
+}
+is_global_prtouch_offsets() {
+    local custom="$PRINTER_CFG_DIR/custom"
+    local extras="${KLIPPER_DIR:-${HOME:-/mnt/UDISK/root}/klipper}/klippy/extras"
+    is_stock_probe &&
+    [ -e "$custom/global_prtouch_offsets.cfg" ] &&
+    [ -e "$extras/k2_prtouch_global_z.py" ] &&
+    [ -e "$extras/k2_prtouch_touchscreen.py" ] &&
+    grep -q '^\[include global_prtouch_offsets\.cfg\]$' "$custom/main.cfg" 2>/dev/null &&
+    grep -q '^\[include prtouch_touchscreen\.cfg\]$' "$custom/main.cfg" 2>/dev/null &&
+    grep -q 'K2_PRTOUCH_GLOBAL_Z_APPLY' "$custom/start_print.cfg" 2>/dev/null &&
+    has_settings_ui_overlay 8
 }
 is_material_z_offsets() {
     local custom="$PRINTER_CFG_DIR/custom"

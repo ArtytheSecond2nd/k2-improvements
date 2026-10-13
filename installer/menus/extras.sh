@@ -9,6 +9,7 @@ surface-selection-wrapper|is_surface_wrap|START_PRINT SURFACE= param loads match
 cartographer-offset-setup|is_carto_offset_set|Cartographer mount offset profiles/custom|installer/extras/cartographer-offset-setup/install.sh|is_cartographer
 cartographer-macros|is_carto_macros|CARTO_* Fluidd buttons (profiles/calibration/load)|installer/extras/cartographer-macros/install.sh|is_cartographer
 global-touch-offsets|is_global_touch_offsets|Interactive Cartographer global Scan/Touch offset editor|installer/extras/global-touch-offsets/install.sh|is_cartographer
+global-prtouch-offsets|is_global_prtouch_offsets|Default and plate-aware no-Carto global Z editor|installer/extras/global-prtouch-offsets/install.sh|is_stock_probe
 material-z-offsets|is_material_z_offsets|Interactive material Z-offset editor|installer/extras/material-z-offsets/install.sh|is_macros
 axis_twist_compensation|is_axis_twist|Optional Z-drift compensation across X|features/axis_twist_compensation/install.sh|
 plate-aware-mesh|is_plate_aware_mesh|Saved meshes selected by build plate and temperature|installer/extras/plate-aware-mesh/install.sh|is_stock_probe
@@ -17,7 +18,7 @@ r3men-bed|is_r3men_bed|R3MEN graphite-bed thermistor profile|features/r3men-bed/
 
 if [ -f "$INSTALLER_DIR/installer/extras/nozzle-camera/install.sh" ]; then
     _EXTRAS="${_EXTRAS}
-nozzle-camera|is_nozzle_camera|Stream the factory nozzle camera in Fluidd|installer/extras/nozzle-camera/install.sh|"
+nozzle-camera|is_nozzle_camera|Stream the factory nozzle camera in Fluidd|installer/extras/nozzle-camera/install.sh|is_stock_nozzle_camera_available"
 fi
 
 # Keep this conditional so older checkouts without the KAMP extra do not
@@ -34,6 +35,7 @@ _extras_requires_label() {
         is_cartographer) echo "needs Cartographer" ;;
         is_stock_probe)  echo "stock PR Touch only" ;;
         is_macros)       echo "needs Macros" ;;
+        is_stock_nozzle_camera_available) echo "JimmyV mounts have no factory nozzle camera" ;;
         *)               echo "blocked: $1" ;;
     esac
 }
@@ -49,7 +51,9 @@ extra_state() {
     det=$(printf '%s' "$line" | cut -d'|' -f2)
     req=$(printf '%s' "$line" | cut -d'|' -f5)
 
-    if "$det" 2>/dev/null; then
+    if [ "$req" = is_stock_nozzle_camera_available ] && ! "$req" 2>/dev/null; then
+        c_yellow 'UNAVAILABLE (JIMMYV MOUNT)'
+    elif "$det" 2>/dev/null; then
         state_installed
     elif [ -n "$req" ] && ! "$req" 2>/dev/null; then
         case "$req" in
@@ -105,6 +109,20 @@ carto_plate_workflow_state() {
     fi
 }
 
+choose_plate_workflow_slicers() {
+    local plate_choice
+    printf '\nPlate selectors: 1. Creality Print  2. OrcaSlicer  3. Both\n'
+    printf 'Select [1-3], or Enter to keep the saved choice: '
+    read_prompt plate_choice
+    case "$plate_choice" in
+        1) plate_slicers=creality ;;
+        2) plate_slicers=orca ;;
+        3) plate_slicers=both ;;
+        '') plate_slicers='' ;;
+        *) warn 'Invalid plate selector choice'; press_enter; return 1 ;;
+    esac
+}
+
 run_carto_plate_workflow() {
     clear
     ui_heading 'CARTOGRAPHER PLATE PROFILES / AUTO-SELECTION'
@@ -127,17 +145,8 @@ run_carto_plate_workflow() {
         return 0
     fi
 
-    local pwd_home failed plate_choice plate_slicers
-    printf '\nPlate selectors: 1. Creality Print  2. OrcaSlicer  3. Both\n'
-    printf 'Select [1-3], or Enter to keep the saved choice: '
-    read_prompt plate_choice
-    case "$plate_choice" in
-        1) plate_slicers=creality ;;
-        2) plate_slicers=orca ;;
-        3) plate_slicers=both ;;
-        '') plate_slicers='' ;;
-        *) warn 'Invalid plate selector choice'; press_enter; return 1 ;;
-    esac
+    local pwd_home failed plate_slicers
+    choose_plate_workflow_slicers || return 1
     pwd_home=$(awk -F: '$1=="root"{print $6}' /etc/passwd)
     [ -n "$pwd_home" ] || pwd_home="${HOME:-/mnt/UDISK/root}"
     [ -n "$pwd_home" ] || pwd_home=/mnt/UDISK/root
@@ -189,13 +198,16 @@ menu_extras() {
             ui_menu_item 7 'Material Z Offsets' "$(extra_state material-z-offsets)"
             printf '\n Security\n'
             ui_menu_item 8 'Secure Auth' "$(extra_state secure-auth)"
-            printf '\n  0. Back\n\nSelect [0-8]: '
+            printf '\n Nozzle-camera replacement\n'
+            ui_menu_item 9 'JimmyV AI / nozzle USB power protection' "$(if is_nozzle_usb_cartographer; then state_installed; else state_not_installed; fi)"
+            printf '\n  0. Back\n\nSelect [0-9]: '
         else
             ui_menu_item 5 'Plate-aware saved meshes' "$(extra_state plate-aware-mesh)"
-            ui_menu_item 6 'Material Z Offsets' "$(extra_state material-z-offsets)"
+            ui_menu_item 6 'Global No-Carto Z Offsets' "$(extra_state global-prtouch-offsets)"
+            ui_menu_item 7 'Material Z Offsets' "$(extra_state material-z-offsets)"
             printf '\n Security\n'
-            ui_menu_item 7 'Secure Auth' "$(extra_state secure-auth)"
-            printf '\n  0. Back\n\nSelect [0-7]: '
+            ui_menu_item 8 'Secure Auth' "$(extra_state secure-auth)"
+            printf '\n  0. Back\n\nSelect [0-8]: '
         fi
         read_prompt c
         case "$c" in
@@ -214,18 +226,29 @@ menu_extras() {
                 if is_cartographer; then
                     run_extra_name global-touch-offsets
                 else
-                    run_extra_name material-z-offsets
+                    run_extra_name global-prtouch-offsets
                 fi
                 ;;
             7)
                 if is_cartographer; then
                     run_extra_name material-z-offsets
                 else
-                    run_extra_name secure-auth
+                    run_extra_name material-z-offsets
                 fi
                 ;;
             8)
-                if is_cartographer; then run_extra_name secure-auth; fi
+                run_extra_name secure-auth
+                ;;
+            9)
+                if is_cartographer; then
+                    show_feature_readme nozzle-usb-cartographer "$INSTALLER_DIR/installer/extras/nozzle-usb-cartographer/README.md"
+                    if sh "$INSTALLER_DIR/installer/extras/nozzle-usb-cartographer/install.sh"; then
+                        if is_nozzle_usb_cartographer; then
+                            migration_mark_component_current nozzle-usb-cartographer
+                        fi
+                    fi
+                    press_enter
+                fi
                 ;;
             0|b|B|q|Q) return ;;
             *) ;;
@@ -242,6 +265,7 @@ install_extra() {
     local script="$INSTALLER_DIR/$script_rel"
     local readme="$(dirname "$script")/README.md"
     local script_arg=''
+    local plate_slicers="${K2_PLATE_SLICERS:-}"
 
     clear
     ui_heading "$name"
@@ -294,6 +318,13 @@ install_extra() {
             local label=$(detect_carto_offset_label)
             printf '  Currently configured: %s\n\n' "$(c_green "$label")"
             if ! confirm "Open the offset picker?"; then return 0; fi
+            ;;
+        plate-aware-mesh)
+            if "$det" 2>/dev/null; then
+                printf '  Status: %s\n\n' "$(c_green 'ALREADY APPLIED')"
+            fi
+            if ! confirm 'Install or update plate-aware meshes and choose its slicers?'; then return 0; fi
+            choose_plate_workflow_slicers || return 1
             ;;
         secure-auth)
             if "$det" 2>/dev/null; then
@@ -351,7 +382,7 @@ install_extra() {
     [ -n "$pwd_home" ] || pwd_home="${HOME:-/mnt/UDISK/root}"
     [ -n "$pwd_home" ] || pwd_home=/mnt/UDISK/root
     info "running $script (HOME=$pwd_home)"
-    if HOME="$pwd_home" PATH="/opt/bin:/opt/sbin:$PATH" sh "$script" $script_arg; then
+    if K2_PLATE_SLICERS="$plate_slicers" HOME="$pwd_home" PATH="/opt/bin:/opt/sbin:$PATH" sh "$script" $script_arg; then
         info "$name install completed"
         if command -v migration_mark_component_current >/dev/null 2>&1; then
             if ! migration_mark_component_current "$name"; then

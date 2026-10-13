@@ -4,6 +4,15 @@
 
 migration_catalog() {
     cat <<'EOF'
+prtouch-final-z-after-tilt-v1|macros|is_macros|Re-home native PR Touch Z at 140 C after tilt and nozzle cleaning for both saved and new meshes; recheck plate Z offsets after updating
+start-print-fast-stop-stock-mesh-v1|start-print-fast-stop|is_start_print_fast_stop|Stop native PR Touch mesh calibration at a completed sample boundary and restore probe state and temporary motion limits without saving a partial mesh
+start-print-fast-stop-stock-soaks-v1|start-print-fast-stop|is_start_print_fast_stop|Stop no-Carto machine and mesh heat soaks promptly and unwind nested mesh macros after canceled M191 waits
+plate-aware-mesh-slicer-choice-v1|plate-aware-mesh|is_plate_aware_mesh|Add the Cartographer-style Creality Print, Orca, or Both picker and retain the saved preference during updates; existing stock setups without a choice keep Both
+global-prtouch-offsets-slicer-choice-v4|global-prtouch-offsets|is_global_prtouch_offsets|Show the selected slicer's standard plates in the no-Carto global editor while preserving all saved offsets and custom plate names
+global-prtouch-offsets-initial-default-v3|global-prtouch-offsets|is_global_prtouch_offsets|Initialize new no-Carto offset tables at -0.080 mm while preserving existing saved global values and the native PR Touch baseline
+global-prtouch-offsets-compact-ui-v2|global-prtouch-offsets|is_global_prtouch_offsets|Replace the stacked no-Carto prompt with a compact Cartographer-style dialog while preserving every saved offset and existing editor
+global-prtouch-offsets-editor-v1|global-prtouch-offsets|is_global_prtouch_offsets|Refresh the opted-in no-Carto global Z editor and its baseline-relative plate-selection handoff
+cartographer-jimmyv-mesh-front-travel-v1|cartographer|is_cartographer|Install a mesh-scoped Y=-6 guard; enable only through JimmyV mount setup after confirming spacer removal and physical clearance
 start-print-managed-backups-v1|cartographer-plate-workflow|is_carto_plate_workflow|Stop retaining redundant backups of installer-managed START_PRINT wrappers
 material-z-managed-backups-v1|material-z-offsets|is_material_z_offsets|Stop retaining redundant backups of installer-managed START_PRINT files
 save-config-cxsave-retention-v1|save-config-restart|is_save_config_restart|Clear completed automatic saves, skip unchanged writes, and retain only five printer config backups
@@ -164,5 +173,8 @@ case-fan-restore-preflight-target-v9|macros|is_macros|Heated-bed deformation pre
 fluidd-release-source-v1|fluidd|is_fluidd|Align Fluidd release metadata with the preserved Rcpilot33 update source
 fluidd-stale-update-cache-v2|fluidd|is_fluidd|Clear the previous Fluidd repository's cached release and download URL before checking Rcpilot33/fluidd
 chamber-fan-output-resync-v1|macros|is_macros|Resynchronize the chamber thermostat output after releasing Creality's direct case-fan request
+nozzle-camera-jimmyv-removal-v1|nozzle-camera-mount-compatibility|is_nozzle_camera_mount_compatible|Remove the managed stock nozzle-camera stream from JimmyV mounts without switching off shared USB power
+nozzle-usb-cartographer-protection-v1|nozzle-usb-cartographer|is_nozzle_usb_cartographer|Refresh opted-in nozzle-camera AI and USB power protection without changing the selected wiring mode
+nozzle-usb-cartographer-boot-dependencies-v2|nozzle-usb-cartographer|is_nozzle_usb_cartographer|Order nozzle USB power after factory GPIO initialization and block Klipper startup until Cartographer USB is detected
 EOF
 }
