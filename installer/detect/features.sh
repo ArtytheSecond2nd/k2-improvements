@@ -110,16 +110,17 @@ is_skip_setup()    {
             /mnt/UDISK/creality/userdata/config/system_config.json \
             >/dev/null 2>&1
 }
-is_axis_twist() {
-    local custom="$PRINTER_CFG_DIR/custom"
-    local cfg="$custom/axis_twist_compensation.cfg"
-    local main="$custom/main.cfg"
-    local klipper_dir="${KLIPPER_DIR:-/usr/share/klipper}"
-    [ -e "$cfg" ] &&
-    grep -q '^\[axis_twist_compensation\]$' "$cfg" 2>/dev/null &&
-    [ -f "$main" ] &&
-    grep -q '^\[include axis_twist_compensation\.cfg\]$' "$main" 2>/dev/null &&
-    [ -e "$klipper_dir/klippy/extras/axis_twist_compensation.py" ]
+_axis_twist_removal_check() {
+    local base="${INSTALLER_DIR:-${SCRIPT_DIR:-/mnt/UDISK/root/k2-improvements}}"
+    "${K2_PYTHON:-python3}" "$base/installer/extras/axis-twist-removal/remove_axis_twist.py" \
+        --config-dir "$PRINTER_CFG_DIR" --klipper-dir "${KLIPPER_DIR:-/usr/share/klipper}" \
+        "$1" >/dev/null 2>&1
+}
+has_legacy_axis_twist() {
+    _axis_twist_removal_check --legacy-present
+}
+is_axis_twist_removed() {
+    _axis_twist_removal_check --verify-only
 }
 is_stock_probe() { ! is_cartographer; }
 is_plate_aware_mesh() {

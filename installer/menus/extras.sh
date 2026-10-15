@@ -11,7 +11,6 @@ cartographer-macros|is_carto_macros|CARTO_* Fluidd buttons (profiles/calibration
 global-touch-offsets|is_global_touch_offsets|Interactive Cartographer global Scan/Touch offset editor|installer/extras/global-touch-offsets/install.sh|is_cartographer
 global-prtouch-offsets|is_global_prtouch_offsets|Default and plate-aware no-Carto global Z editor|installer/extras/global-prtouch-offsets/install.sh|is_stock_probe
 material-z-offsets|is_material_z_offsets|Interactive material Z-offset editor|installer/extras/material-z-offsets/install.sh|is_macros
-axis_twist_compensation|is_axis_twist|Optional Z-drift compensation across X|features/axis_twist_compensation/install.sh|
 plate-aware-mesh|is_plate_aware_mesh|Saved meshes selected by build plate and temperature|installer/extras/plate-aware-mesh/install.sh|is_stock_probe
 secure-auth|is_secure_auth|Disable SSH password login (requires a tested public key)|features/secure-auth/install.sh|
 r3men-bed|is_r3men_bed|R3MEN graphite-bed thermistor profile|features/r3men-bed/install.sh|'
@@ -181,6 +180,34 @@ run_carto_plate_workflow() {
     press_enter
 }
 
+run_axis_twist_removal() {
+    # Recheck at selection time: ATC may have been removed since the menu was
+    # drawn, or the user may have entered the hidden legacy option number.
+    if ! has_legacy_axis_twist; then
+        info 'Legacy Axis Twist was not detected; nothing to remove.'
+        press_enter
+        return 0
+    fi
+    clear
+    ui_heading 'REMOVE LEGACY AXIS TWIST'
+    show_feature_readme axis-twist-removal "$INSTALLER_DIR/installer/extras/axis-twist-removal/README.md"
+    printf '\nRestores the hash-matched stock probe helper and PR Touch registration.\n'
+    printf 'Backs up ATC files/calibration, keeps meshes and Z offsets, and performs\n'
+    printf 'the protected Klippy restart. Re-mesh and recheck Z offsets afterward.\n'
+    printf 'Unknown firmware/files will be refused before any change.\n\n'
+    if ! confirm 'Printer idle and pending meshes saved: remove legacy ATC now?'; then return 0; fi
+    if sh "$INSTALLER_DIR/installer/extras/axis-twist-removal/uninstall.sh"; then
+        if command -v migration_mark_component_current >/dev/null 2>&1; then
+            migration_mark_component_current axis-twist-removal || return 1
+        fi
+    else
+        warn 'ATC removal did not complete; review the error above before homing'
+        press_enter
+        return 1
+    fi
+    press_enter
+}
+
 menu_extras() {
     while :; do
         clear
@@ -191,7 +218,9 @@ menu_extras() {
         ui_menu_item 2 'Stock nozzle camera stream' "$(extra_state nozzle-camera)"
         printf '\n Print workflow\n'
         ui_menu_item 3 'KAMP adaptive purge' "$(extra_state kamp-adaptive-purge)"
-        ui_menu_item 4 'Axis twist compensation' "$(extra_state axis_twist_compensation)"
+        if has_legacy_axis_twist; then
+            ui_menu_item 4 'Remove legacy Axis Twist' "$(c_yellow 'REMOVAL AVAILABLE')"
+        fi
         if is_cartographer; then
             ui_menu_item 5 'Cartographer plate workflow' "$(carto_plate_workflow_state)"
             ui_menu_item 6 'Global Carto Z Offsets' "$(extra_state global-touch-offsets)"
@@ -214,7 +243,7 @@ menu_extras() {
             1) run_extra_name r3men-bed ;;
             2) run_extra_name nozzle-camera ;;
             3) run_extra_name kamp-adaptive-purge ;;
-            4) run_extra_name axis_twist_compensation ;;
+            4) run_axis_twist_removal ;;
             5)
                 if is_cartographer; then
                     run_carto_plate_workflow

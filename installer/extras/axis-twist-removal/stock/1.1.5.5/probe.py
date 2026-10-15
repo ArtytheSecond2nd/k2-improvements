@@ -112,46 +112,26 @@ class PrinterProbe:
         if gcmd is not None:
             return gcmd.get_float("LIFT_SPEED", self.lift_speed, above=0.)
         return self.lift_speed
-    def get_probe_params(self, gcmd=None):
-        # Compatibility with newer Klipper consumers such as the bundled
-        # Axis Twist module.  Creality's legacy PrinterProbe keeps these
-        # values directly on the object instead of exposing this accessor.
-        if gcmd is None:
-            return {
-                'probe_speed': self.speed,
-                'lift_speed': self.lift_speed,
-                'samples': self.sample_count,
-                'sample_retract_dist': self.sample_retract_dist,
-                'samples_tolerance': self.samples_tolerance,
-                'samples_tolerance_retries': self.samples_retries,
-                'samples_result': self.samples_result,
-            }
-        return {
-            'probe_speed': gcmd.get_float(
-                "PROBE_SPEED", self.speed, above=0.),
-            'lift_speed': self.get_lift_speed(gcmd),
-            'samples': gcmd.get_int(
-                "SAMPLES", self.sample_count, minval=1),
-            'sample_retract_dist': gcmd.get_float(
-                "SAMPLE_RETRACT_DIST", self.sample_retract_dist, above=0.),
-            'samples_tolerance': gcmd.get_float(
-                "SAMPLES_TOLERANCE", self.samples_tolerance, minval=0.),
-            'samples_tolerance_retries': gcmd.get_int(
-                "SAMPLES_TOLERANCE_RETRIES", self.samples_retries,
-                minval=0),
-            'samples_result': gcmd.get(
-                "SAMPLES_RESULT", self.samples_result),
-        }
     def get_offsets(self):
         return self.x_offset, self.y_offset, self.z_offset
-    def _probe(self, speed):
+    def _probe(self, speed, max_z_dist=None):
         toolhead = self.printer.lookup_object('toolhead')
         curtime = self.printer.get_reactor().monotonic()
         if 'z' not in toolhead.get_status(curtime)['homed_axes']:
             raise self.printer.command_error("""{"code":"key96", "msg": "Must home before probe", "values": []}""")
         phoming = self.printer.lookup_object('homing')
         pos = toolhead.get_position()
-        pos[2] = self.z_position
+        self.prtouch_v3 = self.printer.lookup_object('prtouch_v3') if self.printer.objects.get('prtouch_v3') else None
+        if self.prtouch_v3 is not None:
+            suspended_det_status = self.prtouch_v3.get_suspended_det_status()
+            # 限制探针最大下探深度（目标位置）
+            target_z = self.z_position
+            if max_z_dist is not None and suspended_det_status is True:
+                start_z = pos[2] # 原始 Z 起点
+                max_target_z = start_z - max_z_dist
+                if target_z < max_target_z:
+                    target_z = max_target_z
+        pos[2] = target_z
         try:
             epos = phoming.probing_move(self.mcu_probe, pos, speed)
         except self.printer.command_error as e:
@@ -159,8 +139,17 @@ class PrinterProbe:
             if "Timeout during endstop homing" in reason:
                 reason += HINT_TIMEOUT
             raise self.printer.command_error(reason)
-        # Allow axis_twist_compensation to update results
-        self.printer.send_event("probe:update_results", epos)
+        # get z compensation from axis_twist_compensation
+        axis_twist_compensation = self.printer.lookup_object(
+            'axis_twist_compensation', None)
+        z_compensation = 0
+        if axis_twist_compensation is not None:
+            z_compensation = (
+                axis_twist_compensation.get_z_compensation_value(pos))
+        # add z compensation to probe position
+        self.gcode.respond_info("probe at %.3f,%.3f is z=%.6f z_compensation=%.6f"
+                                % (epos[0], epos[1], epos[2],z_compensation))
+        epos[2] += z_compensation
         self.gcode.respond_info("probe at %.3f,%.3f is z=%.6f"
                                 % (epos[0], epos[1], epos[2]))
         return epos[:3]
@@ -189,15 +178,21 @@ class PrinterProbe:
         samples_retries = gcmd.get_int("SAMPLES_TOLERANCE_RETRIES",
                                        self.samples_retries, minval=0)
         samples_result = gcmd.get("SAMPLES_RESULT", self.samples_result)
+        zmax_dist = gcmd.get_float("ZMAX_DIST", None, above=0.)
         must_notify_multi_probe = not self.multi_probe_pending
         if must_notify_multi_probe:
             self.multi_probe_begin()
         probexy = self.printer.lookup_object('toolhead').get_position()[:2]
         retries = 0
         positions = []
+        gcode = self.printer.lookup_object("gcode")
         while len(positions) < sample_count:
+            gcode.check_cancel_running()
             # Probe position
-            pos = self._probe(speed)
+            if zmax_dist is not None:
+                pos = self._probe(speed, max_z_dist=zmax_dist)
+            else:
+                pos = self._probe(speed)
             positions.append(pos)
             # Check samples tolerance
             z_positions = [p[2] for p in positions]
@@ -269,6 +264,7 @@ class PrinterProbe:
         for i in range(len(positions)):
             deviation_sum += pow(positions[i][2] - avg_value, 2.)
         sigma = (deviation_sum / len(positions)) ** 0.5
+        z_values = [pos[2] for pos in positions]
         # Show information
         gcmd.respond_info(
             "probe accuracy results: maximum %.6f, minimum %.6f, range %.6f, "
@@ -335,8 +331,7 @@ class PrinterProbe:
                     f.flush()
         except Exception as err:
             logging.error("record_gcode_offset_when_printing error: %s" % err)
-def run_single_probe(probe, gcmd):
-    return probe.run_probe(gcmd)
+
 # Endstop wrapper that enables probe specific features
 class ProbeEndstopWrapper:
     def __init__(self, config):
@@ -404,6 +399,7 @@ class ProbeEndstopWrapper:
             self.raise_probe()
     def get_position_endstop(self):
         return self.position_endstop
+
 # Helper code that can probe a series of points and report the
 # position at each point.
 class ProbePointsHelper:
@@ -419,10 +415,7 @@ class ProbePointsHelper:
                                                 parser=float, count=2)
         self.horizontal_move_z = config.getfloat('horizontal_move_z', 5.)
         self.speed = config.getfloat('speed', 50., above=0.)
-        # K2 Cartographer mounts rely on the probe XY offset during Z_TILT.
-        # Keep this enabled in the shipped replacement so a later Axis Twist
-        # install cannot silently undo Cartographer's probe-offset patch.
-        self.use_offsets = True
+        self.use_offsets = False
         # Internal probing state
         self.lift_speed = self.speed
         self.probe_offsets = (0., 0., 0.)
@@ -493,6 +486,12 @@ class ProbePointsHelper:
         # self.safe_z_home.cmd_G28(g28_gcmd)
         while 1:
             done = self._move_next()
+
+            # 增加等待时间，用于倾斜校准等待一小段时间，避免干扰
+            wait_time = gcmd.get_float('WAITTIME', default = 0)
+            if wait_time != 0:
+                logging.info("Z_TILT_ADJUST wait_time: %s" % wait_time)
+                self.printer.get_reactor().pause(self.printer.get_reactor().monotonic() + wait_time)
             if done:
                 break
             pos = probe.run_probe(gcmd)

@@ -4,7 +4,7 @@
 # excluded because it requires explicit physical interaction.
 
 # Essentials only - what's needed to have a working K2 Plus + Cartographer.
-# QoL features (KAMP, surface-wrapper, axis_twist), security
+# QoL features (KAMP, surface-wrapper), security
 # features (secure-auth - can lock you out if installed without keys), and
 # hardware-specific features such as r3men-bed are excluded here.
 # They stay available individually from Maintenance and Optional extras.
@@ -39,7 +39,7 @@ menu_install_all() {
     printf 'NOT in this flow (need physical interaction or are optional):\n'
     printf '  - Cartographer firmware flash (USB/Katapult or physical DFU mode)\n'
     printf '  - Hardware-specific features (e.g., r3men-bed)\n'
-    printf '  - QoL features (KAMP, surface-wrapper, axis_twist, etc.) - Optional extras\n\n'
+    printf '  - QoL features (KAMP, surface-wrapper, etc.) - Optional extras\n\n'
     printf 'Plan:\n'
     local OLDIFS="$IFS"
     IFS='
@@ -166,7 +166,7 @@ menu_install_all() {
     printf '\nFinal manual steps:\n'
     printf '  1. Confirm the final protected restart completed successfully. If it\n'
     printf '     reported an error, power-cycle before the next G28.\n'
-    printf '  2. Optional QoL: surface-selection-wrapper and axis_twist_compensation\n'
+    printf '  2. Optional QoL: surface-selection-wrapper and KAMP\n'
     printf '     are available from Optional extras.\n'
     printf '  3. Optional: firmware flashing is available from Cartographer tools.\n'
     printf '  4. Before printing, open Cartographer tools and run the Calibration\n'

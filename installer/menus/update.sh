@@ -19,7 +19,7 @@ migration_component_label() {
         screws_tilt_adjust) echo 'Screws Tilt Adjust' ;;
         kamp-adaptive-purge) echo 'KAMP adaptive purge' ;;
         r3men-bed) echo 'R3MEN bed thermistor profile' ;;
-        axis_twist_compensation) echo 'Axis Twist Compensation' ;;
+        axis-twist-removal) echo 'Remove legacy Axis Twist / restore stock probing' ;;
         cartographer-plate-workflow) echo 'Cartographer plate workflow' ;;
         global-touch-offsets) echo 'Global Carto Z Offsets' ;;
         global-prtouch-offsets) echo 'Global No-Carto Z Offsets' ;;
@@ -46,7 +46,7 @@ migration_component_installed() {
         screws_tilt_adjust) is_screws_tilt ;;
         kamp-adaptive-purge) is_kamp ;;
         r3men-bed) is_r3men_bed ;;
-        axis_twist_compensation) is_axis_twist ;;
+        axis-twist-removal) is_axis_twist_removed ;;
         cartographer-plate-workflow) is_carto_plate_workflow ;;
         global-touch-offsets) is_global_touch_offsets ;;
         global-prtouch-offsets) is_global_prtouch_offsets ;;
@@ -74,6 +74,12 @@ migration_component_applicable() {
     # A pre-update snapshot must never override the firmware safety gate.
     if [ "$1" = start-print-fast-stop ]; then
         is_start_print_fast_stop_eligible
+        return
+    fi
+    if [ "$1" = axis-twist-removal ]; then
+        has_legacy_axis_twist 2>/dev/null && return 0
+        [ -f "$MIGRATION_INSTALLED_SNAPSHOT" ] &&
+            grep -qxF axis-twist-removal "$MIGRATION_INSTALLED_SNAPSHOT" 2>/dev/null
         return
     fi
     migration_component_installed "$1" 2>/dev/null && return 0
@@ -120,8 +126,8 @@ migration_component_present() {
         r3men-bed)
             grep -q 'R3men_bed' "$PRINTER_CFG_DIR/printer.cfg" 2>/dev/null
             ;;
-        axis_twist_compensation)
-            [ -e "$custom/axis_twist_compensation.cfg" ]
+        axis-twist-removal)
+            has_legacy_axis_twist
             ;;
         cartographer-plate-workflow)
             grep -q 'surface-selection wrapper' "$custom/start_print.cfg" 2>/dev/null
@@ -163,7 +169,11 @@ migration_capture_installed_components() {
     : > "$temporary"
     for component in cartographer save-config-restart virtual-sdcard-guard abort_homing \
         screws_tilt_adjust macros r3men-bed kamp-adaptive-purge \
-        axis_twist_compensation cartographer-plate-workflow global-touch-offsets global-prtouch-offsets material-z-offsets plate-aware-mesh nozzle-camera nozzle-usb-cartographer fluidd better-init start-print-fast-stop; do
+        axis-twist-removal cartographer-plate-workflow global-touch-offsets global-prtouch-offsets material-z-offsets plate-aware-mesh nozzle-camera nozzle-usb-cartographer fluidd better-init start-print-fast-stop; do
+        if [ "$component" = axis-twist-removal ]; then
+            has_legacy_axis_twist 2>/dev/null && printf '%s\n' "$component" >> "$temporary"
+            continue
+        fi
         if migration_component_installed "$component" 2>/dev/null ||
            migration_component_present "$component" 2>/dev/null; then
             printf '%s\n' "$component" >> "$temporary"
@@ -219,9 +229,9 @@ migration_pending_components() {
     migration_pending_entries | awk -F '|' '
         NF >= 2 { pending[$2] = 1 }
         END {
-            count = split("cartographer save-config-restart virtual-sdcard-guard abort_homing " \
+            count = split("axis-twist-removal cartographer save-config-restart virtual-sdcard-guard abort_homing " \
                 "screws_tilt_adjust macros r3men-bed kamp-adaptive-purge " \
-                "axis_twist_compensation cartographer-plate-workflow global-touch-offsets global-prtouch-offsets " \
+                "cartographer-plate-workflow global-touch-offsets global-prtouch-offsets " \
                 "material-z-offsets plate-aware-mesh nozzle-camera nozzle-camera-mount-compatibility nozzle-usb-cartographer fluidd better-init " \
                 "start-print-fast-stop", components, " ")
             for (i = 1; i <= count; i++)
@@ -372,6 +382,10 @@ migration_require_idle() {
 }
 
 migration_repair_component() {
+    if [ "$1" != axis-twist-removal ] && has_legacy_axis_twist 2>/dev/null; then
+        warn 'Remove legacy Axis Twist first; other repairs/restarts must not run with retired ATC links'
+        return 1
+    fi
     local component pwd_home
     component="$1"
     pwd_home=$(awk -F: '$1=="root"{print $6}' /etc/passwd)
@@ -424,9 +438,9 @@ migration_repair_component() {
             HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
                 sh "$INSTALLER_DIR/features/r3men-bed/install.sh"
             ;;
-        axis_twist_compensation)
+        axis-twist-removal)
             HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
-                sh "$INSTALLER_DIR/features/axis_twist_compensation/install.sh"
+                sh "$INSTALLER_DIR/installer/extras/axis-twist-removal/uninstall.sh"
             ;;
         cartographer-plate-workflow)
             HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
@@ -491,7 +505,7 @@ migration_repair_component() {
 
 migration_component_restart_kind() {
     case "$1" in
-        cartographer|macros|save-config-restart|virtual-sdcard-guard|memory-diagnostics|abort_homing|screws_tilt_adjust|kamp-adaptive-purge|axis_twist_compensation|global-touch-offsets|global-prtouch-offsets|material-z-offsets|start-print-fast-stop|nozzle-usb-cartographer)
+        cartographer|macros|save-config-restart|virtual-sdcard-guard|memory-diagnostics|abort_homing|screws_tilt_adjust|kamp-adaptive-purge|axis-twist-removal|global-touch-offsets|global-prtouch-offsets|material-z-offsets|start-print-fast-stop|nozzle-usb-cartographer)
             echo code
             ;;
         fluidd)
@@ -670,6 +684,11 @@ migration_apply_components() {
             esac
         else
             warn "$(migration_component_label "$component") refresh failed; it remains pending"
+            if [ "$component" = axis-twist-removal ]; then
+                rm -f "$succeeded" "$activated"
+                warn 'ATC restoration failed: stopping without other repairs or a restart; follow the recovery/reflash instruction above'
+                return 1
+            fi
             failures=$((failures + 1))
         fi
     done 3< "$components_file"
