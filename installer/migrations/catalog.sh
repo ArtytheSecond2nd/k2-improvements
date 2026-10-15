@@ -144,7 +144,7 @@ cartographer-default-controls-core-v1|cartographer|is_cartographer|Cartographer 
 m191-configurable-settings-v1|macros|is_macros|M191 bed assistance and chamber waiting settings are now configurable
 m191-bed-assist-editor-v2|macros|is_macros|M191 settings can now be edited from the Fluidd Bed Assist control
 m191-bed-assist-live-save-v3|macros|is_macros|Saving Bed Assist settings now updates live M191 and START_PRINT variables without restarting
-axis-twist-stock-restoration-v1|axis-twist-removal|is_axis_twist_removed|Remove legacy Axis Twist, back up its calibration, restore hash-matched stock probing and Cartographer XY offsets, then re-mesh and recheck Z offsets
+axis-twist-stock-restoration-v1|axis-twist-removal|is_axis_twist_removed|Manual Extras removal only; never recommended or included in Apply all. Record hash-matched stock restoration after explicit user confirmation
 screws-tilt-probe-aware-points-v1|screws_tilt_adjust|is_screws_tilt|Screws Tilt now positions the active probe near each screw while respecting toolhead boundaries
 cartographer-prtouch-cold-boot-registration-v1|cartographer|is_cartographer|Cartographer now reports PR Touch preparation compatibility before Creality checks it during a cold boot
 cartographer-prtouch-config-finalization-v2|cartographer|is_cartographer|Cartographer now restores PR Touch preparation compatibility before Klipper exposes its finalized configuration

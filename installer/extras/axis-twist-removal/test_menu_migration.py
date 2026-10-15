@@ -1,5 +1,6 @@
 """Exercise removal menus/restart handoff with shell stubs, never a printer."""
 
+import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -145,7 +146,84 @@ menu_extras
         self.assertIn("axis-twist-stock-restoration-v1|axis-twist-removal|", catalog)
         self.assertFalse((ROOT / "features/axis_twist_compensation/install.sh").exists())
 
-    def test_removal_is_first_repair_and_does_not_apply_to_clean_fresh_install(self):
+    def test_existing_runtime_link_targets_are_retained_unchanged(self):
+        # Git blob IDs from the last release before install retirement. Protect
+        # existing links and loaded ATC behavior, not just the uninstall menu.
+        blobs = {
+            "probe.py": "b240272fcda9c1571850c9b6dcb60e9ca1239bfe",
+            "axis_twist_compensation.py": "a89a767f4ca8c9500637deedd4a9fa6e66d7fdfa",
+            "axis_twist_compensation.cfg": "829aaca393361a21a4b252a1512e990fe5ad5611",
+        }
+        for name, expected in blobs.items():
+            data = (ROOT / "features/axis_twist_compensation" / name).read_bytes().replace(b"\r\n", b"\n")
+            blob = b"blob " + str(len(data)).encode("ascii") + b"\0" + data
+            self.assertEqual(hashlib.sha1(blob).hexdigest(), expected, name)
+
+    def test_successful_extras_removal_disappears_on_next_menu_draw(self):
+        script = self.menu_fixture().replace(
+            'sh() { printf \'UNEXPECTED_UNINSTALL\\n\'; }',
+            'sh() { printf \'UNINSTALL\\n\'; LEGACY=no; }',
+        ).replace(
+            'show_feature_readme() { printf \'UNEXPECTED_README\\n\'; }',
+            'show_feature_readme() { :; }',
+        ).replace(
+            'confirm() { printf \'UNEXPECTED_CONFIRM\\n\'; return 0; }',
+            'confirm() { return 0; }',
+        ).replace(
+            'migration_mark_component_current() { printf \'UNEXPECTED_MARK\\n\'; }',
+            'migration_mark_component_current() { printf \'MARK:%s\\n\' "$1"; }',
+        ).replace(
+            '[ "$STALE" = yes ] && [ "$reads" -eq 1 ]',
+            '[ "$reads" -eq 1 ]',
+        ).replace('        LEGACY=no\n', '')
+        for carto in ("no", "yes"):
+            run = self.run_shell(script, CARTO=carto, LEGACY="yes", STALE="no")
+            self.assertEqual(run.returncode, 0, run.stderr.decode())
+            output = run.stdout.decode()
+            self.assertEqual(output.count("ITEM:4:Remove legacy Axis Twist"), 1)
+            self.assertEqual(output.count("ITEM:3:KAMP adaptive purge"), 2)
+            self.assertEqual(output.count("UNINSTALL"), 1)
+            self.assertIn("MARK:axis-twist-removal", output)
+            self.assertNotIn("UNEXPECTED_", output)
+
+    def test_apply_all_keeps_atc_while_updating_other_components(self):
+        script = r'''
+set -eu
+. "$INSTALLER_DIR/installer/menus/update.sh"
+has_legacy_axis_twist() { return 0; }
+is_cartographer() { [ "$CARTO" = yes ]; }
+migration_catalog() {
+    printf 'macros-update|macros|is_macros|Macros\n'
+    printf 'atc-remove|axis-twist-removal|is_axis_twist_removed|Remove ATC\n'
+}
+migration_component_installed() { [ "$1" = macros ]; }
+migration_require_idle() { return 0; }
+migration_component_label() { printf '%s' "$1"; }
+migration_repair_component() { printf 'REPAIR:%s\n' "$1"; }
+migration_reconcile_fluidd_layout() { return 0; }
+migration_mark_component_current() { printf 'MARK:%s\n' "$1"; }
+sh() { printf 'RESTART:%s\n' "$1"; }
+warn() { printf 'WARN:%s\n' "$1"; }
+c_green() { printf '%s' "$1"; }
+migration_pending_components > "$PLAN"
+# Include a stale uninstall row as defense in depth.
+printf 'axis-twist-removal\n' >> "$PLAN"
+migration_apply_components "$PLAN"
+'''
+        for carto in ("no", "yes"):
+            with tempfile.TemporaryDirectory(prefix="k2-atc-apply-all-") as directory:
+                run = self.run_shell(script, CARTO=carto, PLAN=(Path(directory) / "plan").as_posix(),
+                                     MIGRATION_STATE_DIR=directory, PRINTER_CFG_DIR=directory)
+            self.assertEqual(run.returncode, 0, run.stderr.decode())
+            output = run.stdout.decode()
+            self.assertIn("REPAIR:macros", output)
+            self.assertIn("MARK:macros", output)
+            self.assertIn("klippy_code_restart.sh", output)
+            self.assertNotIn("REPAIR:axis-twist-removal", output)
+            self.assertNotIn("MARK:axis-twist-removal", output)
+            self.assertNotIn("uninstall.sh", output)
+
+    def test_removal_is_never_recommended_even_with_legacy_snapshot(self):
         script = r'''
 set -eu
 . "$INSTALLER_DIR/installer/menus/update.sh"
@@ -157,14 +235,18 @@ migration_catalog() {
     printf 'atc-remove|axis-twist-removal|is_axis_twist_removed|Remove ATC\n'
 }
 migration_pending_components
+printf 'ENTRIES\n'
+migration_pending_entries
 '''
         with tempfile.TemporaryDirectory(prefix="k2-atc-migration-") as directory:
+            # Include the ID written by the previous release's pre-pull snapshot.
+            (Path(directory) / "installed-before-update").write_text("axis-twist-removal\n")
             for legacy in ("no", "yes"):
                 run = self.run_shell(script, LEGACY=legacy, RESTORED="yes" if legacy == "no" else "no",
                                      PRINTER_CFG_DIR=directory, MIGRATION_STATE_DIR=directory)
                 self.assertEqual(run.returncode, 0, run.stderr.decode())
                 self.assertEqual(run.stdout.decode().splitlines(),
-                                 ["axis-twist-removal", "cartographer"] if legacy == "yes" else ["cartographer"])
+                                 ["cartographer", "ENTRIES", "carto-update|cartographer|Cartographer"])
 
     def test_old_partial_install_capture_and_completion_require_restoration(self):
         script = r'''
@@ -186,27 +268,42 @@ if migration_mark_component_current axis-twist-removal; then printf 'MARKED\n'; 
                 self.assertEqual(run.returncode, 0, run.stderr.decode())
                 output = run.stdout.decode()
                 if legacy == "yes":
-                    self.assertIn("CAPTURE:axis-twist-removal", output)
+                    self.assertNotIn("CAPTURE:axis-twist-removal", output)
                     self.assertIn("PENDING", output)
                 else:
                     self.assertNotIn("CAPTURE:axis-twist-removal", output)
                     self.assertIn("MARKED", output)
 
-    def test_other_repairs_are_blocked_until_legacy_atc_is_removed(self):
+    def test_other_repairs_do_not_require_legacy_atc_removal(self):
         script = r'''
 set -eu
 . "$INSTALLER_DIR/installer/menus/update.sh"
 has_legacy_axis_twist() { return 0; }
 warn() { printf 'WARN:%s\n' "$1"; }
-sh() { printf 'UNEXPECTED_INSTALL:%s\n' "$1"; }
+awk() { printf '/fixture/root\n'; }
+sh() { printf 'INSTALL:%s\n' "$1"; }
 migration_repair_component macros
 '''
         run = self.run_shell(script)
-        self.assertEqual(run.returncode, 1)
-        self.assertIn("Remove legacy Axis Twist first", run.stdout.decode())
-        self.assertNotIn("UNEXPECTED_INSTALL", run.stdout.decode())
+        self.assertEqual(run.returncode, 0, run.stderr.decode())
+        self.assertIn("features/macros/install.sh", run.stdout.decode())
+        self.assertNotIn("Remove legacy Axis Twist first", run.stdout.decode())
+        self.assertNotIn("axis-twist-removal/uninstall.sh", run.stdout.decode())
 
-    def test_failed_removal_stops_batch_without_other_repairs_or_restart(self):
+    def test_direct_migration_repair_cannot_uninstall_atc(self):
+        script = r'''
+set -eu
+. "$INSTALLER_DIR/installer/menus/update.sh"
+warn() { printf 'WARN:%s\n' "$1"; }
+sh() { printf 'UNEXPECTED_INSTALL:%s\n' "$1"; }
+migration_repair_component axis-twist-removal
+'''
+        run = self.run_shell(script)
+        self.assertEqual(run.returncode, 1, run.stderr.decode())
+        self.assertIn("ATC removal is optional", run.stdout.decode())
+        self.assertNotIn("UNEXPECTED_", run.stdout.decode())
+
+    def test_stale_removal_plan_is_ignored_without_restart(self):
         script = r'''
 set -eu
 . "$INSTALLER_DIR/installer/menus/update.sh"
@@ -219,11 +316,11 @@ migration_apply_components "$PLAN"
 '''
         with tempfile.TemporaryDirectory(prefix="k2-atc-failed-batch-") as directory:
             plan = Path(directory) / "plan"
-            plan.write_bytes(b"axis-twist-removal\nmacros\n")
+            plan.write_bytes(b"axis-twist-removal\n")
             run = self.run_shell(script, PLAN=plan.as_posix(), MIGRATION_STATE_DIR=directory)
         self.assertEqual(run.returncode, 1, run.stderr.decode())
-        self.assertIn("REPAIR:axis-twist-removal", run.stdout.decode())
-        self.assertNotIn("REPAIR:macros", run.stdout.decode())
+        self.assertIn("Skipping optional ATC removal", run.stdout.decode())
+        self.assertNotIn("REPAIR:", run.stdout.decode())
         self.assertNotIn("UNEXPECTED_RESTART", run.stdout.decode())
 
 

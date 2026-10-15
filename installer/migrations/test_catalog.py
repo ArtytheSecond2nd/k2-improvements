@@ -71,7 +71,8 @@ def recommended(installed, completed=frozenset()):
     return {
         component
         for migration_id, component, _detector, _reason in entries()
-        if component in installed and migration_id not in completed
+        if component != "axis-twist-removal"
+        and component in installed and migration_id not in completed
     }
 
 
@@ -305,7 +306,6 @@ class MigrationCatalogTests(unittest.TestCase):
         catalog_ids = {entry[0] for entry in entries()}
         cases = {
             "audit-cartographer-install-safety-v1": "cartographer",
-            "axis-twist-stock-restoration-v1": "axis-twist-removal",
             "audit-macro-motion-heater-safety-v1": "macros",
         }
         for update_id, component in cases.items():
@@ -946,7 +946,7 @@ class MigrationCatalogTests(unittest.TestCase):
             },
         )
 
-    def test_axis_twist_has_one_removal_migration_not_reinstall_actions(self):
+    def test_axis_twist_tracks_manual_removal_but_never_recommends_it(self):
         self.assertIn(
             "axis-twist-stock-restoration-v1",
             {
@@ -958,6 +958,7 @@ class MigrationCatalogTests(unittest.TestCase):
 
         self.assertFalse(any(component == "axis_twist_compensation" for _, component, _, _ in entries()))
         self.assertEqual(sum(component == "axis-twist-removal" for _, component, _, _ in entries()), 1)
+        self.assertEqual(recommended({"axis-twist-removal"}), set())
 
     def test_screws_tilt_tracks_probe_aware_points(self):
         self.assertIn(

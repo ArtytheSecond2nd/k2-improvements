@@ -9,15 +9,18 @@ mesh and regenerated-mesh PETG tests remained good without changing offsets.
 
 ## Remove an existing installation
 
-Use **Optional extras → Remove legacy Axis Twist**. Existing installations also
-receive an explicit removal action in **Update installer / apply updates**;
-pulling the repository alone does not uninstall the loaded printer feature.
+Use **Optional extras → Remove legacy Axis Twist** only if you choose to remove
+ATC. Repository updates and **Apply all recommended updates** do not uninstall
+ATC or require its removal. Existing runtime source files remain at their old
+paths so installed links continue to work after a pull and restart. The install
+option and installer script are retired; the retained files are compatibility
+support for existing installations, not an invitation to install ATC.
 The Extras menu hides the action when no legacy ATC artifacts are detected and
 rechecks detection when selected, so entering an old option number or using a
 stale menu does not launch removal. Other option numbers remain unchanged.
-The update action is offered only when legacy ATC artifacts are detected. It runs
-before other component repairs that might otherwise restart with dangling ATC
-links after the retired files disappear from the checkout.
+After successful removal the Extras option disappears automatically. The
+restoration migration ID records a successful manual uninstall only; it never
+adds removal to the recommended-update plan, even with an old update snapshot.
 
 The printer must be idle and Klipper ready. Save pending meshes/calibration
 with `SAVE_CONFIG` first and wait for its protected restart to finish. The
