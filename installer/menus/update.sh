@@ -19,7 +19,7 @@ migration_component_label() {
         screws_tilt_adjust) echo 'Screws Tilt Adjust' ;;
         kamp-adaptive-purge) echo 'KAMP adaptive purge' ;;
         r3men-bed) echo 'R3MEN bed thermistor profile' ;;
-        axis_twist_compensation) echo 'Axis Twist Compensation' ;;
+        axis-twist-removal) echo 'Remove legacy Axis Twist / restore stock probing' ;;
         cartographer-plate-workflow) echo 'Cartographer plate workflow' ;;
         global-touch-offsets) echo 'Global Carto Z Offsets' ;;
         global-prtouch-offsets) echo 'Global No-Carto Z Offsets' ;;
@@ -46,7 +46,7 @@ migration_component_installed() {
         screws_tilt_adjust) is_screws_tilt ;;
         kamp-adaptive-purge) is_kamp ;;
         r3men-bed) is_r3men_bed ;;
-        axis_twist_compensation) is_axis_twist ;;
+        axis-twist-removal) is_axis_twist_removed ;;
         cartographer-plate-workflow) is_carto_plate_workflow ;;
         global-touch-offsets) is_global_touch_offsets ;;
         global-prtouch-offsets) is_global_prtouch_offsets ;;
@@ -63,6 +63,9 @@ migration_component_installed() {
 }
 
 migration_component_applicable() {
+    # Uninstall is an explicit Extras choice, never a recommended repair.
+    # Keep its catalog ID only to record successful, user-requested removal.
+    [ "$1" != axis-twist-removal ] || return 1
     if [ "$1" = global-prtouch-offsets ] && is_cartographer; then
         return 1
     fi
@@ -120,8 +123,8 @@ migration_component_present() {
         r3men-bed)
             grep -q 'R3men_bed' "$PRINTER_CFG_DIR/printer.cfg" 2>/dev/null
             ;;
-        axis_twist_compensation)
-            [ -e "$custom/axis_twist_compensation.cfg" ]
+        axis-twist-removal)
+            has_legacy_axis_twist
             ;;
         cartographer-plate-workflow)
             grep -q 'surface-selection wrapper' "$custom/start_print.cfg" 2>/dev/null
@@ -163,7 +166,7 @@ migration_capture_installed_components() {
     : > "$temporary"
     for component in cartographer save-config-restart virtual-sdcard-guard abort_homing \
         screws_tilt_adjust macros r3men-bed kamp-adaptive-purge \
-        axis_twist_compensation cartographer-plate-workflow global-touch-offsets global-prtouch-offsets material-z-offsets plate-aware-mesh nozzle-camera nozzle-usb-cartographer fluidd better-init start-print-fast-stop; do
+        cartographer-plate-workflow global-touch-offsets global-prtouch-offsets material-z-offsets plate-aware-mesh nozzle-camera nozzle-usb-cartographer fluidd better-init start-print-fast-stop; do
         if migration_component_installed "$component" 2>/dev/null ||
            migration_component_present "$component" 2>/dev/null; then
             printf '%s\n' "$component" >> "$temporary"
@@ -221,7 +224,7 @@ migration_pending_components() {
         END {
             count = split("cartographer save-config-restart virtual-sdcard-guard abort_homing " \
                 "screws_tilt_adjust macros r3men-bed kamp-adaptive-purge " \
-                "axis_twist_compensation cartographer-plate-workflow global-touch-offsets global-prtouch-offsets " \
+                "cartographer-plate-workflow global-touch-offsets global-prtouch-offsets " \
                 "material-z-offsets plate-aware-mesh nozzle-camera nozzle-camera-mount-compatibility nozzle-usb-cartographer fluidd better-init " \
                 "start-print-fast-stop", components, " ")
             for (i = 1; i <= count; i++)
@@ -372,6 +375,10 @@ migration_require_idle() {
 }
 
 migration_repair_component() {
+    if [ "$1" = axis-twist-removal ]; then
+        warn 'ATC removal is optional; use Optional extras -> Remove legacy Axis Twist'
+        return 1
+    fi
     local component pwd_home
     component="$1"
     pwd_home=$(awk -F: '$1=="root"{print $6}' /etc/passwd)
@@ -423,10 +430,6 @@ migration_repair_component() {
         r3men-bed)
             HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
                 sh "$INSTALLER_DIR/features/r3men-bed/install.sh"
-            ;;
-        axis_twist_compensation)
-            HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
-                sh "$INSTALLER_DIR/features/axis_twist_compensation/install.sh"
             ;;
         cartographer-plate-workflow)
             HOME="$pwd_home" K2_DEFER_FIRMWARE_RESTART=1 \
@@ -491,7 +494,7 @@ migration_repair_component() {
 
 migration_component_restart_kind() {
     case "$1" in
-        cartographer|macros|save-config-restart|virtual-sdcard-guard|memory-diagnostics|abort_homing|screws_tilt_adjust|kamp-adaptive-purge|axis_twist_compensation|global-touch-offsets|global-prtouch-offsets|material-z-offsets|start-print-fast-stop|nozzle-usb-cartographer)
+        cartographer|macros|save-config-restart|virtual-sdcard-guard|memory-diagnostics|abort_homing|screws_tilt_adjust|kamp-adaptive-purge|global-touch-offsets|global-prtouch-offsets|material-z-offsets|start-print-fast-stop|nozzle-usb-cartographer)
             echo code
             ;;
         fluidd)
@@ -652,6 +655,11 @@ migration_apply_components() {
     # questions even though the final protected restart remains deferred.
     while IFS= read -r component <&3; do
         [ -n "$component" ] || continue
+        # Ignore even a stale plan generated by an earlier installer version.
+        if [ "$component" = axis-twist-removal ]; then
+            warn 'Skipping optional ATC removal; it is available only in Optional extras'
+            continue
+        fi
         if grep -qxF "$component" "$succeeded" 2>/dev/null; then
             info "$(migration_component_label "$component") was already refreshed as a dependency"
             continue

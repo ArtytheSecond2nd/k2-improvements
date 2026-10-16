@@ -27,8 +27,8 @@ carto_module = load(ROOT / "features/cartographer/k2_cartographer_touchscreen.py
 # Use the repository's Creality PrinterProbe implementations, not a rewritten
 # approximation of the calibration arithmetic being tested. Exclude hardware
 # imports/constructor and the print-recovery file writer from this harness.
-native_path = ROOT / "features/axis_twist_compensation/probe.py"
-native_tree = ast.parse(native_path.read_text())
+native_path = ROOT / "installer/extras/axis-twist-removal/stock/1.1.5.5/probe.py"
+native_tree = ast.parse(native_path.read_text(encoding="utf-8"))
 native_class = next(n for n in native_tree.body
                     if isinstance(n, ast.ClassDef) and n.name == "PrinterProbe")
 native_methods = {"logging": logging}

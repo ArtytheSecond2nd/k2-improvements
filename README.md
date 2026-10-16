@@ -195,7 +195,7 @@ are under **Cartographer tools**, and PR Touch `SAVE_CONFIG` cleanup is under
 | Global Carto Touch Z Offsets | [Live offset editor](./installer/extras/global-touch-offsets/README.md) |
 | Material Z Offsets | [Material offset editor](./installer/extras/material-z-offsets/README.md) |
 | KAMP adaptive purge | [KAMP guide and slicer templates](./installer/extras/kamp-adaptive-purge/README.md) |
-| Axis twist compensation | [Axis twist guide](./features/axis_twist_compensation/README.md) |
+| Remove legacy Axis Twist (manual, existing installs only) | [Optional stock-probe restoration](./installer/extras/axis-twist-removal/README.md); never included in Apply all updates |
 | Plate-aware saved meshes | [Stock PR Touch plate-and-temperature mesh profiles](./installer/extras/plate-aware-mesh/README.md) |
 | R3MEN bed thermistor profile | [R3MEN guide](./features/r3men-bed/README.md) |
 | Stock nozzle camera stream | [Factory nozzle-camera guide](./installer/extras/nozzle-camera/README.md) |

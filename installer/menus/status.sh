@@ -50,7 +50,9 @@ show_status() {
     status_line 'macros (start_print/m191/bed_mesh)' is_macros
 
     printf '\n Optional extras\n'
-    status_line 'axis_twist_compensation' is_axis_twist
+    if has_legacy_axis_twist; then
+        printf '  %s\n' "$(c_yellow 'Legacy Axis Twist detected: Optional extras -> Remove legacy Axis Twist')"
+    fi
     status_line 'secure-auth' is_secure_auth
     status_line 'R3MEN bed thermistor profile' is_r3men_bed
     status_line 'Stock nozzle camera stream' is_nozzle_camera

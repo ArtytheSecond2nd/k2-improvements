@@ -39,7 +39,6 @@ audit-cartographer-config-runtime-safety-v1|cartographer|is_cartographer|Back up
 audit-memory-diagnostics-worker-v1|memory-diagnostics|is_memory_diagnostics|Move procfs sampling and UDISK logging off Klipper's motion reactor
 audit-abort-homing-patcher-safety-v1|abort_homing|is_abort_homing|Back up webhooks.py, reject partial patches, and replace it atomically
 audit-cartographer-install-safety-v1|cartographer|is_cartographer|Preserve SAVE_CONFIG data, verify probe XY offsets, and tolerate a missing Cartographer object during patched homing
-audit-axis-twist-offsets-v1|axis_twist_compensation|is_axis_twist|Keep Cartographer probe XY offsets enabled when Axis Twist replaces the probe helper
 audit-macro-motion-heater-safety-v1|macros|is_macros|Home XY before an unhomed Cartographer Z axis, limit M191 S0 to the chamber, and use robust Cartographer detection
 cartographer-z-rehome-preposition-guard-v1|cartographer|is_cartographer|Refresh K2 homing so a disconnected Cartographer blocks the fast Z10 pre-positioning move on repeated Z homing
 cartographer-scan-model-homing-guard-v1|cartographer|is_cartographer|Refresh K2 homing so a missing Cartographer scan model stops scanner-controlled Z homing before motion
@@ -73,7 +72,6 @@ main-99f5328-save-config|save-config-restart|is_save_config_restart|SAVE_CONFIG 
 main-611cde3-save-config-guard|save-config-restart|is_save_config_restart|SAVE_CONFIG protection was expanded to every install path
 main-4b6aa14-abort-restart|abort_homing|is_abort_homing|Abort Homing installation restart handling changed
 main-02272a5-screws-restart|screws_tilt_adjust|is_screws_tilt|Screws Tilt installation restart handling changed
-main-22a032a-axis-restart|axis_twist_compensation|is_axis_twist|Axis Twist installation restart handling changed
 main-87f0841-m191-bed-assist|macros|is_macros|M191 chamber bed assistance became reversible
 main-a9c305d-m191-response|macros|is_macros|M191 response syntax was corrected
 main-825ce65-chamber-target|macros|is_macros|START_PRINT and M191 now respect the requested chamber temperature
@@ -94,7 +92,6 @@ main-b0c7efe-save-config-v2|save-config-restart|is_save_config_restart|SAVE_CONF
 main-b0c7efe-abort-homing-v2|abort_homing|is_abort_homing|Abort Homing now reloads patched Python safely
 main-b0c7efe-screws-tilt-v2|screws_tilt_adjust|is_screws_tilt|Screws Tilt installation now reloads patched Python safely
 main-b0c7efe-kamp-v2|kamp-adaptive-purge|is_kamp|KAMP settings, purge safety, prime-tower scanning, and activation changed
-main-b0c7efe-axis-twist-v2|axis_twist_compensation|is_axis_twist|Axis Twist installation now uses the protected Klippy-code restart
 main-b0c7efe-carto-plate-v2|cartographer-plate-workflow|is_carto_plate_workflow|Cartographer plate workflow generation and guidance changed
 main-b0c7efe-plate-aware-v2|plate-aware-mesh|is_plate_aware_mesh|Plate-aware mesh installation and soak behavior changed
 updater-kamp-interactive-refresh-v1|kamp-adaptive-purge|is_kamp|KAMP updates now offer settings and firmware-retraction questions before the shared protected restart
@@ -147,10 +144,7 @@ cartographer-default-controls-core-v1|cartographer|is_cartographer|Cartographer 
 m191-configurable-settings-v1|macros|is_macros|M191 bed assistance and chamber waiting settings are now configurable
 m191-bed-assist-editor-v2|macros|is_macros|M191 settings can now be edited from the Fluidd Bed Assist control
 m191-bed-assist-live-save-v3|macros|is_macros|Saving Bed Assist settings now updates live M191 and START_PRINT variables without restarting
-axis-twist-probe-aware-range-v1|axis_twist_compensation|is_axis_twist|Axis Twist calibration now limits motion using the active probe offsets and toolhead range
-axis-twist-prtouch-registration-v2|axis_twist_compensation|is_axis_twist|Stock PR Touch now releases its internal alias so the full Axis Twist module can load
-axis-twist-prtouch-probe-params-v3|axis_twist_compensation|is_axis_twist|The legacy stock probe now exposes the parameter interface required by Axis Twist
-axis-twist-prtouch-live-status-v4|axis_twist_compensation|is_axis_twist|Preserve native PR Touch status so intentional probing fan shutdowns do not trigger CF0109
+axis-twist-stock-restoration-v1|axis-twist-removal|is_axis_twist_removed|Manual Extras removal only; never recommended or included in Apply all. Record hash-matched stock restoration after explicit user confirmation
 screws-tilt-probe-aware-points-v1|screws_tilt_adjust|is_screws_tilt|Screws Tilt now positions the active probe near each screw while respecting toolhead boundaries
 cartographer-prtouch-cold-boot-registration-v1|cartographer|is_cartographer|Cartographer now reports PR Touch preparation compatibility before Creality checks it during a cold boot
 cartographer-prtouch-config-finalization-v2|cartographer|is_cartographer|Cartographer now restores PR Touch preparation compatibility before Klipper exposes its finalized configuration

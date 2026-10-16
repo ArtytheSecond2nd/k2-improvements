@@ -20,7 +20,7 @@ KNOWN_COMPONENTS = {
     "screws_tilt_adjust",
     "kamp-adaptive-purge",
     "r3men-bed",
-    "axis_twist_compensation",
+    "axis-twist-removal",
     "cartographer-plate-workflow",
     "global-touch-offsets",
     "global-prtouch-offsets",
@@ -43,7 +43,7 @@ EXPECTED_DETECTORS = {
     "screws_tilt_adjust": "is_screws_tilt",
     "kamp-adaptive-purge": "is_kamp",
     "r3men-bed": "is_r3men_bed",
-    "axis_twist_compensation": "is_axis_twist",
+    "axis-twist-removal": "is_axis_twist_removed",
     "cartographer-plate-workflow": "is_carto_plate_workflow",
     "global-touch-offsets": "is_global_touch_offsets",
     "global-prtouch-offsets": "is_global_prtouch_offsets",
@@ -71,7 +71,8 @@ def recommended(installed, completed=frozenset()):
     return {
         component
         for migration_id, component, _detector, _reason in entries()
-        if component in installed and migration_id not in completed
+        if component != "axis-twist-removal"
+        and component in installed and migration_id not in completed
     }
 
 
@@ -305,7 +306,6 @@ class MigrationCatalogTests(unittest.TestCase):
         catalog_ids = {entry[0] for entry in entries()}
         cases = {
             "audit-cartographer-install-safety-v1": "cartographer",
-            "audit-axis-twist-offsets-v1": "axis_twist_compensation",
             "audit-macro-motion-heater-safety-v1": "macros",
         }
         for update_id, component in cases.items():
@@ -493,7 +493,7 @@ class MigrationCatalogTests(unittest.TestCase):
             "r3men-bed",
         }
         self.assertEqual(recommended(installed), installed)
-        self.assertNotIn("axis_twist_compensation", recommended(installed))
+        self.assertNotIn("axis-twist-removal", recommended(installed))
         self.assertNotIn("cartographer-plate-workflow", recommended(installed))
         self.assertNotIn("global-touch-offsets", recommended(installed))
         self.assertNotIn("plate-aware-mesh", recommended(installed))
@@ -946,35 +946,19 @@ class MigrationCatalogTests(unittest.TestCase):
             },
         )
 
-    def test_axis_twist_tracks_probe_aware_calibration_range(self):
+    def test_axis_twist_tracks_manual_removal_but_never_recommends_it(self):
         self.assertIn(
-            "axis-twist-probe-aware-range-v1",
+            "axis-twist-stock-restoration-v1",
             {
                 migration_id
                 for migration_id, component, _detector, _reason in entries()
-                if component == "axis_twist_compensation"
+                if component == "axis-twist-removal"
             },
         )
 
-    def test_axis_twist_tracks_prtouch_registration_release(self):
-        self.assertIn(
-            "axis-twist-prtouch-registration-v2",
-            {
-                migration_id
-                for migration_id, component, _detector, _reason in entries()
-                if component == "axis_twist_compensation"
-            },
-        )
-
-    def test_axis_twist_tracks_prtouch_probe_parameter_bridge(self):
-        self.assertIn(
-            "axis-twist-prtouch-probe-params-v3",
-            {
-                migration_id
-                for migration_id, component, _detector, _reason in entries()
-                if component == "axis_twist_compensation"
-            },
-        )
+        self.assertFalse(any(component == "axis_twist_compensation" for _, component, _, _ in entries()))
+        self.assertEqual(sum(component == "axis-twist-removal" for _, component, _, _ in entries()), 1)
+        self.assertEqual(recommended({"axis-twist-removal"}), set())
 
     def test_screws_tilt_tracks_probe_aware_points(self):
         self.assertIn(

@@ -1,0 +1,14 @@
+Removes the retired Axis Twist extra; does not calibrate or move the printer.
+
+Before continuing: printer idle, SAVE_CONFIG completed, Klipper ready.
+
+The uninstaller backs up ATC files/calibration and restores stock probe.py
+using the verified PR Touch wrapper hash (1.1.3.13, 1.1.5.2, or 1.1.5.5).
+Unknown hashes stop with a reflash instruction; no helper is guessed.
+
+Restores PR Touch registration, removes ATC includes/module/config links and
+saved calibration, and keeps global/material Z offsets and saved meshes.
+On Cartographer, keeps probe XY offsets enabled.
+
+Finishes with the protected Klippy reload, firmware reset, and motor-ready wait.
+Re-mesh and recheck Z offsets afterward. Keep the backup if recovery is needed.
